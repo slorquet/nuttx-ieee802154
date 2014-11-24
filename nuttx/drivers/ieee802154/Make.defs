@@ -1,8 +1,8 @@
 ############################################################################
-# configs/nucleo-f4x1re/src/Makefile
+# drivers/ieee802154/Make.defs
 #
-#   Copyright (C) 2014 Gregory Nutt. All rights reserved.
-#   Author: Gregory Nutt <gnutt@nuttx.org>
+#   Copyright (C) 20124 Gregory Nutt. All rights reserved.
+#   Author: Sebastien Lorquet <sebastien@lorquet.fr>
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -33,84 +33,19 @@
 #
 ############################################################################
 
--include $(TOPDIR)/Make.defs
-
-CFLAGS += -I$(TOPDIR)/sched
-
-ASRCS = 
-AOBJS = $(ASRCS:.S=$(OBJEXT))
-
-CSRCS = stm32_boot.c stm32_spi.c
-
-ifeq ($(CONFIG_HAVE_CXX),y)
-CSRCS += stm32_cxxinitialize.c
-endif
-
-ifeq ($(CONFIG_ARCH_LEDS),y)
-CSRCS += stm32_autoleds.c
-else
-CSRCS += stm32_userleds.c
-endif
-
-ifeq ($(CONFIG_ARCH_BUTTONS),y)
-CSRCS +=  stm32_buttons.c
-endif
-
-ifeq ($(CONFIG_WL_CC3000),y)
-CSRCS += stm32_wireless.c
-ifeq ($(CONFIG_CC3000_PROBES),)
-CSRCS += stm32_io.c
-endif
-endif
+# Include nothing if IEEE 802.15.4 is disabled
 
 ifeq ($(CONFIG_IEEE802154),y)
-CSRCS += stm32_ieee802154.c
+
+# Include network interface drivers
+
 ifeq ($(CONFIG_MRF24J40),y)
-CSRCS += stm32_mrf24j40.c
-endif
-endif
-
-ifeq ($(CONFIG_NSH_LIBRARY),y)
-CSRCS += stm32_nsh.c
+  CSRCS += mrf24j40.c
 endif
 
-COBJS = $(CSRCS:.c=$(OBJEXT))
+# Include network build support
 
-SRCS = $(ASRCS) $(CSRCS)
-OBJS = $(AOBJS) $(COBJS)
-
-ARCH_SRCDIR = $(TOPDIR)/arch/$(CONFIG_ARCH)/src
-ifeq ($(WINTOOL),y)
-  CFLAGS += -I "${shell cygpath -w $(ARCH_SRCDIR)/chip}" \
-            -I "${shell cygpath -w $(ARCH_SRCDIR)/common}" \
-            -I "${shell cygpath -w $(ARCH_SRCDIR)/armv7-m}"
-else
-  CFLAGS += -I$(ARCH_SRCDIR)/chip -I$(ARCH_SRCDIR)/common -I$(ARCH_SRCDIR)/armv7-m
+DEPPATH += --dep-path ieee802154
+VPATH += :ieee802154
 endif
 
-all: libboard$(LIBEXT)
-
-$(AOBJS): %$(OBJEXT): %.S
-	$(call ASSEMBLE, $<, $@)
-
-$(COBJS) $(LINKOBJS): %$(OBJEXT): %.c
-	$(call COMPILE, $<, $@)
-
-libboard$(LIBEXT): $(OBJS)
-	$(call ARCHIVE, $@, $(OBJS))
-
-.depend: Makefile $(SRCS)
-	$(Q) $(MKDEP) $(CC) -- $(CFLAGS) -- $(SRCS) >Make.dep
-	$(Q) touch $@
-
-depend: .depend
-
-clean:
-	$(call DELFILE, libboard$(LIBEXT))
-	$(call CLEAN)
-
-distclean: clean
-	$(call DELFILE, Make.dep)
-	$(call DELFILE, .depend)
-
--include Make.dep

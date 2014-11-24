@@ -211,6 +211,18 @@ void stm32_spiinitialize(void);
 
 void stm32_usbinitialize(void);
 
+/************************************************************************************
+ * Name: ieee802154_initialize
+ *
+ * Description:
+ *   Perform architecture specific initialization for IEEE802.15.4 devices.
+ *
+ ************************************************************************************/
+
+#ifdef CONFIG_IEEE802154
+int ieee802154_initialize(void);
+#endif
+
 /****************************************************************************
  * Name: board_led_initialize
  *

@@ -121,7 +121,15 @@ void board_initialize(void)
 
 #if defined(CONFIG_NSH_LIBRARY) && !defined(CONFIG_NSH_ARCHINIT)
   nsh_archinitialize();
+
+#ifdef CONFIG_WIRELESS
   wireless_archinitialize(0);
+#endif
+
+#ifdef CONFIG_IEEE802154
+  ieee802154_initialize();
+#endif
+
 #endif
 }
 #endif
