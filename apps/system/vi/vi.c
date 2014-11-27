@@ -1230,6 +1230,7 @@ static bool vi_savetext(FAR struct vi_s *vi, FAR const char *filename,
       /* Report the error (or partial write).  EINTR is not handled. */
 
       vi_error(vi, g_fmtcmdfail, "fwrite", errno);
+      (void)fclose(stream);
       return false;
     }
 
@@ -3636,7 +3637,7 @@ int vi_main(int argc, char **argv)
                 }
               else
                 {
-                  fprintf(stderr, "ERROR: Column value out of range: %ld\n",
+                  fprintf(stderr, "ERROR: Column value out of range: %lu\n",
                           value);
                   vi_showusage(vi, argv[0], EXIT_FAILURE);
                 }
@@ -3652,7 +3653,7 @@ int vi_main(int argc, char **argv)
                 }
               else
                 {
-                  fprintf(stderr, "ERROR: Row value out of range: %ld\n",
+                  fprintf(stderr, "ERROR: Row value out of range: %lu\n",
                           value);
                   vi_showusage(vi, argv[0], EXIT_FAILURE);
                 }

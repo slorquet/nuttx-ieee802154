@@ -8,7 +8,7 @@
   <tr align="center" bgcolor="#e4e4e4">
     <td>
       <h1><big><font color="#3c34ec"><i>NuttX RTOS</i></font></big></h1>
-      <p>Last Updated: November 11, 2014</p>
+      <p>Last Updated: November 26, 2014</p>
     </td>
   </tr>
 </table>
@@ -572,6 +572,14 @@
   <td><br></td>
   <td>
     <p>
+      <li>Asynchronous I/O (AIO)</li>
+    </p>
+  </td>
+</tr>
+<tr>
+  <td><br></td>
+  <td>
+    <p>
       <li>
         Network, USB (host), USB (device), serial, I2C, I2S, NAND, CAN, ADC, DAC, PWM, Quadrature Encoder, Wireless, and watchdog timer driver architectures.
       </li>
@@ -678,8 +686,23 @@
   <td><br></td>
   <td>
     <p>
+      <li>Multiple network interface support; multiple network link layer support.</li>
+    </p>
+  </td>
+</tr>
+<tr>
+  <td><br></td>
+  <td>
+    <p>
       <li>TCP/IP, UDP, ICMP, IGMPv2 (client) stacks.</li>
-      <li>Raw socket support</li>
+    </p>
+  </td>
+</tr>
+<tr>
+  <td><br></td>
+  <td>
+    <p>
+      <li>Raw socket support.</li>
     </p>
   </td>
 </tr>
@@ -1023,6 +1046,29 @@
 <tr>
   <td valign="top" width="22"><img height="20" width="20" src="favicon.ico"></td>
   <td bgcolor="#5eaee1">
+    <b>BAS 2.4</b>
+  </td>
+</tr>
+
+<tr>
+  <td><br></td>
+  <td>
+    <p>
+      <li>Seamless integration of Michael Haardt's BAS 2.4:
+      &quot;Bas is an interpreter for the classic dialect of the programming language
+      BASIC.  It is pretty compatible to typical BASIC interpreters of the 1980s,
+      unlike some other UNIX BASIC interpreters, that implement a different
+      syntax, breaking compatibility to existing programs.  Bas offers many ANSI
+      BASIC statements for structured programming, such as procedures, local
+      variables and various loop types.  Further there are matrix operations,
+      automatic LIST indentation and many statements and functions found in
+      specific classic dialects.  Line numbers are not required.&quot;</li>
+    </p>
+</tr>
+
+<tr>
+  <td valign="top" width="22"><img height="20" width="20" src="favicon.ico"></td>
+  <td bgcolor="#5eaee1">
     <b>Pascal Compiler with NuttX runtime P-Code interpreter add-on</b>
   </td>
 </tr>
@@ -1187,11 +1233,11 @@
 <h2>Released Versions</h2>
 <p>
   In addition to the ever-changing GIT repository, there are frozen released versions of NuttX available.
-  The current release is NuttX 7.5.
-  NuttX 7.5 is the 105<sup>th</sup> release of NuttX.
-  It was released on September 28, 2014, and is available for download from the
+  The current release is NuttX 7.6.
+  NuttX 7.6 is the 106<sup>th</sup> release of NuttX.
+  It was released on November 26, 2014, and is available for download from the
   <a href="http://sourceforge.net/projects/nuttx/files/">SourceForge</a> website.
-  Note that the release consists of two tarballs:  <code>nuttx-7.5.tar.gz</code> and <code>apps-7.5.tar.gz</code>.
+  Note that the release consists of two tarballs:  <code>nuttx-7.6.tar.gz</code> and <code>apps-7.6.tar.gz</code>.
   Both may be needed (see the top-level <code>nuttx/README.txt</code> file for build information).
 </p>
 
@@ -1200,7 +1246,7 @@
 <ul>
   <li><b>nuttx</b>.
     <ul><p>
-      Release notes for NuttX 7.5 are available <a href="http://sourceforge.net/projects/nuttx/files/nuttx/nuttx-7.5/">here</a>;
+      Release notes for NuttX 7.6 are available <a href="http://sourceforge.net/projects/nuttx/files/nuttx/nuttx-7.6/">here</a>;
       release notes for all released versions on NuttX are available in the <a href="http://sourceforge.net/p/nuttx/git/ci/master/tree/nuttx/ReleaseNotes">SourceForge GIT</a>
       The ChangeLog for all releases of NuttX is available in the ChangeLog file that can viewed in the <a href="http://sourceforge.net/p/nuttx/git/ci/master/tree/nuttx/ChangeLog">SourceForge GIT</a>.
       The ChangeLog for the current release is at the bottom of that file.
@@ -1208,7 +1254,7 @@
   </li></ul>
   <li><b>apps</b>.
     <ul><p>
-      Release notes for NuttX 7.5 are available <a href="http://sourceforge.net/projects/nuttx/files/nuttx/nuttx-7.5/">here</a>;
+      Release notes for NuttX 7.6 are available <a href="http://sourceforge.net/projects/nuttx/files/nuttx/nuttx-7.6/">here</a>;
       release notes for all released versions on NuttX are available in the <a href="http://sourceforge.net/p/nuttx/git/ci/master/tree/nuttx/ReleaseNotes">SourceForge GIT</a>
       The ChangeLog for the all releases of apps is available in the ChangeLog file that can viewed in the <a href="http://sourceforge.net/p/nuttx/git/ci/master/tree/apps/ChangeLog.txt">SourceForge GIT</a>.
       The ChangeLog for the current release is at the bottom of that file.
@@ -1263,7 +1309,7 @@
       <li><a href="#armcortexa8">ARM Cortex-A8</a> (1)</li>
       <li><a href="#armcortexm0">ARM Cortex-M0/M0+</a> (3)</li>
       <li><a href="#armcortexm3">ARM Cortex-M3</a> (29)</li>
-      <li><a href="#armcortexm4">ARM Cortex-M4</a> (16)</li>
+      <li><a href="#armcortexm4">ARM Cortex-M4</a> (17)</li>
     </ul>
   <li>Atmel AVR
     <ul>
@@ -3271,33 +3317,40 @@ nsh>
   <td><br></td>
   <td>
     <p>
-      <a name="nxplpc43xx"><b>NXG Technologies LPC4330-Xplorer</b>.</a>
-      This NuttX port is for the LPC4330-Xplorer board from NGX Technologies featuring the NXP LPC4330FET100 MCU.
-      See the <a href="http://shop.ngxtechnologies.com/product_info.php?cPath=21_37&products_id=104">NXG website</a> for further information about this board.
-    </p>
-    <p>
-      <b>STATUS:</b>
-      Refer to the NuttX board <a href="http://sourceforge.net/p/nuttx/git/ci/master/tree/nuttx/configs/lpc4330-xplorer/README.txt">README</a> file for more detailed information about this port.
+      <a name="nxplpc43xx"><b>NCP LPC43xx</b>.</a>
+      Two board ports are available for this higher end, NXP Cortex-M4F part:
     </p>
     <ul>
-      <li>
-        <p><b>NuttX-6.20</b>
-          The basic port is complete.
-          The basic NuttShell (NSH) configuration is present and fully verified.
-          This includes verified support for:  SYSTICK system time, pin and GPIO configuration, and a serial console.
-        </p>
-        <p>
-          Several drivers have been copied from the related LPC17xx port but require integration into the LPC43xx:  ADC, DAC, GPDMA, I2C, SPI, and SSP.
-          The registers for these blocks are the same in both the LPC43xx and the LPC17xx and they should integrate into the LPC43xx very easily by simply adapting the clocking and pin configuration logic.
-        </p>
-        <p>
-          Other LPC17xx drivers were not brought into the LPC43xx port because these peripherals have been completely redesigned:  CAN, Ethernet, USB device, and USB host.
-        </p>
-        <p>
-          So then there is no support for the following LPC43xx peripherals: SD/MMC, EMC, USB0,USB1, Ethernet, LCD, SCT, Timers 0-3, MCPWM, QEI, Alarm timer, WWDT, RTC, Event monitor, and CAN.
-        </p>
-        <p>
-          Some of these can be leveraged from other MCUs that appear to support the same peripheral IP:
+      <p>
+        <b>NXG Technologies LPC4330-Xplorer</b>.</a>
+        This NuttX port is for the LPC4330-Xplorer board from NGX Technologies featuring the NXP LPC4330FET100 MCU.
+        See the <a href="http://shop.ngxtechnologies.com/product_info.php?cPath=21_37&products_id=104">NXG website</a> for further information about this board.
+      </p>
+      <ul>
+        <li>
+          <p><b>STATUS:</b>
+            Refer to the NuttX board <a href="http://sourceforge.net/p/nuttx/git/ci/master/tree/nuttx/configs/lpc4330-xplorer/README.txt">README</a> file for more detailed information about this port.
+          </p>
+        </li>
+        <li>
+          <p><b>NuttX-6.20</b>
+            The basic port is complete.
+            The basic NuttShell (NSH) configuration is present and fully verified.
+            This includes verified support for:  SYSTICK system time, pin and GPIO configuration, and a serial console.
+          </p>
+          <p>
+            Several drivers have been copied from the related LPC17xx port but require integration into the LPC43xx:  ADC, DAC, GPDMA, I2C, SPI, and SSP.
+            The registers for these blocks are the same in both the LPC43xx and the LPC17xx and they should integrate into the LPC43xx very easily by simply adapting the clocking and pin configuration logic.
+          </p>
+          <p>
+            Other LPC17xx drivers were not brought into the LPC43xx port because these peripherals have been completely redesigned:  CAN, Ethernet, USB device, and USB host.
+          </p>
+          <p>
+            So then there is no support for the following LPC43xx peripherals: SD/MMC, EMC, USB0,USB1, Ethernet, LCD, SCT, Timers 0-3, MCPWM, QEI, Alarm timer, WWDT, RTC, Event monitor, and CAN.
+          </p>
+          <p>
+            Some of these can be leveraged from other MCUs that appear to support the same peripheral IP:
+          </p>
           <ul>
             <li>
               The LPC43xx USB0 peripheral appears to be the same as the USB OTG peripheral for the LPC31xx.
@@ -3308,11 +3361,31 @@ nsh>
               The Ethernet block looks to be based on the same IP as the STM32 Ethernet and, as a result, it should be possible to leverage the NuttX STM32 Ethernet driver with a little more effort.
             </li>
           </ul>
+        </li>
+        <li>
+          <p><b>NuttX-6.21</b>
+          Added support for a SPIFI block driver and for RS-485 option to the serial driver.
+        </li>
+      </ul>
+      <p>
+        <b>NXP/Embest LPC4357-EVB</b>.</a>
+        This NuttX port is for the LPC4357-EVB from NXP/Embest featuring the NXP LPC4357FET256 MCU.
+        The LPC4357 differs from the LPC4330 primarily in that it includes 1024KiB of on-chip NOR FLASH.
+        See the <a href="http://www.nxp.com/news/news-archive/2013/nxp-development-kit-based-on-the-dual-core-lpc4357-microcontroller.html">NXP website</a> for more detailed information about the LPC4357 and the LPC4357-EVB.
+      </p>
+      <ul>
+      <li>
+        <p><b>STATUS:</b>
+          Refer to the NuttX board <a href="http://sourceforge.net/p/nuttx/git/ci/master/tree/nuttx/configs/lpc4357-evb/README.txt">README</a> file for more detailed information about this port.
         </p>
       </li>
       <li>
-        <p><b>NuttX-6.21</b>
-        Added support for a SPIFI block driver and for RS-485 option to the serial driver.
+        <p><b>NuttX-7.6</b>
+          The basic port is was contributed by Toby Duckworth.
+          This port leverages from the LPC4330-Xplorer port (and, as of this writing, still requires some clean up of the technical discussion in some files).
+          The basic NuttShell (NSH) configuration is present and has been verified.
+          Support is generally the same as for the LPC4330-Xplorer as discussed above.
+        </p>
       </li>
     </ul>
   </td>
