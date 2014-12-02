@@ -63,7 +63,7 @@
 
 int ieee802154_initialize(void)
 {
-#ifdef CONFIG_MRF24J40
+#ifdef CONFIG_IEEE802154_MRF24J40
   return stm32_mrf24j40initialize();
 #endif
 

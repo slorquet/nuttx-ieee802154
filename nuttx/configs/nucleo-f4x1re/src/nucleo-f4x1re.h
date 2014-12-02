@@ -223,6 +223,18 @@ void stm32_usbinitialize(void);
 int ieee802154_initialize(void);
 #endif
 
+/************************************************************************************
+ * Name: stm32_mrf24j40initialize
+ *
+ * Description:
+ *   Perform MRF24J40 IEEE 802.15.4 device initialization.
+ *
+ ************************************************************************************/
+
+#ifdef CONFIG_IEEE802154_MRF24J40
+int stm32_mrf24j40initialize(void);
+#endif
+
 /****************************************************************************
  * Name: board_led_initialize
  *
