@@ -133,6 +133,5 @@ void board_initialize(void)
   ieee802154_initialize();
 #endif
 
-#endif
 }
 #endif
