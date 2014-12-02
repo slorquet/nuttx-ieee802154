@@ -41,6 +41,7 @@
 #include <assert.h>
 
 #include <sys/types.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <errno.h>
 #include <semaphore.h>
@@ -60,12 +61,12 @@
 #error High priority work queue required in this driver
 #endif
 
-#ifndef CONFIG_MRF24J40_SPIMODE
-#  define CONFIG_MRF24J40_SPIMODE SPIDEV_MODE0
+#ifndef CONFIG_IEEE802154_MRF24J40_SPIMODE
+#  define CONFIG_IEEE802154_MRF24J40_SPIMODE SPIDEV_MODE0
 #endif
 
-#ifndef CONFIG_MRF24J40_FREQUENCT
-#  define CONFIG_MRF24J40_FREQUENCT 10000000
+#ifndef CONFIG_IEEE802154_MRF24J40_FREQUENCY
+#  define CONFIG_IEEE802154_MRF24J40_FREQUENCY 10000000
 #endif
 
 /* MRF24J40 Registers *******************************************************************/
@@ -343,7 +344,9 @@ static void mrf24j40_irqworker(FAR void *arg)
   /* Get exclusive access to the SPI bus */
   mrf24j40_lock(priv->spi);
 
-  /* Do IRQ work */
+  /* Read and store INTSTAT - this clears the register. */
+
+  /* Do work according to the pending interrupts */
 
   /* Re-Enable GPIO interrupts */
 

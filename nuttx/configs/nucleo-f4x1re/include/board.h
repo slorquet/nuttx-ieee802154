@@ -142,10 +142,7 @@
 #define GPIO_I2C2_SDA_GPIO \
    (GPIO_OUTPUT|GPIO_OPENDRAIN|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN11)
 
-/* SPI
- *
- * There are sensors on SPI1, and SPI2 is connected to the FRAM.
- */
+/* SPI */
 
 #define GPIO_SPI1_MISO   GPIO_SPI1_MISO_1
 #define GPIO_SPI1_MOSI   GPIO_SPI1_MOSI_1

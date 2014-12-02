@@ -39,11 +39,11 @@
  * --- ------ -------------- -----------------------------------------------------
  * PIN NAME   SIGNAL         NOTES
  * --- ------ -------------- -----------------------------------------------------
- * 29  PB6    PB6            Chip Select
+ * 29  PB6    PB6            Chip Select (same as CC3000, thus cannot use both)
  * 30  PA5    PA5-SPI1-SCK   -
  * 31  PA6    PA6-SPI1-MISO  -
  * 32  PA7    PA7-SPI1-MOSI  -
- * XX  PA9    PA9            Interrupt request
+ * XX  PC7    PC7            Interrupt request
  */
 
 /****************************************************************************
@@ -51,10 +51,11 @@
  ****************************************************************************/
 
 #include <nuttx/config.h>
+#include <debug.h>
 
 #include <stdint.h>
 #include <stdio.h>
-#include <debug.h>
+#include <errno.h>
 
 #include <nuttx/spi/spi.h>
 #include <nuttx/ieee802154/mrf24j40.h>
@@ -66,7 +67,7 @@
 #include "up_internal.h"
 #include "nucleo-f4x1re.h"
 
-#ifdef CONFIG_MRF24J40
+#ifdef CONFIG_IEEE802154_MRF24J40
 
 /****************************************************************************
  * Definitions
@@ -98,8 +99,7 @@ struct stm32_mrf24j40lower_s
  ****************************************************************************/
 
 static int  up_attach(FAR const struct mrf24j40_lower_s *lower, xcpt_t handler);
-static void up_enable(FAR const struct mrf24j40_lower_s *lower);
-static void up_disable(FAR const struct mrf24j40_lower_s *lower);
+static void up_enable(FAR const struct mrf24j40_lower_s *lower, int state);
 
 /****************************************************************************
  * Private Data
@@ -116,7 +116,6 @@ static struct stm32_mrf24j40lower_s g_mrf24j40lower =
   {
     .attach  = up_attach,
     .enable  = up_enable,
-    .disable = up_disable
   },
   .handler = NULL,
 };
@@ -126,7 +125,7 @@ static struct stm32_mrf24j40lower_s g_mrf24j40lower =
  ****************************************************************************/
 
 /****************************************************************************
- * Name: struct enc_lower_s methods
+ * Name: struct mrf24j40_lower_s methods
  ****************************************************************************/
 
 static int up_attach(FAR const struct mrf24j40_lower_s *lower, xcpt_t handler)
@@ -139,17 +138,19 @@ static int up_attach(FAR const struct mrf24j40_lower_s *lower, xcpt_t handler)
   return OK;
 }
 
-static void up_enable(FAR const struct enc_lower_s *lower)
+static void up_enable(FAR const struct mrf24j40_lower_s *lower, int state)
 {
   FAR struct stm32_mrf24j40lower_s *priv = (FAR struct stm32_mrf24j40lower_s *)lower;
-
   DEBUGASSERT(priv->handler);
-  (void)stm32_gpiosetevent(GPIO_MRF24J40_INTR, false, true, true, priv->handler);
-}
 
-static void up_disable(FAR const struct enc_lower_s *lower)
-{
-  (void)stm32_gpiosetevent(GPIO_MRF24J40_INTR, false, true, true, NULL);
+  if(state)
+    {
+      (void)stm32_gpiosetevent(GPIO_MRF24J40_INTR, false, true, true, priv->handler);
+    }
+  else
+    {
+      (void)stm32_gpiosetevent(GPIO_MRF24J40_INTR, false, true, true, NULL);
+    }
 }
 
 /****************************************************************************
@@ -166,7 +167,7 @@ int stm32_mrf24j40initialize(void)
   int ret;
 
   /* Assumptions:
-   * 1) MRF24J40 pins were configured in up_spi.c early in the boot-up phase.
+   * 1) SPI1 pins were configured in up_spi.c early in the boot-up phase.
    * 2) Clocking for the SPI1 peripheral was also provided earlier in boot-up.
    */
 
@@ -174,17 +175,17 @@ int stm32_mrf24j40initialize(void)
   if (!spi)
     {
       nlldbg("Failed to initialize SPI port %d\n", MRF24J40_SPI_PORTNO);
-      return;
+      return -EAGAIN;
     }
 
   /* Bind the SPI port to the MRF24J40 driver */
 
-  ret = enc_initialize(spi, &g_mrf24j40lower.lower, MRF24J40_DEVNO);
+  ret = mrf24j40_initialize(spi, &g_mrf24j40lower.lower, MRF24J40_DEVNO);
   if (ret < 0)
     {
       nlldbg("Failed to bind SPI port %d MRF24J40 device %d: %d\n",
              MRF24J40_SPI_PORTNO, MRF24J40_DEVNO, ret);
-      return;
+      return -EAGAIN;
     }
 
   nllvdbg("Bound SPI port %d to MRF24J40 device %d\n",
@@ -193,4 +194,4 @@ int stm32_mrf24j40initialize(void)
   return ret;
 }
 
-#endif /* CONFIG_MRF24J40 */
+#endif /* CONFIG_IEEE802154_MRF24J40 */

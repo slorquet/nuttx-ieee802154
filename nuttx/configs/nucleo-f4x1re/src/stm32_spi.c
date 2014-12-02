@@ -120,6 +120,11 @@ void weak_function stm32_spiinitialize(void)
 #ifdef HAVE_MMCSD
   stm32_configgpio(GPIO_SPI_CS_SD_CARD);
 #endif
+
+#ifdef CONFIG_IEEE802154_MRF24J40
+  stm32_configgpio(GPIO_SPI_CS_MRF24J40);
+#endif
+
 #endif
 
 #ifdef CONFIG_STM32_SPI2
@@ -130,11 +135,16 @@ void weak_function stm32_spiinitialize(void)
   /* Setup CS, EN & IRQ line IOs */
 
 #ifdef CONFIG_WL_CC3000
-  stm32_configgpio(GPIO_WIFI_CS);
+  stm32_configgpio(GPIO_SPI_CS_WIFI);
   stm32_configgpio(GPIO_WIFI_EN);
   stm32_configgpio(GPIO_WIFI_INT);
 #endif
+
+#ifdef CONFIG_IEEE802154_MRF24J40
+  stm32_configgpio(GPIO_SPI_MRF24J40_CS);
 #endif
+
+#endif //SPI2
 }
 
 /****************************************************************************

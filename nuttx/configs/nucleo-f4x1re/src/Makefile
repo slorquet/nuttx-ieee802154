@@ -64,10 +64,10 @@ endif
 endif
 
 ifeq ($(CONFIG_IEEE802154),y)
-CSRCS += stm32_ieee802154.c
-ifeq ($(CONFIG_MRF24J40),y)
+ifeq ($(CONFIG_IEEE802154_MRF24J40),y)
 CSRCS += stm32_mrf24j40.c
 endif
+CSRCS += stm32_ieee802154.c
 endif
 
 ifeq ($(CONFIG_NSH_LIBRARY),y)
