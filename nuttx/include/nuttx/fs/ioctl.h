@@ -73,6 +73,7 @@
 #define _TCIOCBASE      (0x1400) /* Timer ioctl commands */
 #define _DJOYBASE       (0x1500) /* Discrete joystick ioctl commands */
 #define _AJOYBASE       (0x1600) /* Analog joystick ioctl commands */
+#define _NIE854BASE     (0x1700) /* IEEE 802.15.4 MAC commands */
 
 /* Macros used to manage ioctl commands */
 
@@ -307,6 +308,12 @@
 
 #define _AJOYIOCVALID(c)   (_IOC_TYPE(c)==_AJOYBASE)
 #define _AJOYIOC(nr)       _IOC(_AJOYBASE,nr)
+
+/* IEEE 802.15.4 driver ioctl definitions *********************************/
+/* (see nuttx/include/nuttx/ieee802154/ieee802154.h */
+
+#define _NIE854IOCVALID(c)   (_IOC_TYPE(c)==_NIE854BASE)
+#define _NIE854IOC(nr)       _IOC(_NIE854BASE,nr)
 
 /****************************************************************************
  * Public Type Definitions

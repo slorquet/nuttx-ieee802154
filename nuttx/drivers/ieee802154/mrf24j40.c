@@ -52,6 +52,7 @@
 #include <nuttx/spi/spi.h>
 
 #include <nuttx/ieee802154/mrf24j40.h>
+#include <nuttx/ieee802154/ieee802154.h>
 
 /************************************************************************************
  * Pre-processor Definitions
@@ -305,12 +306,13 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
 {
   FAR struct inode *inode = filep->f_inode;
   FAR struct mrf24j40_dev_s *dev = inode->i_private;
-  int ret = EINVAL;
+  int ret = -EINVAL;
 
   mrf24j40_semtake(dev);
 
   switch(cmd)
     {
+      case NIE854IOC_SUPPORTED: ret = OK; break;
     }
 
   mrf24j40_semgive(dev);

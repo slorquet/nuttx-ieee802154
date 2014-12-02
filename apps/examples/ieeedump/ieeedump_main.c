@@ -1,8 +1,9 @@
 /****************************************************************************
  * examples/ieeedump/ieeedump_main.c
+ * IEEE 802.15.4 Packet Dumper
  *
- *   Copyright (C) 2008, 2011-2012 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
+ *   Copyright (C) 2008, 2014 Gregory Nutt. All rights reserved.
+ *   Author: Sebastien Lorquet <sebastien@lorquet.fr>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,6 +40,11 @@
 
 #include <nuttx/config.h>
 #include <stdio.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <nuttx/fs/ioctl.h>
+#include <nuttx/ieee802154/ieee802154.h>
 
 /****************************************************************************
  * Definitions
@@ -48,9 +54,41 @@
  * Private Data
  ****************************************************************************/
 
+int scan(int fd)
+{
+  int chan;
+  printf("Scanning channels...\n");
+  for (chan=11; chan<26; chan++)
+    {
+      ret = ioctl(fd, NIE854IOCSCHAN, chan);
+      if (ret<0)
+        {
+          printf("Device is not an IEEE 802.15.4 interface!\n");
+          return ERROR;
+        }
+    }
+}
+
+int monitor(int fd, int chan)
+{
+  ret = ioctl(fd, NIE854IOC_SUPPORTED, 0);
+  if (ret<0)
+    {
+      printf("Device is not an IEEE 802.15.4 interface!\n");
+      goto exit_close();
+    }
+}
+
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
+
+int usage(void)
+{
+  printf("ieeedump <device> scan|<chan>\n"
+         );
+  return ERROR;
+}
 
 /****************************************************************************
  * ieeedump_main
@@ -62,6 +100,38 @@ int main(int argc, FAR char *argv[])
 int ieeedump_main(int argc, char *argv[])
 #endif
 {
-  printf("Hello, World!!\n");
-  return 0;
+  int fd;
+  int ret = OK;
+
+  printf("IEEE packet dumper\n");
+  if (argc<3)
+    {
+      return usage();
+    }
+
+  /* open device */
+
+  fd = open(argv[1], O_RDWR);
+  if (fd<0)
+    {
+      printf("cannot open %s\n", argv[1]);
+      ret = errno;
+      goto exit;
+    }
+
+  /* get mode */
+  if (!strcmp(argv[2], "scan"))
+    {
+    ret = scan(fd);
+    }
+  else
+    {
+    ret = monitor(fd,atoi(argv[2]));
+    }
+ 
+exit_close:
+  close(fd);
+exit:
+  return ret;
 }
+

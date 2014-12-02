@@ -33,8 +33,8 @@
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_NUTTX_IEEE802154__MRF24J40_H
-#define __INCLUDE_NUTTX_IEEE802154__MRF24J40_H
+#ifndef __INCLUDE_NUTTX_IEEE802154_MRF24J40_H
+#define __INCLUDE_NUTTX_IEEE802154_MRF24J40_H
 
 /* The MRF24J40 provides interrupts to the MCU via a GPIO pin.  The
  * following structure provides an MCU-independent mechanixm for controlling
