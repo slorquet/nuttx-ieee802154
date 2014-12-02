@@ -37,13 +37,13 @@
 
 ifeq ($(CONFIG_IEEE802154),y)
 
-# Include network interface drivers
+# Include IEEE 802.15.4 drivers
 
-ifeq ($(CONFIG_MRF24J40),y)
+ifeq ($(CONFIG_IEEE802154_MRF24J40),y)
   CSRCS += mrf24j40.c
 endif
 
-# Include network build support
+# Include IEEE 802.15.4 build support
 
 DEPPATH += --dep-path ieee802154
 VPATH += :ieee802154

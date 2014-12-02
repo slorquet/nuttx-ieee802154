@@ -3,7 +3,7 @@
 # see misc/tools/kconfig-language.txt.
 #
 
-config MRF24J40
+config IEEE802154_MRF24J40
 	bool "Microchip MRF24J40 IEEE 802.15.4 transceiver"
 	default n
 	depends on IEEE802154

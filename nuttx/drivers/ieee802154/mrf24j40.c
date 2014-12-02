@@ -38,12 +38,19 @@
  ****************************************************************************/
 
 #include <nuttx/config.h>
+#include <assert.h>
 
 #include <sys/types.h>
 #include <stdint.h>
 #include <errno.h>
 #include <semaphore.h>
+
+#include <nuttx/kmalloc.h>
+#include <nuttx/wqueue.h>
 #include <nuttx/fs/fs.h>
+#include <nuttx/spi/spi.h>
+
+#include <nuttx/ieee802154/mrf24j40.h>
 
 /************************************************************************************
  * Pre-processor Definitions
@@ -167,6 +174,35 @@ static const struct file_operations mrf24j40_fops =
  ****************************************************************************/
 
 /****************************************************************************
+ * Name: mrf24j40_lock
+ *
+ * Description:
+ *   Acquire exclusive access to the shared SPI bus.
+ *
+ ****************************************************************************/
+
+static void mrf24j40_lock(FAR struct spi_dev_s *spi)
+{
+  SPI_LOCK        (spi, 1);
+  SPI_SETBITS     (spi, 8);
+  SPI_SETMODE     (spi, 0);
+  SPI_SETFREQUENCY(spi, 10000000);
+}
+
+/****************************************************************************
+ * Name: mrf24j40_unlock
+ *
+ * Description:
+ *   Release exclusive access to the shared SPI bus.
+ *
+ ****************************************************************************/
+
+static inline void mrf24j40_unlock(FAR struct spi_dev_s *spi)
+{
+  SPI_LOCK(spi,0);
+}
+
+/****************************************************************************
  * Name: mrf24j40_semtake
  *
  * Description:
@@ -197,7 +233,7 @@ static void mrf24j40_semtake(FAR struct mrf24j40_dev_s *dev)
 
 static inline void mrf24j40_semgive(FAR struct mrf24j40_dev_s *dev)
 {
-  sem_post(d->sem);
+  sem_post(&dev->sem);
 }
 
 /****************************************************************************
@@ -221,7 +257,6 @@ static int mrf24j40_open(FAR struct file *filep)
     }
   else
     {
-      mrf24j40_init(dev);
       dev->opened = TRUE;
     }
   mrf24j40_semgive(dev);
@@ -250,7 +285,6 @@ static int mrf24j40_close(FAR struct file *filep)
     }
   else
     {
-    mrf24j40_deinit(dev);
     dev->opened = FALSE;
     }
 
@@ -306,14 +340,16 @@ static void mrf24j40_irqworker(FAR void *arg)
   DEBUGASSERT(priv);
   DEBUGASSERT(priv->spi);
 
-  /* Get exclusive access to both uIP and the SPI bus. */
+  /* Get exclusive access to the SPI bus */
   mrf24j40_lock(priv->spi);
 
-  /* Enable GPIO interrupts */
+  /* Do IRQ work */
+
+  /* Re-Enable GPIO interrupts */
 
   priv->lower->enable(priv->lower, TRUE);
 
-  /* Release lock on the SPI bus and uIP */
+  /* Release lock on the SPI bus */
 
   mrf24j40_unlock(priv->spi);
 }
@@ -369,12 +405,12 @@ static int mrf24j40_interrupt(int irq, FAR void *context)
  *
  ****************************************************************************/
 
-int mrf24j40_initialize(FAR struct spi_dev_s *spi, struct mrf24j40_lower_s *lower, int minor)
+int mrf24j40_initialize(FAR struct spi_dev_s *spi, FAR const struct mrf24j40_lower_s *lower, int minor)
 {
   char devname[16];
-  struct mrf24j40_dev_s *dev;
+  FAR struct mrf24j40_dev_s *dev;
 
-  dev = kmm_zalloc(sizeof(struct mrf24j40_dev_s))
+  dev = kmm_zalloc(sizeof(struct mrf24j40_dev_s));
 
   if (!dev)
     {
