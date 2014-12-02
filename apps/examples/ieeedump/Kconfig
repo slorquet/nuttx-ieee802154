@@ -1,0 +1,23 @@
+#
+# For a description of the syntax of this configuration file,
+# see misc/tools/kconfig-language.txt.
+#
+
+config EXAMPLES_IEEEDUMP
+	bool "IEEE 802.15.4 packet dumper"
+	default n
+	---help---
+		Enable the IEEE 802.15.4 packet dumper
+
+if EXAMPLES_IEEEDUMP
+
+config EXAMPLES_IEEEDUMP_PROGNAME
+	string "Program name"
+	default "ieeedump"
+	depends on BUILD_KERNEL
+	---help---
+		This is the name of the program that will be use when the NSH ELF
+		program is installed.
+
+endif
+
