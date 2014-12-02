@@ -57,7 +57,7 @@
  ****************************************************************************/
 
 /****************************************************************************
- * Name: ioctl
+ * Name: ioctl/fs_ioctl
  *
  * Description:
  *   Perform device specific operations.
@@ -69,7 +69,7 @@
  *
  * Return:
  *   >=0 on success (positive non-zero values are cmd-specific)
- *   -1 on failure withi errno set properly:
+ *   -1 on failure with errno set properly:
  *
  *   EBADF
  *     'fd' is not a valid descriptor.
@@ -85,7 +85,11 @@
  *
  ****************************************************************************/
 
+#ifdef CONFIG_LIBC_IOCTL_VARIADIC
+int fs_ioctl(int fd, int req, unsigned long arg)
+#else
 int ioctl(int fd, int req, unsigned long arg)
+#endif
 {
   int err;
 #if CONFIG_NFILE_DESCRIPTORS > 0

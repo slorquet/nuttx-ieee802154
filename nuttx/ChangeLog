@@ -12,7 +12,7 @@
 	* Corrected error in reading from the C5471 serial port:
 	  Improper use of semaphore can cause deadlock.
 	* Fixed an error in the memory cleanup:  The idle task
-	  cannot take sempahores (because it must always be ready
+	  cannot take semaphores (because it must always be ready
 	  to run).
 	* Tasks can now accept a configurable maximum number of
 	  input parameters (argc)
@@ -9074,4 +9074,56 @@
 	  https://github.com/PX4/NuttX/pull/28.diff (2014-11-27).
 	* drivers/loop.c:  Loop device should return -EINTR is interrupt by a
 	  signal (2014-11-27).
-
+	* drivers/input/djoystick.c and include/nuttx/input/djoystick.h.  Also
+	  drivers/input/Kconfig and Make.defs, and include/nuttx/fs/ioctl.h: Add
+	  an interface definition and upper half driver for a discrete joystick
+	  device (2014-11-27).
+	* arch/arm/src/efm32/Kconfig and efm32_serial.c: Add support for serial
+	  termios TCGET and TCSET.  For the moment, only set/get speed is
+	  implemented.  From Pierre-noel Bouteville (2014-11-27).
+	* drivers/wireless/ and include/nuttx/wireless/cc3000.h:  A set of 11
+	  patches correcting issues with the CC3000 networking.  All from Jussi
+	  Kivilinna (2014-11-28).  Among these:
+	  03/11: CC3000 driver was getting stuck at recv() when remote host
+	    closed connection and application tried to read data from remotely
+	    shutdown socket. This patch adds proper handling for remotely closed
+	    socket event.
+	  07/11: Socket state initialization was done in 'register', while it
+	    should be initialized in 'open' and deinitialized in 'close'. Old
+	    way caused problems when device is closed, power-cycled and then
+	    reopened as old socket state was left enabled.
+	  08/11: Select thread was getting stuck after 'close, power-cycle,
+	    reopen', since selectsem was not properly setup and cleaned up.
+	  09/11: 'maxFD' was not properly reset in select worker and not checked
+	    for before calling cc3000_select().
+	  10/11: After wlan_stop()/cc3000_close(), irqsem was left with count
+	    '-1'. Therefore on next wlan_start()/cc3000_open(), initial value
+	    for irqsem was wrong. Additional repeated wlan_start()/wlan_stop()
+	    decreased irqsem value further. Obviously this causes driver not to
+	    function correctly and freeze. Patch moves initialization and
+	    destruction of waitsem, irqsem and readysem to
+	    cc3000_open/cc3000_close.
+	* include/cxx/cctype: Undefine macros defined ctype.h so that builtin
+	  C++ implementations will be used intead.  From Lorenz Meier
+	  (2014-11-28).
+	* configs/stm3210e-eval/src/stm32_djoystick.c:  Add a DJoystick driver
+	  for the STM3210E-EVAL (2014-11-28).
+	* drivers/input/djoystick.c include/nuttx/input/djoystick.h: Add a new
+	  ioctl to get the supported joystick discrete signals (2014-11-28).
+	* drivers/input/ajoystick.c and include/nuttx/input/ajoystick.h.  Also
+	  drivers/input/Kconfig and Make.defs, and include/nuttx/fs/ioctl.h: Add
+	  an interface definition and upper half driver for an analog joystick
+	  device. Initial check-in is only a little more of a clone of the
+	  discrete joystick driver and is as-of-yet untested (2014-11-27).
+	* libc/Kconfig, misc/Make.defs, misc/lib_ioctl.c, fs/vfs/fs_ioctl.c,
+	  include/nuttx/fs/fs.h, include/sys/ioctl.h, syscall.h, and several
+	  files in syscall/: Add support for a variadic ioctl() function.  The
+	  ioctl() interface is a non-standard, Unix interface.  NuttX has always
+	  used the older, three-parameter version.  Most contemporary systems
+	  now, however, use a variadic form of the ioctl() function.  Added an
+	  option to insert a shim layer to adapt the three-parameter ioctl() to
+	  use the variadic interface form.  Internally, the ioctl handling is
+	  the same three-parameter logic.  The only real complexity to the shim
+	  is in how the system calls must be handled (2014-11-29).
+	* arch/arm/src/stm32/stm32_i2c.c: Port Tridge's I2C noise resilience
+	  logic from the PX4 repository (2014-11-29).

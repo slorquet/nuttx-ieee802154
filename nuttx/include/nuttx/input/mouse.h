@@ -34,7 +34,7 @@
  ************************************************************************************/
 
 /* The mouse driver exports a standard character driver interface. By
- * convention, the mouse driver is registers as an input device at
+ * convention, the mouse driver is registered as an input device at
  * /dev/mouseN where N uniquely identifies the driver instance.
  *
  * This header file documents the generic interface that all NuttX
@@ -74,6 +74,7 @@
 struct mouse_report_s
 {
   uint8_t  buttons;  /* See TOUCH_* definitions above */
+                     /* Possibly padded with 1 byte here */
   int16_t  x;        /* X coordinate of the mouse position */
   int16_t  y;        /* Y coordinate of the mouse position */
 #ifdef CONFIG_MOUSE_WHEEL

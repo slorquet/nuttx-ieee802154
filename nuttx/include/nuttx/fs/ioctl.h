@@ -71,6 +71,8 @@
 #define _WLIOCBASE      (0x1200) /* Wireless modules ioctl commands */
 #define _CFGDIOCBASE    (0x1300) /* Config Data device (app config) ioctl commands */
 #define _TCIOCBASE      (0x1400) /* Timer ioctl commands */
+#define _DJOYBASE       (0x1500) /* Discrete joystick ioctl commands */
+#define _AJOYBASE       (0x1600) /* Analog joystick ioctl commands */
 
 /* Macros used to manage ioctl commands */
 
@@ -93,11 +95,6 @@
 
 #define _WDIOCVALID(c)  (_IOC_TYPE(c)==_WDIOCBASE)
 #define _WDIOC(nr)      _IOC(_WDIOCBASE,nr)
-
-/* Timer driver ioctl commands *******************************************/
-
-#define _TCIOCVALID(c)  (_IOC_TYPE(c)==_TCIOCBASE)
-#define _TCIOC(nr)      _IOC(_TCIOCBASE,nr)
 
 /* NuttX file system ioctl definitions **************************************/
 
@@ -291,22 +288,45 @@
 /* (see nuttx/include/configdata.h */
 
 #define _CFGDIOCVALID(c)   (_IOC_TYPE(c)==_CFGDIOCBASE)
-#define _CFGDIOC(nr)         _IOC(_CFGDIOCBASE,nr)
+#define _CFGDIOC(nr)       _IOC(_CFGDIOCBASE,nr)
+
+/* Timer driver ioctl commands **********************************************/
+/* (see nuttx/include/timer.h */
+
+#define _TCIOCVALID(c)     (_IOC_TYPE(c)==_TCIOCBASE)
+#define _TCIOC(nr)         _IOC(_TCIOCBASE,nr)
+
+/* Discrete joystick driver ioctl definitions *******************************/
+/* (see nuttx/include/input/djoystick.h */
+
+#define _DJOYIOCVALID(c)   (_IOC_TYPE(c)==_DJOYBASE)
+#define _DJOYIOC(nr)       _IOC(_DJOYBASE,nr)
+
+/* Analog joystick driver ioctl definitions *********************************/
+/* (see nuttx/include/input/ajoystick.h */
+
+#define _AJOYIOCVALID(c)   (_IOC_TYPE(c)==_AJOYBASE)
+#define _AJOYIOC(nr)       _IOC(_AJOYBASE,nr)
 
 /****************************************************************************
  * Public Type Definitions
  ****************************************************************************/
 
 /****************************************************************************
- * Public Function Prototypes
+ * Public Data
  ****************************************************************************/
 
 #ifdef __cplusplus
 #define EXTERN extern "C"
-extern "C" {
+extern "C"
+{
 #else
 #define EXTERN extern
 #endif
+
+/****************************************************************************
+ * Public Function Prototypes
+ ****************************************************************************/
 
 #undef EXTERN
 #ifdef __cplusplus
