@@ -23,6 +23,10 @@ menu "Network Utilities"
 source "$APPSDIR/netutils/Kconfig"
 endmenu
 
+menu "IEEE 802.15.4 Utilities"
+source "$APPSDIR/ieee802154/Kconfig"
+endmenu
+
 menu "FreeModBus"
 source "$APPSDIR/modbus/Kconfig"
 endmenu

@@ -312,7 +312,7 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
 
   switch(cmd)
     {
-      case NIE854IOC_SUPPORTED: ret = OK; break;
+      case NIE854IOCGCHAN: ret = OK; break;
     }
 
   mrf24j40_semgive(dev);

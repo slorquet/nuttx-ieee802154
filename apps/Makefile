@@ -49,7 +49,7 @@ TOPDIR ?= $(APPDIR)/import
 
 CONFIGURED_APPS =
 SUBDIRS  = examples graphics interpreters modbus builtin import nshlib
-SUBDIRS += netutils platform system
+SUBDIRS += netutils platform system ieee802154
 
 # The list of configured directories is derived from NuttX configuration
 # file:  The selected applications are enabled settings in the configuration
@@ -69,6 +69,7 @@ include graphics/Make.defs
 include interpreters/Make.defs
 include modbus/Make.defs
 include netutils/Make.defs
+include ieee802154/Make.defs
 include nshlib/Make.defs
 include platform/Make.defs
 include system/Make.defs
