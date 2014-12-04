@@ -39,11 +39,12 @@
  * --- ------ -------------- -----------------------------------------------------
  * PIN NAME   SIGNAL         NOTES
  * --- ------ -------------- -----------------------------------------------------
- * 29  PB6    PB6            Chip Select (same as CC3000, thus cannot use both)
+ * 29  PB6    nCS            Chip Select (same as CC3000, thus cannot use both)
  * 30  PA5    PA5-SPI1-SCK   -
  * 31  PA6    PA6-SPI1-MISO  -
  * 32  PA7    PA7-SPI1-MOSI  -
- * XX  PC7    PC7            Interrupt request
+ * XX  PC7    IRQ            Interrupt request
+ *     PA9    nRST           Reset signal
  */
 
 /****************************************************************************
@@ -160,6 +161,7 @@ static void up_enable(FAR const struct mrf24j40_lower_s *lower, int state)
 /****************************************************************************
  * Name: up_ieeeinitialize
  ****************************************************************************/
+#define GPIO_MRF24J40  (GPIO_PORTA | GPIO_PIN9 | GPIO_OUTPUT_SET | GPIO_OUTPUT | GPIO_PULLUP | GPIO_SPEED_50MHz)
 
 int stm32_mrf24j40initialize(void)
 {
@@ -177,6 +179,12 @@ int stm32_mrf24j40initialize(void)
       lldbg("Failed to initialize SPI port %d\n", MRF24J40_SPI_PORTNO);
       return -EAGAIN;
     }
+
+  /* Reset the device */
+  stm32_configgpio(GPIO_MRF24J40_RESET);
+  stm32_gpiowrite(GPIO_MRF24J40_RESET, 0);
+  usdelay(1000);
+  stm32_gpiowrite(GPIO_MRF24J40_RESET, 1);
 
   /* Bind the SPI port to the MRF24J40 driver */
 
