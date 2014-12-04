@@ -39,7 +39,7 @@ include $(APPDIR)/Make.defs
 
 # IEEE 802.15.4 packet dump built-in application info
 
-APPNAME = ieeedump
+APPNAME = id
 PRIORITY = SCHED_PRIORITY_DEFAULT
 STACKSIZE = 2048
 

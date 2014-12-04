@@ -190,6 +190,12 @@ void stm32_spi1select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, bool sele
       stm32_gpiowrite(GPIO_SPI_CS_SD_CARD, !selected);
     }
 #endif
+#ifdef CONFIG_IEEE802154_MRF24J40
+  if (devid == SPIDEV_IEEE802154)
+    {
+      stm32_gpiowrite(GPIO_SPI_CS_MRF24J40, !selected);
+    }
+#endif
 }
 
 uint8_t stm32_spi1status(FAR struct spi_dev_s *dev, enum spi_dev_e devid)
@@ -201,7 +207,7 @@ uint8_t stm32_spi1status(FAR struct spi_dev_s *dev, enum spi_dev_e devid)
 #ifdef CONFIG_STM32_SPI2
 void stm32_spi2select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, bool selected)
 {
-  spidbg("devid: %d CS: %s\n", (int)devid, selected ? "assert" : "de-assert");
+  spilldbg("devid: %d CS: %s\n", (int)devid, selected ? "assert" : "de-assert");
 
 #ifdef CONFIG_WL_CC3000
   if (devid == SPIDEV_WIRELESS)

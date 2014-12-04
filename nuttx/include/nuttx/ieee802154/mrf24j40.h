@@ -88,10 +88,10 @@ extern "C" {
  *
  ****************************************************************************/
 struct spi_dev_s; /* see nuttx/spi/spi.h */
-EXTERN int mrf24j40_initialize(FAR struct spi_dev_s *spi,
-                                FAR const struct mrf24j40_lower_s *lower,
-                                int minor
-                                );
+EXTERN int mrf24j40_register(FAR struct spi_dev_s *spi,
+                             FAR const struct mrf24j40_lower_s *lower,
+                             int minor
+                             );
 
 #undef EXTERN
 #ifdef __cplusplus

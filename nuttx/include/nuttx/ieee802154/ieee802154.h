@@ -68,7 +68,7 @@
  * 3) The ioctl() method supports the commands documented below:
  */
 
-/* Command:     NIE854IOC_SUPPORTED
+/* Command:     MAC854IOC_SUPPORTED
  * Description: Report the set of button events supported by the hardware;
  * Argument:    A pointer to writeable integer value in which to return the
  *              set of supported buttons.
@@ -76,15 +76,15 @@
  *              with the errno value set appropriately.
  */
 
-#define NIE854IOCGCHAN   _NIE854IOC(0x0001) /* Get current channel (int*) */
-#define NIE854IOCSCHAN   _NIE854IOC(0x0002) /* Set current channel (int) */
-#define NIE854IOCGPANID  _NIE854IOC(0x0003) /* Get PAN ID (uint16_t*) */
-#define NIE854IOCSPANID  _NIE854IOC(0x0004) /* Set PAN ID (uint16_t) */
-#define NIE854IOCGSADDR  _NIE854IOC(0x0005)
-#define NIE854IOCSSADDR  _NIE854IOC(0x0006)
-#define NIE854IOCGEADDR  _NIE854IOC(0x0007)
-#define NIE854IOCSEADDR  _NIE854IOC(0x0008)
-#define NIE854IOCGENER   _NIE854IOC(0x0009)
+#define MAC854IOCGCHAN   _MAC854IOC(0x0001) /* Get current channel (int*) */
+#define MAC854IOCSCHAN   _MAC854IOC(0x0002) /* Set current channel (int) */
+#define MAC854IOCGPANID  _MAC854IOC(0x0003) /* Get PAN ID (uint8_t[2]) */
+#define MAC854IOCSPANID  _MAC854IOC(0x0004) /* Set PAN ID (uint8_t[2]) */
+#define MAC854IOCGSADDR  _MAC854IOC(0x0005) /* Get Short address (uint8_t[2]) */
+#define MAC854IOCSSADDR  _MAC854IOC(0x0006) /* Set Short address (uint8_t[2]) */
+#define MAC854IOCGEADDR  _MAC854IOC(0x0007) /* Get Ext address (uint8_t[8]) */
+#define MAC854IOCSEADDR  _MAC854IOC(0x0008) /* Set Ext address (uint8_t[8]) */
+#define MAC854IOCGED     _MAC854IOC(0x0009) /* Run energy detection on current channel */
 
 /****************************************************************************
  * Public Types

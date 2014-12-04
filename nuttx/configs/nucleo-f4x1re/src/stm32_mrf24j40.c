@@ -174,21 +174,21 @@ int stm32_mrf24j40initialize(void)
   spi = up_spiinitialize(MRF24J40_SPI_PORTNO);
   if (!spi)
     {
-      nlldbg("Failed to initialize SPI port %d\n", MRF24J40_SPI_PORTNO);
+      lldbg("Failed to initialize SPI port %d\n", MRF24J40_SPI_PORTNO);
       return -EAGAIN;
     }
 
   /* Bind the SPI port to the MRF24J40 driver */
 
-  ret = mrf24j40_initialize(spi, &g_mrf24j40lower.lower, MRF24J40_DEVNO);
+  ret = mrf24j40_register(spi, &g_mrf24j40lower.lower, MRF24J40_DEVNO);
   if (ret < 0)
     {
-      nlldbg("Failed to bind SPI port %d MRF24J40 device %d: %d\n",
+      lldbg("Failed to bind SPI port %d MRF24J40 device %d: %d\n",
              MRF24J40_SPI_PORTNO, MRF24J40_DEVNO, ret);
       return -EAGAIN;
     }
 
-  nllvdbg("Bound SPI port %d to MRF24J40 device %d\n",
+  llvdbg("Bound SPI port %d to MRF24J40 device %d\n",
         MRF24J40_SPI_PORTNO, MRF24J40_DEVNO);
 
   return ret;

@@ -2,7 +2,7 @@
  * examples/ieeedump/ieeedump_main.c
  * IEEE 802.15.4 Packet Dumper
  *
- *   Copyright (C) 2008, 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
  *   Author: Sebastien Lorquet <sebastien@lorquet.fr>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,8 @@
 
 #include <nuttx/config.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -57,26 +59,41 @@
 int scan(int fd)
 {
   int chan;
+  int ret = OK;
+  int energy;
+
   printf("Scanning channels...\n");
   for (chan=11; chan<26; chan++)
     {
-      ret = ioctl(fd, NIE854IOCSCHAN, chan);
+      printf("%02X : "); fflush(stdout);
+      ret = ioctl(fd, MAC854IOCSCHAN, chan);
       if (ret<0)
         {
           printf("Device is not an IEEE 802.15.4 interface!\n");
-          return ERROR;
+          break;
         }
+      ret = ioctl(fd, MAC854IOCGED, &energy);
+      if (ret<0)
+        {
+          printf("Device is not an IEEE 802.15.4 interface!\n");
+          break;
+        }
+      energy >>= 3;
+      while(energy-- > 0) printf("#");
+      printf("\n");
     }
+  return ret;
 }
 
 int monitor(int fd, int chan)
 {
-  ret = ioctl(fd, NIE854IOC_SUPPORTED, 0);
+  int ret;
+  ret = ioctl(fd, MAC854IOCSCHAN, chan);
   if (ret<0)
     {
       printf("Device is not an IEEE 802.15.4 interface!\n");
-      goto exit_close();
     }
+  return ret;
 }
 
 /****************************************************************************
@@ -97,7 +114,7 @@ int usage(void)
 #ifdef CONFIG_BUILD_KERNEL
 int main(int argc, FAR char *argv[])
 #else
-int ieeedump_main(int argc, char *argv[])
+int id_main(int argc, char *argv[])
 #endif
 {
   int fd;
@@ -114,7 +131,7 @@ int ieeedump_main(int argc, char *argv[])
   fd = open(argv[1], O_RDWR);
   if (fd<0)
     {
-      printf("cannot open %s\n", argv[1]);
+      printf("cannot open %s, errno=%d\n", argv[1], errno);
       ret = errno;
       goto exit;
     }
