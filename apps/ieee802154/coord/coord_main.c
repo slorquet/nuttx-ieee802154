@@ -33,6 +33,26 @@
  *
  ****************************************************************************/
 
+/* Application description
+ *
+ * The coordinator is a central node in any IEEE 802.15.4 wireless network.
+ * It listens for clients and affects short addresses. It stores data from
+ * source clients and makes it available to destination clients.
+ * Also, in beacon enabled networks, it broadcasts beacons frames and 
+ * manages guaranteed time slots.
+ * On non-beacon enabled networks, it sends a beacon only when a beacon
+ * request is received.
+ *
+ * This coordinator is generic. It does not interpret the contents of data
+ * frames. It only interprets command frames to manage client associations
+ * and data dispatch.
+ *
+ * There is no support for mesh networking (coord/coord traffic and packet
+ * forwarding).
+ *
+ * There is no support either for data security (yet).
+ */
+
 /****************************************************************************
  * Included Files
  ****************************************************************************/
@@ -43,14 +63,69 @@
 /****************************************************************************
  * Definitions
  ****************************************************************************/
+#ifndef CONFIG_IEEE802154_COORD_MAXCLIENTS
+#define CONFIG_IEEE802154_COORD_MAXCLIENTS 8
+#endif
+
+/****************************************************************************
+ * Private Types
+ ****************************************************************************/
+
+struct ieee_client_s
+{
+  uint8_t eaddr[8]; /* client extended address */
+  uint8_t saddr[2]; /* client short address */
+  struct ieee802154_packet_s pending; /* pending packet for device */
+};
+
+struct ieee_coord_s
+{
+  uint8_t chan;   /* PAN channel */
+  uint8_t panid[2]; /* PAN ID */
+  uint8_t nclients; /* Number of coordinated clients */
+  struct ieee802154_packet_s rxbuf; /* General rx buffer */
+  struct ieee_client_s clients[CONFIG_IEEE802154_COORD_MAXCLIENTS]; /* Clients */
+};
 
 /****************************************************************************
  * Private Data
  ****************************************************************************/
+static struct ieee_coord_s g_coord;
+
+/****************************************************************************
+ * Private Functions
+ ****************************************************************************/
+
+static void coord_initialize(struct ieee_coord_s *coord)
+{
+  coord->nclients = 0;
+  for (i = 0; i < CONFIG_IEEE802154_COORD_MAXCLIENTS; i++)
+    {
+      coord->clients[i].pendingdatalen = 0;
+    }
+}
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
+
+static int coord_loop(FAR struct ieee_coord_s *coord, FAR char *dev, int chan, int panid)
+{
+  uint8_t pan[2];
+  int ret = OK;
+
+  pan[0] = panid >> 8;
+  pan[1] = panid &  0xFF;
+
+  printf("starting %s on chan %d, panid %02X%02X", dev, chan, pan[0], pan[1]);
+
+  while(ret == OK)
+    {
+      ret = read(fd, &coord->rxbuf, sizeof(struct ieee802154_packet_s));
+
+    }
+  return OK;
+}
 
 /****************************************************************************
  * coord_main
@@ -59,9 +134,23 @@
 #ifdef CONFIG_BUILD_KERNEL
 int main(int argc, FAR char *argv[])
 #else
-int coord_main(int argc, char *argv[])
+int coord_main(int argc, FAR char *argv[])
 #endif
 {
-  printf("Hello, World!!\n");
-  return 0;
+  int channel;
+  int panid;
+
+  coord_initialize(&g_coord);
+  printf("IEEE 802.15.4 Coordinator start\n");
+
+  if (argv<4)
+    {
+      printf("coord <dev> <chan> <panid>");
+      return ERROR;
+    }
+
+  chan  = strtol(argv[2], NULL, 0);
+  panid = strtol(argv[3], NULL, 0);
+
+  return coord_loop(&g_coord, argv[1], chan, panid);
 }

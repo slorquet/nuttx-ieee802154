@@ -90,6 +90,13 @@
  * Public Types
  ****************************************************************************/
 
+struct ieee802154_packet_s {
+  uint8_t len;
+  uint8_t data[127];
+  uint8_t lqi;
+  uint8_t rssi;
+};
+
 #ifdef __cplusplus
 #define EXTERN extern "C"
 extern "C" {
