@@ -1,5 +1,5 @@
 ############################################################################
-# configs/nucleo-f4x1re/src/Makefile
+# apps/graphics/traveler/Makefile
 #
 #   Copyright (C) 2014 Gregory Nutt. All rights reserved.
 #   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -33,87 +33,113 @@
 #
 ############################################################################
 
+-include $(TOPDIR)/.config
 -include $(TOPDIR)/Make.defs
+include $(APPDIR)/Make.defs
 
-CFLAGS += -I$(TOPDIR)/sched
+# Hello, World! built-in application info
 
-ASRCS = 
+APPNAME = traveler
+PRIORITY = SCHED_PRIORITY_DEFAULT
+STACKSIZE = 2048
+
+# Hello, World! Example
+
+ASRCS =
+CSRCS = trv_color.c trv_graphics.c trv_input.c trv_mem.c trv_pov.c
+MAINSRC = trv_main.c
+
+ifeq ($(CONFIG_NX),y)
+CSRCS += trv_nxbkgd.c
+ifeq ($(CONFIG_NX),y)
+CSRCS += trv_nxserver.c
+endif
+endif
+
 AOBJS = $(ASRCS:.S=$(OBJEXT))
-
-CSRCS = stm32_boot.c stm32_spi.c
-
-ifeq ($(CONFIG_HAVE_CXX),y)
-CSRCS += stm32_cxxinitialize.c
-endif
-
-ifeq ($(CONFIG_ARCH_LEDS),y)
-CSRCS += stm32_autoleds.c
-else
-CSRCS += stm32_userleds.c
-endif
-
-ifeq ($(CONFIG_ARCH_BUTTONS),y)
-CSRCS +=  stm32_buttons.c
-endif
-
-ifeq ($(CONFIG_WL_CC3000),y)
-CSRCS += stm32_wireless.c
-ifeq ($(CONFIG_CC3000_PROBES),)
-CSRCS += stm32_io.c
-endif
-endif
-
-ifeq ($(CONFIG_ADC),y)
-CSRCS += stm32_adc.c
-ifeq ($(CONFIG_AJOYSTICK),y)
-CSRCS += stm32_ajoystick.c
-endif
-endif
-
-ifeq ($(CONFIG_IEEE802154),y)
-CSRCS += stm32_ieee802154.c
-ifeq ($(CONFIG_IEEE802154_MRF24J40),y)
-CSRCS += stm32_mrf24j40.c
-endif
-endif
-
-ifeq ($(CONFIG_NSH_LIBRARY),y)
-CSRCS += stm32_nsh.c
-endif
-
 COBJS = $(CSRCS:.c=$(OBJEXT))
+MAINOBJ = $(MAINSRC:.c=$(OBJEXT))
 
-SRCS = $(ASRCS) $(CSRCS)
+SRCS = $(ASRCS) $(CSRCS) $(MAINSRC)
 OBJS = $(AOBJS) $(COBJS)
 
-ARCH_SRCDIR = $(TOPDIR)/arch/$(CONFIG_ARCH)/src
-ifeq ($(WINTOOL),y)
-  CFLAGS += -I "${shell cygpath -w $(ARCH_SRCDIR)/chip}" \
-            -I "${shell cygpath -w $(ARCH_SRCDIR)/common}" \
-            -I "${shell cygpath -w $(ARCH_SRCDIR)/armv7-m}"
-else
-  CFLAGS += -I$(ARCH_SRCDIR)/chip -I$(ARCH_SRCDIR)/common -I$(ARCH_SRCDIR)/armv7-m
+ifneq ($(CONFIG_BUILD_KERNEL),y)
+  OBJS += $(MAINOBJ)
 endif
 
-all: libboard$(LIBEXT)
+ifeq ($(CONFIG_WINDOWS_NATIVE),y)
+  BIN = ..\..\libapps$(LIBEXT)
+else
+ifeq ($(WINTOOL),y)
+  BIN = ..\\..\\libapps$(LIBEXT)
+else
+  BIN = ../../libapps$(LIBEXT)
+endif
+endif
+
+ifeq ($(WINTOOL),y)
+  INSTALL_DIR = "${shell cygpath -w $(BIN_DIR)}"
+else
+  INSTALL_DIR = $(BIN_DIR)
+endif
+
+CONFIG_EXAMPLES_HELLO_PROGNAME ?= hello$(EXEEXT)
+PROGNAME = $(CONFIG_EXAMPLES_HELLO_PROGNAME)
+
+ifeq ($(WINTOOL),y)
+INCDIROPT = -w
+endif
+
+CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/graphics/traveler/include}
+
+DEPPATH = --dep-path src
+VPATH = src
+
+# Common build
+
+all: .built
+.PHONY: clean depend distclean
 
 $(AOBJS): %$(OBJEXT): %.S
 	$(call ASSEMBLE, $<, $@)
 
-$(COBJS) $(LINKOBJS): %$(OBJEXT): %.c
+$(COBJS) $(MAINOBJ): %$(OBJEXT): %.c
 	$(call COMPILE, $<, $@)
 
-libboard$(LIBEXT): $(OBJS)
-	$(call ARCHIVE, $@, $(OBJS))
+.built: $(OBJS)
+	$(call ARCHIVE, $(BIN), $(OBJS))
+	@touch .built
+
+ifeq ($(CONFIG_BUILD_KERNEL),y)
+$(BIN_DIR)$(DELIM)$(PROGNAME): $(OBJS) $(MAINOBJ)
+	@echo "LD: $(PROGNAME)"
+	$(Q) $(LD) $(LDELFFLAGS) $(LDLIBPATH) -o $(INSTALL_DIR)$(DELIM)$(PROGNAME) $(ARCHCRT0OBJ) $(MAINOBJ) $(LDLIBS)
+	$(Q) $(NM) -u  $(INSTALL_DIR)$(DELIM)$(PROGNAME)
+
+install: $(BIN_DIR)$(DELIM)$(PROGNAME)
+
+else
+install:
+
+endif
+
+ifeq ($(CONFIG_NSH_BUILTIN_APPS),y)
+$(BUILTIN_REGISTRY)$(DELIM)$(APPNAME)_main.bdat: $(DEPCONFIG) Makefile
+	$(call REGISTER,$(APPNAME),$(PRIORITY),$(STACKSIZE),$(APPNAME)_main)
+
+context: $(BUILTIN_REGISTRY)$(DELIM)$(APPNAME)_main.bdat
+else
+context:
+endif
 
 .depend: Makefile $(SRCS)
-	$(Q) $(MKDEP) $(CC) -- $(CFLAGS) -- $(SRCS) >Make.dep
-	$(Q) touch $@
+	@$(MKDEP) $(DEPPATH) "$(CC)" -- $(CFLAGS) -- $(SRCS) >Make.dep
+	@touch $@
 
 depend: .depend
 
 clean:
-	$(call DELFILE, libboard$(LIBEXT))
+	$(call DELFILE, .built)
 	$(call CLEAN)
 
 distclean: clean

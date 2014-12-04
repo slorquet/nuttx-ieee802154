@@ -1,5 +1,5 @@
 /****************************************************************************
- * config/sama5d3-xplained/src/sam_nsh.c
+ * apps/graphics/traveler/trv_nxlistener.c
  *
  *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -37,23 +37,33 @@
  * Included Files
  ****************************************************************************/
 
-#include <nuttx/config.h>
+#include "trv_types.h"
 
-#include <sys/mount.h>
-
-#include <stdbool.h>
-#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sched.h>
 #include <errno.h>
-#include <syslog.h>
 
-#ifdef CONFIG_SYSTEM_USBMONITOR
-#  include <apps/usbmonitor.h>
-#endif
+#include <nuttx/arch.h>
+#include <nuttx/nx/nx.h>
+#include <nuttx/video/fb.h>
 
-#include "sama5d3-xplained.h"
+#ifdef CONFIG_NX_MULTIUSER
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
+ ****************************************************************************/
+
+/****************************************************************************
+ * Private Types
+ ****************************************************************************/
+
+/****************************************************************************
+ * Private Data
+ ****************************************************************************/
+
+/****************************************************************************
+ * Private Functions
  ****************************************************************************/
 
 /****************************************************************************
@@ -61,101 +71,44 @@
  ****************************************************************************/
 
 /****************************************************************************
- * Name: nsh_archinitialize
- *
- * Description:
- *   Perform architecture specific initialization
- *
+ * Name: trv_nxlistener
  ****************************************************************************/
 
-int nsh_archinitialize(void)
+FAR void *trv_nxlistener(FAR void *arg)
 {
-#if defined(HAVE_NAND) || defined(HAVE_AT25) || defined(HAVE_HSMCI) || \
-    defined(HAVE_USBHOST) || defined(HAVE_USBMONITOR) || defined(CONFIG_AJOYSTICK)
   int ret;
-#endif
 
-#ifdef HAVE_NAND
-  /* Initialize the NAND driver */
+  /* Process events forever */
 
-  ret = sam_nand_automount(NAND_MINOR);
-  if (ret < 0)
+  for (;;)
     {
-      syslog(LOG_ERR, "ERROR: sam_nand_automount failed: %d\n", ret);
-      return ret;
+      /* Handle the next event.  If we were configured blocking, then
+       * we will stay right here until the next event is received.  Since
+       * we have dedicated a while thread to servicing events, it would
+       * be most natural to also select CONFIG_NX_BLOCKING -- if not, the
+       * following would be a tight infinite loop (unless we added addition
+       * logic with nx_eventnotify and sigwait to pace it).
+       */
+
+      ret = nx_eventhandler(g_hnx);
+      if (ret < 0)
+        {
+          /* An error occurred... assume that we have lost connection with
+           * the server.
+           */
+
+          trv_abort("Lost server connection: %d\n", errno);
+        }
+
+      /* If we received a message, we must be connected */
+
+      if (!g_trv_nxrconnected)
+        {
+          g_trv_nxrconnected = true;
+          sem_post(&g_trv_nxevent);
+          trv_debug("Connected to server\n");
+        }
     }
-#endif
-
-#ifdef HAVE_AT25
-  /* Initialize the AT25 driver */
-
-  ret = sam_at25_automount(AT25_MINOR);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "ERROR: sam_at25_automount failed: %d\n", ret);
-      return ret;
-    }
-#endif
-
-#ifdef HAVE_HSMCI
-#ifdef CONFIG_SAMA5_HSMCI0
-  /* Initialize the HSMCI0 driver */
-
-  ret = sam_hsmci_initialize(HSMCI0_SLOTNO, HSMCI0_MINOR);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "ERROR: sam_hsmci_initialize(%d,%d) failed: %d\n",
-             HSMCI0_SLOTNO, HSMCI0_MINOR, ret);
-      return ret;
-    }
-#endif
-
-#ifdef CONFIG_SAMA5_HSMCI1
-  /* Initialize the HSMCI1 driver */
-
-  ret = sam_hsmci_initialize(HSMCI1_SLOTNO, HSMCI1_MINOR);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "ERROR: sam_hsmci_initialize(%d,%d) failed: %d\n",
-             HSMCI1_SLOTNO, HSMCI1_MINOR, ret);
-      return ret;
-    }
-#endif
-#endif
-
-#ifdef HAVE_USBHOST
-  /* Initialize USB host operation.  sam_usbhost_initialize() starts a thread
-   * will monitor for USB connection and disconnection events.
-   */
-
-  ret = sam_usbhost_initialize();
-  if (ret != OK)
-    {
-      syslog(LOG_ERR, "ERROR: Failed to initialize USB host: %d\n", ret);
-      return ret;
-    }
-#endif
-
-#ifdef HAVE_USBMONITOR
-  /* Start the USB Monitor */
-
-  ret = usbmonitor_start(0, NULL);
-  if (ret != OK)
-    {
-      syslog(LOG_ERR, "ERROR: Failed to start USB monitor: %d\n", ret);
-    }
-#endif
-
-#ifdef CONFIG_AJOYSTICK
-  /* Initialize and register the joystick driver */
-
-  ret = sam_ajoy_initialization();
-  if (ret != OK)
-    {
-      syslog(LOG_ERR, "ERROR: Failed to register the joystick driver: %d\n", ret);
-      return ret;
-    }
-#endif
-
-  return OK;
 }
+
+#endif /* CONFIG_NX_MULTIUSER */
