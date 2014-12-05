@@ -180,6 +180,12 @@
 #define MRF24J40_UPNONCE11 0x8000024B
 #define MRF24J40_UPNONCE12 0x8000024C
 
+/* Definitions for the device structure */
+
+#define MRF24J40_RXMODE_NORMAL  0
+#define MRF24J40_RXMODE_PROMISC 1
+#define MRF24J40_RXMODE_NOCRC   2
+
 /************************************************************************************
  * Private Types
  ************************************************************************************/
@@ -200,6 +206,7 @@ struct mrf24j40_dev_s
   uint8_t                           panid[2]; /* PAN identifier, FFFF = not set */
   uint8_t                           saddr[2]; /* short address, FFFF = not set */
   uint8_t                           channel;  /* 11 to 26 for the 2.4 GHz band */
+  uint8_t                           rxmode;   /* Reception mode: Main, no CRC, promiscuous */
 };
 
 /****************************************************************************
@@ -425,6 +432,29 @@ static int mrf24j40_setchan(FAR struct mrf24j40_dev_s *dev, int chan)
 }
 
 /****************************************************************************
+ * Name: mrf24j40_setrxmode
+ *
+ * Description:
+ *   Set the RX mode (normal or promiscuous)
+ *
+ ****************************************************************************/
+
+int mrf24j40_setrxmode(FAR struct mrf24j40_dev_s *dev, int mode)
+{
+  uint8_t reg;
+  if(mode<MRF24J40_RXMODE_NORMAL || mode>MRF24J40_RXMODE_NOCRC)
+    {
+      return -EINVAL;
+    }
+  reg = mrf24j40_getreg(dev->spi, MRF24J40_RXMCR);
+  reg &= ~0x03;
+  reg |= mode;
+  mrf24j40_setreg(dev->spi, MRF24J40_RXMCR, reg);
+  dev->rxmode = mode;
+  return OK;
+}
+
+/****************************************************************************
  * Name: mrf24j40_energydetect
  *
  * Description:
@@ -434,13 +464,18 @@ static int mrf24j40_setchan(FAR struct mrf24j40_dev_s *dev, int chan)
 
 static int mrf24j40_energydetect(FAR struct mrf24j40_dev_s *dev)
 {
+  uint8_t reg;
   /*set RSSI average duration to 8 symbols */
 
-  mrf24j40_setreg(dev->spi, MRF24J40_TXBCON1, mrf24j40_getreg(dev->spi, MRF24J40_TXBCON1) | 0x30);
+  reg  = mrf24j40_getreg(dev->spi, MRF24J40_TXBCON1);
+  reg |= 0x30;
+  mrf24j40_setreg(dev->spi, MRF24J40_TXBCON1, reg);
 
   /* 1. Set RSSIMODE1 0x3E<7> – Initiate RSSI calculation. */
 
-  mrf24j40_setreg(dev->spi, MRF24J40_BBREG6, mrf24j40_getreg(dev->spi, MRF24J40_BBREG6) | 0x80);
+  reg  = mrf24j40_getreg(dev->spi, MRF24J40_BBREG6);
+  reg |= 0x80;
+  mrf24j40_setreg(dev->spi, MRF24J40_BBREG6, reg);
 
   /* 2. Wait until RSSIRDY 0x3E<0> is set to ‘1’ – RSSI calculation is complete. */
 
@@ -682,6 +717,15 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
         *((int*)arg) = mrf24j40_energydetect(dev);
         ret = OK;
         break;
+
+      case MAC854IOCGPROMISC:
+        *((int*)arg) = (dev->rxmode==MRF24J40_RXMODE_PROMISC);
+        break;
+
+      case MAC854IOCSPROMISC:
+        mrf24j40_setrxmode(dev, (int)arg?MRF24J40_RXMODE_PROMISC:MRF24J40_RXMODE_NORMAL);
+        break;
+
     }
 
   mrf24j40_semgive(dev);
@@ -720,7 +764,12 @@ int mrf24j40_register(FAR struct spi_dev_s *spi, FAR const struct mrf24j40_lower
       return -EAGAIN;
     }
 
-  dev->spi = spi;
+  /* Default device params */
+  mrf24j40_setrxmode(dev, MRF24J40_RXMODE_NORMAL);
+  mrf24j40_setchan  (dev, 11);
+
+
+  dev->spi     = spi;
   mrf24j40_initialize(dev);
 
   sem_init(&dev->sem, 0, 1);

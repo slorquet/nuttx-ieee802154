@@ -56,6 +56,8 @@
  * Private Data
  ****************************************************************************/
 
+static struct ieee802154_packet_s packet;
+
 int scan(int fd)
 {
   int chan;
@@ -85,6 +87,10 @@ int scan(int fd)
   return ret;
 }
 
+int display(FAR struct ieee802154_packet_s *pack)
+{
+}
+
 int sniff(int fd, int chan)
 {
   int ret;
@@ -93,6 +99,24 @@ int sniff(int fd, int chan)
     {
       printf("Device is not an IEEE 802.15.4 interface!\n");
     }
+  ret = ioctl(fd, MAC854IOCSPROMISC, TRUE);
+  if (ret<0)
+    {
+      printf("Device is not an IEEE 802.15.4 interface!\n");
+    }
+  while (1)
+    {
+      ret = read(fd, &packet, sizeof(struct ieee802154_packet_s));
+      if(ret != 0)
+        {
+          printf("read: errno=%d\n",errno);
+          break;
+        }
+
+      /* Display packet */
+      display(&packet);
+    }
+  
   return ret;
 }
 
@@ -143,10 +167,9 @@ int snif8_main(int argc, char *argv[])
     }
   else
     {
-    ret = monitor(fd,atoi(argv[2]));
+    ret = sniff(fd,atoi(argv[2]));
     }
  
-exit_close:
   close(fd);
 exit:
   return ret;

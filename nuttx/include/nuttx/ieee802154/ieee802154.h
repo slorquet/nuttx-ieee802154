@@ -76,15 +76,18 @@
  *              with the errno value set appropriately.
  */
 
-#define MAC854IOCGCHAN   _MAC854IOC(0x0001) /* Get current channel (int*) */
-#define MAC854IOCSCHAN   _MAC854IOC(0x0002) /* Set current channel (int) */
-#define MAC854IOCGPANID  _MAC854IOC(0x0003) /* Get PAN ID (uint8_t[2]) */
-#define MAC854IOCSPANID  _MAC854IOC(0x0004) /* Set PAN ID (uint8_t[2]) */
-#define MAC854IOCGSADDR  _MAC854IOC(0x0005) /* Get Short address (uint8_t[2]) */
-#define MAC854IOCSSADDR  _MAC854IOC(0x0006) /* Set Short address (uint8_t[2]) */
-#define MAC854IOCGEADDR  _MAC854IOC(0x0007) /* Get Ext address (uint8_t[8]) */
-#define MAC854IOCSEADDR  _MAC854IOC(0x0008) /* Set Ext address (uint8_t[8]) */
-#define MAC854IOCGED     _MAC854IOC(0x0009) /* Run energy detection on current channel */
+#define MAC854IOCGCHAN     _MAC854IOC(0x0001) /* Get current channel (int*) */
+#define MAC854IOCSCHAN     _MAC854IOC(0x0002) /* Set current channel (int) */
+#define MAC854IOCGPANID    _MAC854IOC(0x0003) /* Get PAN ID (uint8_t[2]) */
+#define MAC854IOCSPANID    _MAC854IOC(0x0004) /* Set PAN ID (uint8_t[2]) */
+#define MAC854IOCGSADDR    _MAC854IOC(0x0005) /* Get Short address (uint8_t[2]) */
+#define MAC854IOCSSADDR    _MAC854IOC(0x0006) /* Set Short address (uint8_t[2]) */
+#define MAC854IOCGEADDR    _MAC854IOC(0x0007) /* Get Ext address (uint8_t[8]) */
+#define MAC854IOCSEADDR    _MAC854IOC(0x0008) /* Set Ext address (uint8_t[8]) */
+#define MAC854IOCGPROMISC  _MAC854IOC(0x0009) /* Get Promiscuous mode (int*) */
+#define MAC854IOCSPROMISC  _MAC854IOC(0x000A) /* Set Promiscuous mode (int) */
+
+#define MAC854IOCGED       _MAC854IOC(0x000B) /* Run energy detection on current channel */
 
 /****************************************************************************
  * Public Types
