@@ -110,10 +110,6 @@ ifeq ($(CONFIG_EXAMPLES_HIDKBD),y)
 CONFIGURED_APPS += examples/hidkbd
 endif
 
-ifeq ($(CONFIG_EXAMPLES_IEEEDUMP),y)
-CONFIGURED_APPS += examples/ieeedump
-endif
-
 ifeq ($(CONFIG_EXAMPLES_IGMP),y)
 CONFIGURED_APPS += examples/igmp
 endif

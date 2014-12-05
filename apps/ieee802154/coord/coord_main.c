@@ -59,6 +59,9 @@
 
 #include <nuttx/config.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+#include <nuttx/ieee802154/ieee802154.h>
 
 /****************************************************************************
  * Definitions
@@ -73,18 +76,19 @@
 
 struct ieee_client_s
 {
-  uint8_t eaddr[8]; /* client extended address */
-  uint8_t saddr[2]; /* client short address */
-  struct ieee802154_packet_s pending; /* pending packet for device */
+  uint8_t                    eaddr[8]; /* client extended address */
+  uint8_t                    saddr[2]; /* client short address */
+  struct ieee802154_packet_s pending;  /* pending packet for device */
 };
 
 struct ieee_coord_s
 {
-  uint8_t chan;   /* PAN channel */
-  uint8_t panid[2]; /* PAN ID */
-  uint8_t nclients; /* Number of coordinated clients */
-  struct ieee802154_packet_s rxbuf; /* General rx buffer */
-  struct ieee_client_s clients[CONFIG_IEEE802154_COORD_MAXCLIENTS]; /* Clients */
+  int                        fd;       /* Device handle */
+  uint8_t                    chan;     /* PAN channel */
+  uint8_t                    panid[2]; /* PAN ID */
+  uint8_t                    nclients; /* Number of coordinated clients */
+  struct ieee802154_packet_s rxbuf;    /* General rx buffer */
+  struct ieee_client_s       clients[CONFIG_IEEE802154_COORD_MAXCLIENTS];
 };
 
 /****************************************************************************
@@ -98,10 +102,11 @@ static struct ieee_coord_s g_coord;
 
 static void coord_initialize(struct ieee_coord_s *coord)
 {
+  int i;
   coord->nclients = 0;
   for (i = 0; i < CONFIG_IEEE802154_COORD_MAXCLIENTS; i++)
     {
-      coord->clients[i].pendingdatalen = 0;
+      coord->clients[i].pending.len = 0;
     }
 }
 
@@ -121,7 +126,7 @@ static int coord_loop(FAR struct ieee_coord_s *coord, FAR char *dev, int chan, i
 
   while(ret == OK)
     {
-      ret = read(fd, &coord->rxbuf, sizeof(struct ieee802154_packet_s));
+      ret = read(coord->fd, &coord->rxbuf, sizeof(struct ieee802154_packet_s));
 
     }
   return OK;
@@ -137,13 +142,13 @@ int main(int argc, FAR char *argv[])
 int coord_main(int argc, FAR char *argv[])
 #endif
 {
-  int channel;
+  int chan;
   int panid;
 
   coord_initialize(&g_coord);
   printf("IEEE 802.15.4 Coordinator start\n");
 
-  if (argv<4)
+  if (argc<4)
     {
       printf("coord <dev> <chan> <panid>");
       return ERROR;

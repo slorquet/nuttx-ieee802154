@@ -1,6 +1,6 @@
 /****************************************************************************
- * examples/ieeedump/ieeedump_main.c
- * IEEE 802.15.4 Packet Dumper
+ * examples/ieeedump/sniffer_main.c
+ * IEEE 802.15.4 Packet Sniffer/Dumper
  *
  *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
  *   Author: Sebastien Lorquet <sebastien@lorquet.fr>
@@ -85,7 +85,7 @@ int scan(int fd)
   return ret;
 }
 
-int monitor(int fd, int chan)
+int sniff(int fd, int chan)
 {
   int ret;
   ret = ioctl(fd, MAC854IOCSCHAN, chan);
@@ -102,7 +102,7 @@ int monitor(int fd, int chan)
 
 int usage(void)
 {
-  printf("ieeedump <device> scan|<chan>\n"
+  printf("snif8 <device> scan|<chan>\n"
          );
   return ERROR;
 }
@@ -114,13 +114,13 @@ int usage(void)
 #ifdef CONFIG_BUILD_KERNEL
 int main(int argc, FAR char *argv[])
 #else
-int id_main(int argc, char *argv[])
+int snif8_main(int argc, char *argv[])
 #endif
 {
   int fd;
   int ret = OK;
 
-  printf("IEEE packet dumper\n");
+  printf("IEEE packet sniffer/dumper\n");
   if (argc<3)
     {
       return usage();

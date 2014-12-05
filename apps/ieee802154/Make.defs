@@ -38,3 +38,7 @@ ifeq ($(CONFIG_IEEE802154_COORD),y)
 CONFIGURED_APPS += ieee802154/coord
 endif
 
+ifeq ($(CONFIG_IEEE802154_SNIFFER),y)
+CONFIGURED_APPS += ieee802154/sniffer
+endif
+

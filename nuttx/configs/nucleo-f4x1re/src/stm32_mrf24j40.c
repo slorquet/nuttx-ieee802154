@@ -57,6 +57,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include <nuttx/spi/spi.h>
 #include <nuttx/ieee802154/mrf24j40.h>
@@ -183,7 +184,7 @@ int stm32_mrf24j40initialize(void)
   /* Reset the device */
   stm32_configgpio(GPIO_MRF24J40_RESET);
   stm32_gpiowrite(GPIO_MRF24J40_RESET, 0);
-  usdelay(1000);
+  usleep(1000);
   stm32_gpiowrite(GPIO_MRF24J40_RESET, 1);
 
   /* Bind the SPI port to the MRF24J40 driver */

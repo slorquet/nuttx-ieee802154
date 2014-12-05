@@ -4,3 +4,4 @@
 #
 
 source "$APPSDIR/ieee802154/coord/Kconfig"
+source "$APPSDIR/ieee802154/sniffer/Kconfig"

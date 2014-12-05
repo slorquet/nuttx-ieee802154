@@ -39,7 +39,7 @@
 
 SUBDIRS  = adc ajoystick bastest bridge buttons can cc3000 cpuhog cxxtest
 SUBDIRS += dhcpd discover djoystick elf flash_test ftpc ftpd hello helloxx
-SUBDIRS += hidkbd ieeedump igmp i2schar json keypadtest lcdrw mm modbus mount mtdpart
+SUBDIRS += hidkbd igmp i2schar json keypadtest lcdrw mm modbus mount mtdpart
 SUBDIRS += mtdrwb netpkt nettest nrf24l01_term nsh null nx nxterm nxffs
 SUBDIRS += nxflat nxhello nximage nxlines nxtext ostest pashello pipe poll
 SUBDIRS += posix_spawn pwm qencoder random relays rgmp romfs sendmail
@@ -53,14 +53,8 @@ SUBDIRS += webserver wget wgetjson xmlrpc
 
 CNTXTDIRS = pwm
 
-ifeq ($(CONFIG_NSH_BUILTIN_APPS),y)
-<<<<<<< HEAD
-CNTXTDIRS += adc bridge can cc3000 cpuhog cxxtest dhcpd discover djoystick
-CNTXTDIRS += flash_test ftpd hello helloxx ieeedump i2schar json keypadtest
-=======
 CNTXTDIRS += adc ajoystick bridge can cc3000 cpuhog cxxtest dhcpd discover
 CNTXTDIRS += djoystick flash_test ftpd hello helloxx i2schar json keypadtest
->>>>>>> 03af5a6188c0a61ef1913d1e3a1adec276ae7e7a
 CNTXTDIRS += modbus lcdrw mtdpart mtdrwb netpkt nettest nx nxhello nximage
 CNTXTDIRS += nxlines nxtext nrf24l01_term ostest random relays qencoder
 CNTXTDIRS += serialblasters lcd serialrx smart_test tcpecho telnetd tiff

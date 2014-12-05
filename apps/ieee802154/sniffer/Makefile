@@ -1,5 +1,5 @@
 ############################################################################
-# apps/examples/ieeedump/Makefile
+# apps/ieee802154/sniffer/Makefile
 #
 #   Copyright (C) 2008, 2010-2013 Gregory Nutt. All rights reserved.
 #   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -37,17 +37,17 @@
 -include $(TOPDIR)/Make.defs
 include $(APPDIR)/Make.defs
 
-# IEEE 802.15.4 packet dump built-in application info
+# IEEE 802.15.4 packet sniffer/dumper built-in application info
 
-APPNAME = id
+APPNAME = snif8
 PRIORITY = SCHED_PRIORITY_DEFAULT
 STACKSIZE = 2048
 
-# IEEE 802.15.4 packer dump Example
+# IEEE 802.15.4 packet sniffer/dumper Example
 
 ASRCS =
 CSRCS =
-MAINSRC = ieeedump_main.c
+MAINSRC = sniffer_main.c
 
 AOBJS = $(ASRCS:.S=$(OBJEXT))
 COBJS = $(CSRCS:.c=$(OBJEXT))

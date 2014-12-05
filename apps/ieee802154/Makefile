@@ -37,7 +37,7 @@
 
 # Sub-directories
 
-SUBDIRS  = coord
+SUBDIRS  = coord sniffer
 
 # Sub-directories that might need context setup.  Directories may need
 # context setup for a variety of reasons, but the most common is because
@@ -46,7 +46,7 @@ SUBDIRS  = coord
 CNTXTDIRS =
 
 ifeq ($(CONFIG_NSH_BUILTIN_APPS),y)
-CNTXTDIRS += coord
+CNTXTDIRS += coord sniffer
 endif
 
 all: nothing

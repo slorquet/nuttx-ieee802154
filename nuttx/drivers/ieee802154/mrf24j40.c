@@ -209,16 +209,9 @@ struct mrf24j40_dev_s
 static int     mrf24j40_open(FAR struct file *filep);
 static int     mrf24j40_close(FAR struct file *filep);
 static int     mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg);
+static ssize_t mrf24j40_read(FAR struct file *filep, FAR char *buffer, size_t len);
+static ssize_t mrf24j40_write(FAR struct file *filep, FAR const char *buffer, size_t len);
 
-static ssize_t frnop(FAR struct file *filep, FAR char *buffer, size_t len)
-{
-  return -EACCES;
-}
-
-static ssize_t fwnop(FAR struct file *filep, FAR const char *buffer, size_t len)
-{
-  return -EACCES;
-}
 
 /****************************************************************************
  * Private Data
@@ -228,8 +221,8 @@ static const struct file_operations mrf24j40_fops =
 {
   mrf24j40_open,  /* open */
   mrf24j40_close, /* close */
-  frnop,          /* read */
-  fwnop,          /* write */
+  mrf24j40_read,  /* read */
+  mrf24j40_write, /* write */
   0,              /* seek */
   mrf24j40_ioctl  /* ioctl */
 #ifndef CONFIG_DISABLE_POLL
@@ -458,6 +451,87 @@ static int mrf24j40_energydetect(FAR struct mrf24j40_dev_s *dev)
   return mrf24j40_getreg(dev->spi, MRF24J40_RSSI);
 }
 
+/* interrupt management routines */
+
+/****************************************************************************
+ * Name: mrf24j40_irqworker
+ *
+ * Description:
+ *   Perform interrupt handling logic outside of the interrupt handler (on
+ *   the work queue thread).
+ *
+ * Parameters:
+ *   arg     - The reference to the driver structure (cast to void*)
+ *
+ * Returned Value:
+ *   None
+ *
+ * Assumptions:
+ *
+ ****************************************************************************/
+
+static void mrf24j40_irqworker(FAR void *arg)
+{
+  FAR struct mrf24j40_dev_s *priv = (FAR struct mrf24j40_dev_s *)arg;
+
+  DEBUGASSERT(priv);
+  DEBUGASSERT(priv->spi);
+
+  /* Get exclusive access to the SPI bus */
+  mrf24j40_lock(priv->spi);
+
+  /* Read and store INTSTAT - this clears the register. */
+
+  /* Do work according to the pending interrupts */
+
+  /* Re-Enable GPIO interrupts */
+
+  priv->lower->enable(priv->lower, TRUE);
+
+  /* Release lock on the SPI bus */
+
+  mrf24j40_unlock(priv->spi);
+}
+
+/****************************************************************************
+ * Name: mrf24j40_interrupt
+ *
+ * Description:
+ *   Hardware interrupt handler
+ *
+ * Parameters:
+ *   irq     - Number of the IRQ that generated the interrupt
+ *   context - Interrupt register state save info (architecture-specific)
+ *
+ * Returned Value:
+ *   OK on success
+ *
+ * Assumptions:
+ *
+ ****************************************************************************/
+
+static int mrf24j40_interrupt(int irq, FAR void *context)
+{
+  register FAR struct mrf24j40_dev_s *priv = (FAR struct mrf24j40_dev_s *)context;
+
+  /* In complex environments, we cannot do SPI transfers from the interrupt
+   * handler because semaphores are probably used to lock the SPI bus.  In
+   * this case, we will defer processing to the worker thread.  This is also
+   * much kinder in the use of system resources and is, therefore, probably
+   * a good thing to do in any event.
+   */
+
+  DEBUGASSERT(work_available(&priv->irqwork));
+
+  /* Notice that further GPIO interrupts are disabled until the work is
+   * actually performed.  This is to prevent overrun of the worker thread.
+   * Interrupts are re-enabled in enc_irqworker() when the work is completed.
+   */
+
+  priv->lower->enable(priv->lower, FALSE);
+  return work_queue(HPWORK, &priv->irqwork, mrf24j40_irqworker, (FAR void *)priv, 0);
+}
+
 /* device access routines */
 
 /****************************************************************************
@@ -551,6 +625,33 @@ static int mrf24j40_close(FAR struct file *filep)
 }
 
 /****************************************************************************
+ * Name: mrf24j40_read
+ *
+ * Description:
+ *   Return a packet from the receive queue. The buffer must be a pointer to a
+ *   struct ieee802154_packet_s structure, with a correct length.
+ *
+ ****************************************************************************/
+
+static ssize_t mrf24j40_read(FAR struct file *filep, FAR char *buffer, size_t len)
+{
+  return -EACCES;
+}
+
+/****************************************************************************
+ * Name: mrf24j40_write
+ *
+ * Description:
+ *   Put a packet in the send queue. The packet will be sent as soon as possible.
+ *
+ ****************************************************************************/
+
+static ssize_t mrf24j40_write(FAR struct file *filep, FAR const char *buffer, size_t len)
+{
+  return -EACCES;
+}
+
+/****************************************************************************
  * Name: mrf24j40_ioctl
  *
  * Description:
@@ -587,84 +688,6 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
   return ret;
 }
 
-/****************************************************************************
- * Name: mrf24j40_irqworker
- *
- * Description:
- *   Perform interrupt handling logic outside of the interrupt handler (on
- *   the work queue thread).
- *
- * Parameters:
- *   arg     - The reference to the driver structure (cast to void*)
- *
- * Returned Value:
- *   None
- *
- * Assumptions:
- *
- ****************************************************************************/
-
-static void mrf24j40_irqworker(FAR void *arg)
-{
-  FAR struct mrf24j40_dev_s *priv = (FAR struct mrf24j40_dev_s *)arg;
-
-  DEBUGASSERT(priv);
-  DEBUGASSERT(priv->spi);
-
-  /* Get exclusive access to the SPI bus */
-  mrf24j40_lock(priv->spi);
-
-  /* Read and store INTSTAT - this clears the register. */
-
-  /* Do work according to the pending interrupts */
-
-  /* Re-Enable GPIO interrupts */
-
-  priv->lower->enable(priv->lower, TRUE);
-
-  /* Release lock on the SPI bus */
-
-  mrf24j40_unlock(priv->spi);
-}
-
-/****************************************************************************
- * Name: mrf24j40_interrupt
- *
- * Description:
- *   Hardware interrupt handler
- *
- * Parameters:
- *   irq     - Number of the IRQ that generated the interrupt
- *   context - Interrupt register state save info (architecture-specific)
- *
- * Returned Value:
- *   OK on success
- *
- * Assumptions:
- *
- ****************************************************************************/
-
-static int mrf24j40_interrupt(int irq, FAR void *context)
-{
-  register FAR struct mrf24j40_dev_s *priv = (FAR struct mrf24j40_dev_s *)context;
-
-  /* In complex environments, we cannot do SPI transfers from the interrupt
-   * handler because semaphores are probably used to lock the SPI bus.  In
-   * this case, we will defer processing to the worker thread.  This is also
-   * much kinder in the use of system resources and is, therefore, probably
-   * a good thing to do in any event.
-   */
-
-  DEBUGASSERT(work_available(&priv->irqwork));
-
-  /* Notice that further GPIO interrupts are disabled until the work is
-   * actually performed.  This is to prevent overrun of the worker thread.
-   * Interrupts are re-enabled in enc_irqworker() when the work is completed.
-   */
-
-  priv->lower->enable(priv->lower, FALSE);
-  return work_queue(HPWORK, &priv->irqwork, mrf24j40_irqworker, (FAR void *)priv, 0);
-}
 
 /****************************************************************************
  * Public Functions

@@ -3,17 +3,17 @@
 # see misc/tools/kconfig-language.txt.
 #
 
-config EXAMPLES_IEEEDUMP
-	bool "IEEE 802.15.4 packet dumper"
+config IEEE802154_SNIFFER
+	bool "IEEE 802.15.4 packet sniffer/dumper"
 	default n
 	---help---
-		Enable the IEEE 802.15.4 packet dumper
+		Enable the IEEE 802.15.4 packet sniffer/dumper
 
-if EXAMPLES_IEEEDUMP
+if IEEE802154_SNIFFER
 
-config EXAMPLES_IEEEDUMP_PROGNAME
+config IEEE802154_SNIFFER_PROGNAME
 	string "Program name"
-	default "ieeedump"
+	default "snif8"
 	depends on BUILD_KERNEL
 	---help---
 		This is the name of the program that will be use when the NSH ELF
