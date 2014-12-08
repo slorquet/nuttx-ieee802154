@@ -45,8 +45,8 @@
 #include <stdint.h>
 #include <errno.h>
 #include <semaphore.h>
-#include <unistd.h>
 
+#include <nuttx/arch.h>
 #include <nuttx/kmalloc.h>
 #include <nuttx/wqueue.h>
 #include <nuttx/fs/fs.h>
@@ -68,7 +68,7 @@
 #endif
 
 #ifndef CONFIG_IEEE802154_MRF24J40_FREQUENCY
-#  define CONFIG_IEEE802154_MRF24J40_FREQUENCY 1000000
+#  define CONFIG_IEEE802154_MRF24J40_FREQUENCY 4000000
 #endif
 
 /* MRF24J40 Registers *******************************************************************/
@@ -281,22 +281,20 @@ static void mrf24j40_setreg(FAR struct spi_dev_s *spi, uint32_t addr, uint8_t va
   int     len;
   if(!(addr&0x80000000))
     {
-    /* 6-bit address */
-    addr  &= 0x3F;
-    addr <<= 1;
-    addr  |= 0x01;
-    buf[0] = addr;
-    len    = 1;
+      addr  &= 0x3F; /* 6-bit address */
+      addr <<= 1;
+      addr  |= 0x01; /* writing */
+      buf[0] = addr;
+      len    = 1;
     }
   else
     {
-    /* 10-bit address */
-    addr  &= 0x3FF;
-    addr <<= 5;
-    addr  |= 0x8010;
-    buf[0] = (addr >>   8);
-    buf[1] = (addr & 0xFF);
-    len    = 2;
+      addr  &= 0x3FF; /* 10-bit address */
+      addr <<= 5;
+      addr  |= 0x8010; /* writing long */
+      buf[0] = (addr >>   8);
+      buf[1] = (addr & 0xFF);
+      len    = 2;
     }
   buf[len++] = val;
 
@@ -351,19 +349,19 @@ static uint8_t mrf24j40_getreg(FAR struct spi_dev_s *spi, uint32_t addr)
 
 static int mrf24j40_initialize(FAR struct mrf24j40_dev_s *dev)
 {
-  /*  1. SOFTRST (0x2A) = 0x07 – Perform a software Reset. The bits will be automatically cleared to ‘0’ by hardware.*/
-  /*  2. PACON2 (0x18) = 0x98 – Initialize FIFOEN = 1 and TXONTS = 0x6.*/
-  /*  3. TXSTBL (0x2E) = 0x95 – Initialize RFSTBL = 0x9.*/
-  /*  4. RFCON0 (0x200) = 0x03 – Initialize RFOPT = 0x03.*/
-  /*  5. RFCON1 (0x201) = 0x01 – Initialize VCOOPT = 0x02.*/
-  /*  6. RFCON2 (0x202) = 0x80 – Enable PLL (PLLEN = 1).*/
-  /*  7. RFCON6 (0x206) = 0x90 – Initialize TXFIL = 1 and 20MRECVR = 1.*/
-  /*  8. RFCON7 (0x207) = 0x80 – Initialize SLPCLKSEL = 0x2 (100 kHz Internal oscillator).*/
-  /*  9. RFCON8 (0x208) = 0x10 – Initialize RFVCO = 1.*/
+  /*  1. SOFTRST  (0x2A) = 0x07 – Perform a software Reset. The bits will be automatically cleared to ‘0’ by hardware.*/
+  /*  2. PACON2   (0x18) = 0x98 – Initialize FIFOEN = 1 and TXONTS = 0x6.*/
+  /*  3. TXSTBL   (0x2E) = 0x95 – Initialize RFSTBL = 0x9.*/
+  /*  4. RFCON0  (0x200) = 0x03 – Initialize RFOPT = 0x03.*/
+  /*  5. RFCON1  (0x201) = 0x01 – Initialize VCOOPT = 0x02.*/
+  /*  6. RFCON2  (0x202) = 0x80 – Enable PLL (PLLEN = 1).*/
+  /*  7. RFCON6  (0x206) = 0x90 – Initialize TXFIL = 1 and 20MRECVR = 1.*/
+  /*  8. RFCON7  (0x207) = 0x80 – Initialize SLPCLKSEL = 0x2 (100 kHz Internal oscillator).*/
+  /*  9. RFCON8  (0x208) = 0x10 – Initialize RFVCO = 1.*/
   /* 10. SLPCON1 (0x220) = 0x21 – Initialize CLKOUTEN = 1 and SLPCLKDIV = 0x01.*/
-  /* 11. BBREG2 (0x3A) = 0x80 – Set CCA mode to ED.*/
-  /* 12. CCAEDTH = 0x60 – Set CCA ED threshold.*/
-  /* 13. BBREG6 (0x3E) = 0x40 – Set appended RSSI value to RXFIFO.*/
+  /* 11. BBREG2   (0x3A) = 0x80 – Set CCA mode to ED.*/
+  /* 12. CCAEDTH         = 0x60 – Set CCA ED threshold.*/
+  /* 13. BBREG6   (0x3E) = 0x40 – Set appended RSSI value to RXFIFO.*/
 
   mrf24j40_setreg(dev->spi, MRF24J40_SOFTRST, 0x07);
 
@@ -422,9 +420,12 @@ static int mrf24j40_setchan(FAR struct mrf24j40_dev_s *dev, int chan)
   mrf24j40_setreg(dev->spi, MRF24J40_RFCTL, 0x04);
   mrf24j40_setreg(dev->spi, MRF24J40_RFCTL, 0x00);
 
-  /* 19. Delay at least 192 μs. */
+  /* 19. Delay at least 192 μs.
+   * We are using up_udelay instead of usleep because usleep
+   * can only be used in tasks.
+   */
 
-  usleep(192);
+  up_udelay(192);
 
   dev->channel = chan;
 
@@ -473,9 +474,7 @@ static int mrf24j40_energydetect(FAR struct mrf24j40_dev_s *dev)
 
   /* 1. Set RSSIMODE1 0x3E<7> – Initiate RSSI calculation. */
 
-  reg  = mrf24j40_getreg(dev->spi, MRF24J40_BBREG6);
-  reg |= 0x80;
-  mrf24j40_setreg(dev->spi, MRF24J40_BBREG6, reg);
+  mrf24j40_setreg(dev->spi, MRF24J40_BBREG6, 0x80);
 
   /* 2. Wait until RSSIRDY 0x3E<0> is set to ‘1’ – RSSI calculation is complete. */
 
@@ -483,7 +482,62 @@ static int mrf24j40_energydetect(FAR struct mrf24j40_dev_s *dev)
 
   /* 3. Read RSSI 0x210<7:0> – The RSSI register contains the averaged RSSI received power level for 8 symbol periods. */
 
-  return mrf24j40_getreg(dev->spi, MRF24J40_RSSI);
+  reg = mrf24j40_getreg(dev->spi, MRF24J40_RSSI);
+
+  mrf24j40_setreg(dev->spi, MRF24J40_BBREG6, 0x40);
+
+  return reg;
+}
+
+/****************************************************************************
+ * Name: mrf24j40_setpanid
+ *
+ * Description:
+ *   Define the PAN ID the device is operating on.
+ *
+ ****************************************************************************/
+
+static int mrf24j40_setpanid(FAR struct mrf24j40_dev_s *dev, FAR uint8_t *panid)
+{
+  mrf24j40_setreg(dev->spi, MRF24J40_PANIDH, panid[0]);
+  mrf24j40_setreg(dev->spi, MRF24J40_PANIDL, panid[1]);
+
+  dev->panid[0] = panid[0];
+  dev->panid[1] = panid[1];
+
+  return OK;
+}
+
+/****************************************************************************
+ * Name: mrf24j40_regdump
+ *
+ * Description:
+ *   Display the value of all registers.
+ *
+ ****************************************************************************/
+
+static int mrf24j40_regdump(FAR struct mrf24j40_dev_s *dev)
+{
+  uint32_t i;
+  lowsyslog(LOG_NOTICE, "short regs\n");
+  for (i=0;i<0x40;i++)
+    {
+      if ((i&15)==0)
+        lowsyslog(LOG_NOTICE, "%02x: ",i);
+      lowsyslog(LOG_NOTICE, "%02x ", mrf24j40_getreg(dev->spi, i));
+      if ((i&15)==15)
+        lowsyslog(LOG_NOTICE, "\n");
+    }
+  lowsyslog(LOG_NOTICE, "long regs\n");
+  for (i=0x80000200;i<0x80000250;i++)
+    {
+      if ((i&15)==0)
+        lowsyslog(LOG_NOTICE, "%02x: ", i&0xfff);
+      lowsyslog(LOG_NOTICE, "%02x ", mrf24j40_getreg(dev->spi, i));
+      if ((i&15)==15)
+        lowsyslog(LOG_NOTICE, "\n");
+    }
+  return 0;
 }
 
 /* interrupt management routines */
@@ -713,19 +767,32 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
         ret = OK;
         break;
 
+      case MAC854IOCSPANID:
+        ret = mrf24j40_setpanid(dev, (uint8_t*)arg);
+        break;
+
+      case MAC854IOCGPANID:
+        *((uint8_t*)(arg+0)) = dev->panid[0];
+        *((uint8_t*)(arg+1)) = dev->panid[1];
+        ret = OK;
+        break;
+
+      case MAC854IOCSPROMISC:
+        ret = mrf24j40_setrxmode(dev, (int)arg?MRF24J40_RXMODE_PROMISC:MRF24J40_RXMODE_NORMAL);
+        break;
+
+      case MAC854IOCGPROMISC:
+        *((int*)arg) = (dev->rxmode==MRF24J40_RXMODE_PROMISC);
+        ret = OK;
+        break;
+
       case MAC854IOCGED:
         *((int*)arg) = mrf24j40_energydetect(dev);
         ret = OK;
         break;
 
-      case MAC854IOCGPROMISC:
-        *((int*)arg) = (dev->rxmode==MRF24J40_RXMODE_PROMISC);
-        break;
-
-      case MAC854IOCSPROMISC:
-        mrf24j40_setrxmode(dev, (int)arg?MRF24J40_RXMODE_PROMISC:MRF24J40_RXMODE_NORMAL);
-        break;
-
+      case 1000: /* register dump */
+        ret = mrf24j40_regdump(dev);
     }
 
   mrf24j40_semgive(dev);
@@ -764,13 +831,14 @@ int mrf24j40_register(FAR struct spi_dev_s *spi, FAR const struct mrf24j40_lower
       return -EAGAIN;
     }
 
-  /* Default device params */
-  mrf24j40_setrxmode(dev, MRF24J40_RXMODE_NORMAL);
-  mrf24j40_setchan  (dev, 11);
-
-
   dev->spi     = spi;
-  mrf24j40_initialize(dev);
+
+  mrf24j40_setpanid(dev, "\xff\xff");
+
+  //mrf24j40_initialize(dev);
+  /* Default device params */
+  //mrf24j40_setrxmode(dev, MRF24J40_RXMODE_NORMAL);
+  //mrf24j40_setchan  (dev, 11);
 
   sem_init(&dev->sem, 0, 1);
   sprintf(devname, "/dev/mrf%d", minor);

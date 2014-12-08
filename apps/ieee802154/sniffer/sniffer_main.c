@@ -165,6 +165,10 @@ int snif8_main(int argc, char *argv[])
     {
     ret = scan(fd);
     }
+  else if (!strcmp(argv[2], "dump"))
+    {
+    ret = ioctl(fd, 1000, 0);
+    }
   else
     {
     ret = sniff(fd,atoi(argv[2]));
