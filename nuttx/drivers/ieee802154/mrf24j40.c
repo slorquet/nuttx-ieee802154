@@ -43,6 +43,7 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 #include <errno.h>
 #include <semaphore.h>
 
@@ -233,12 +234,27 @@ struct mrf24j40_dev_s
  * Private Function Prototypes
  ****************************************************************************/
 
+static void    mrf24j40_lock(FAR struct spi_dev_s *spi);
+static void    mrf24j40_setreg(FAR struct spi_dev_s *spi, uint32_t addr, uint8_t val);
+static uint8_t mrf24j40_getreg(FAR struct spi_dev_s *spi, uint32_t addr);
+static int     mrf24j40_initialize(FAR struct mrf24j40_dev_s *dev);
+static int     mrf24j40_setchan(FAR struct mrf24j40_dev_s *dev, int chan);
+static int     mrf24j40_setpanid(FAR struct mrf24j40_dev_s *dev, FAR uint8_t *panid);
+static int     mrf24j40_setsaddr(FAR struct mrf24j40_dev_s *dev, FAR uint8_t *panid);
+static int     mrf24j40_seteaddr(FAR struct mrf24j40_dev_s *dev, FAR uint8_t *panid);
+static int     mrf24j40_setrxmode(FAR struct mrf24j40_dev_s *dev, int mode);
+static int     mrf24j40_energydetect(FAR struct mrf24j40_dev_s *dev);
+static int     mrf24j40_regdump(FAR struct mrf24j40_dev_s *dev);
+static void    mrf24j40_irqwork_rx(FAR struct mrf24j40_dev_s *dev);
+static void    mrf24j40_irqworker(FAR void *arg);
+static int     mrf24j40_interrupt(int irq, FAR void *context);
+
+static void    mrf24j40_semtake(FAR struct mrf24j40_dev_s *dev);
 static int     mrf24j40_open(FAR struct file *filep);
 static int     mrf24j40_close(FAR struct file *filep);
-static int     mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg);
 static ssize_t mrf24j40_read(FAR struct file *filep, FAR char *buffer, size_t len);
 static ssize_t mrf24j40_write(FAR struct file *filep, FAR const char *buffer, size_t len);
-
+static int     mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg);
 
 /****************************************************************************
  * Private Data
@@ -462,6 +478,69 @@ static int mrf24j40_setchan(FAR struct mrf24j40_dev_s *dev, int chan)
 }
 
 /****************************************************************************
+ * Name: mrf24j40_setpanid
+ *
+ * Description:
+ *   Define the PAN ID the device is operating on.
+ *
+ ****************************************************************************/
+
+static int mrf24j40_setpanid(FAR struct mrf24j40_dev_s *dev, FAR uint8_t *panid)
+{
+  mrf24j40_setreg(dev->spi, MRF24J40_PANIDH, panid[0]);
+  mrf24j40_setreg(dev->spi, MRF24J40_PANIDL, panid[1]);
+
+  dev->panid[0] = panid[0];
+  dev->panid[1] = panid[1];
+
+  return OK;
+}
+
+/****************************************************************************
+ * Name: mrf24j40_setsaddr
+ *
+ * Description:
+ *   Define the device short address. The following addresses are special:
+ *   FFFEh : Broadcast
+ *   FFFFh : Unspecified
+ *
+ ****************************************************************************/
+
+static int mrf24j40_setsaddr(FAR struct mrf24j40_dev_s *dev, FAR uint8_t *saddr)
+{
+  mrf24j40_setreg(dev->spi, MRF24J40_SADRH, saddr[0]);
+  mrf24j40_setreg(dev->spi, MRF24J40_SADRL, saddr[1]);
+
+  dev->saddr[0] = saddr[0];
+  dev->saddr[1] = saddr[1];
+
+  return OK;
+}
+
+/****************************************************************************
+ * Name: mrf24j40_setsaddr
+ *
+ * Description:
+ *   Define the device extended address. The following addresses are special:
+ *   FFFFFFFFFFFFFFFFh : Unspecified
+ *
+ ****************************************************************************/
+
+static int mrf24j40_seteaddr(FAR struct mrf24j40_dev_s *dev, FAR uint8_t *eaddr)
+{
+  int i;
+
+  for (i=0; i<8; i++)
+    {
+      mrf24j40_setreg(dev->spi, MRF24J40_EADR0 + i, eaddr[i]);
+      dev->eaddr[i] = eaddr[i];
+    }
+
+
+  return OK;
+}
+
+/****************************************************************************
  * Name: mrf24j40_setrxmode
  *
  * Description:
@@ -518,24 +597,6 @@ static int mrf24j40_energydetect(FAR struct mrf24j40_dev_s *dev)
   return reg;
 }
 
-/****************************************************************************
- * Name: mrf24j40_setpanid
- *
- * Description:
- *   Define the PAN ID the device is operating on.
- *
- ****************************************************************************/
-
-static int mrf24j40_setpanid(FAR struct mrf24j40_dev_s *dev, FAR uint8_t *panid)
-{
-  mrf24j40_setreg(dev->spi, MRF24J40_PANIDH, panid[0]);
-  mrf24j40_setreg(dev->spi, MRF24J40_PANIDL, panid[1]);
-
-  dev->panid[0] = panid[0];
-  dev->panid[1] = panid[1];
-
-  return OK;
-}
 
 /****************************************************************************
  * Name: mrf24j40_regdump
@@ -579,7 +640,7 @@ static int mrf24j40_regdump(FAR struct mrf24j40_dev_s *dev)
  *
  ****************************************************************************/
 
-static void mrf24j40_irqwork_rx(FAT struct mrf24j40_dev_s *dev)
+static void mrf24j40_irqwork_rx(FAR struct mrf24j40_dev_s *dev)
 {
   lowsyslog(LOG_NOTICE, "rx!");
 }
@@ -603,14 +664,11 @@ static void mrf24j40_irqwork_rx(FAT struct mrf24j40_dev_s *dev)
 
 static void mrf24j40_irqworker(FAR void *arg)
 {
-  FAR struct mrf24j40_dev_s *priv = (FAR struct mrf24j40_dev_s *)arg;
+  FAR struct mrf24j40_dev_s *dev = (FAR struct mrf24j40_dev_s *)arg;
   uint8_t intstat;
 
-  DEBUGASSERT(priv);
-  DEBUGASSERT(priv->spi);
-
-  /* Get exclusive access to the SPI bus */
-  mrf24j40_lock(priv->spi);
+  DEBUGASSERT(dev);
+  DEBUGASSERT(dev->spi);
 
   /* Read and store INTSTAT - this clears the register. */
 
@@ -618,19 +676,15 @@ static void mrf24j40_irqworker(FAR void *arg)
 
   /* Do work according to the pending interrupts */
 
-  if(! (intstat & MRF24J40_INTSTAT_RXIE) )
+  if(! (intstat & MRF24J40_INTSTAT_RXIF) )
     {
       /* A packet was received, retrieve it */
       mrf24j40_irqwork_rx(dev);
     }
 
   /* Re-Enable GPIO interrupts */
+  dev->lower->enable(dev->lower, TRUE);
 
-  priv->lower->enable(priv->lower, TRUE);
-
-  /* Release lock on the SPI bus */
-
-  mrf24j40_unlock(priv->spi);
 }
 
 /****************************************************************************
@@ -655,7 +709,7 @@ static int mrf24j40_interrupt(int irq, FAR void *context)
   /* To support multiple devices,
    * retrieve the priv structure using the irq number */
 
-  register FAR struct mrf24j40_dev_s *priv = g_mrf24j40_devices[0];
+  register FAR struct mrf24j40_dev_s *dev = g_mrf24j40_devices[0];
 
   /* In complex environments, we cannot do SPI transfers from the interrupt
    * handler because semaphores are probably used to lock the SPI bus.  In
@@ -664,15 +718,15 @@ static int mrf24j40_interrupt(int irq, FAR void *context)
    * a good thing to do in any event.
    */
 
-  DEBUGASSERT(work_available(&priv->irqwork));
+  DEBUGASSERT(work_available(&dev->irqwork));
 
   /* Notice that further GPIO interrupts are disabled until the work is
    * actually performed.  This is to prevent overrun of the worker thread.
    * Interrupts are re-enabled in enc_irqworker() when the work is completed.
    */
 
-  priv->lower->enable(priv->lower, FALSE);
-  return work_queue(HPWORK, &priv->irqwork, mrf24j40_irqworker, (FAR void *)priv, 0);
+  dev->lower->enable(dev->lower, FALSE);
+  return work_queue(HPWORK, &dev->irqwork, mrf24j40_irqworker, (FAR void *)dev, 0);
 }
 
 /* device access routines */
@@ -828,6 +882,25 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
       case MAC854IOCGPANID:
         *((uint8_t*)(arg+0)) = dev->panid[0];
         *((uint8_t*)(arg+1)) = dev->panid[1];
+        ret = OK;
+        break;
+
+      case MAC854IOCSSADDR:
+        ret = mrf24j40_setsaddr(dev, (uint8_t*)arg);
+        break;
+
+      case MAC854IOCGSADDR:
+        *((uint8_t*)(arg+0)) = dev->saddr[0];
+        *((uint8_t*)(arg+1)) = dev->saddr[1];
+        ret = OK;
+        break;
+
+      case MAC854IOCSEADDR:
+        ret = mrf24j40_seteaddr(dev, (uint8_t*)arg);
+        break;
+
+      case MAC854IOCGEADDR:
+        memcpy((uint8_t*)arg, dev->eaddr, 8);
         ret = OK;
         break;
 
