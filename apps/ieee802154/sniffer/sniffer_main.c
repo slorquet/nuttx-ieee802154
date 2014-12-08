@@ -60,35 +60,51 @@ static struct ieee802154_packet_s packet;
 
 int scan(int fd)
 {
-  int chan;
+  int chan,scan;
   int ret = OK;
-  int energy;
+  uint8_t energy;
+  uint8_t levels[16];
+
+  memset(levels, 0, 16);
 
   printf("Scanning channels...\n");
-  for (chan=11; chan<26; chan++)
+  for(scan=0;scan<64;scan++)
     {
-      printf("%02X : "); fflush(stdout);
-      ret = ioctl(fd, MAC854IOCSCHAN, (unsigned long)chan);
-      if (ret<0)
+      for (chan=0; chan<16; chan++)
         {
-          printf("Device is not an IEEE 802.15.4 interface!\n");
-          break;
+          ret = ioctl(fd, MAC854IOCSCHAN, (unsigned long)(chan+11) );
+          if (ret<0)
+            {
+              printf("Device is not an IEEE 802.15.4 interface!\n");
+              return ret;
+            }
+          ret = ioctl(fd, MAC854IOCGED, (unsigned long)&energy);
+          if (ret<0)
+            {
+              printf("Device is not an IEEE 802.15.4 interface!\n");
+              return ret;
+            }
+          if(energy > levels[chan])
+            {
+              levels[chan] = energy;
+            }
         }
-      ret = ioctl(fd, MAC854IOCGED, (unsigned long)&energy);
-      if (ret<0)
-        {
-          printf("Device is not an IEEE 802.15.4 interface!\n");
-          break;
-        }
-      energy >>= 3;
-      while(energy-- > 0) printf("#");
-      printf("\n");
     }
+
+  for (chan=0;chan < 16; chan++)
+    {
+      energy = levels[chan] >> 3;
+      printf("%02X : ",chan);
+      while(energy-- > 0) printf("#");
+       printf("\n");
+    }
+
   return ret;
 }
 
 int display(FAR struct ieee802154_packet_s *pack)
 {
+  return 0;
 }
 
 int sniff(int fd, int chan)

@@ -68,7 +68,7 @@
 #endif
 
 #ifndef CONFIG_IEEE802154_MRF24J40_FREQUENCY
-#  define CONFIG_IEEE802154_MRF24J40_FREQUENCY 4000000
+#  define CONFIG_IEEE802154_MRF24J40_FREQUENCY 8000000
 #endif
 
 /* MRF24J40 Registers *******************************************************************/
@@ -833,12 +833,10 @@ int mrf24j40_register(FAR struct spi_dev_s *spi, FAR const struct mrf24j40_lower
 
   dev->spi     = spi;
 
-  mrf24j40_setpanid(dev, "\xff\xff");
-
-  //mrf24j40_initialize(dev);
+  mrf24j40_initialize(dev);
   /* Default device params */
-  //mrf24j40_setrxmode(dev, MRF24J40_RXMODE_NORMAL);
-  //mrf24j40_setchan  (dev, 11);
+  mrf24j40_setrxmode(dev, MRF24J40_RXMODE_NORMAL);
+  mrf24j40_setchan  (dev, 11);
 
   sem_init(&dev->sem, 0, 1);
   sprintf(devname, "/dev/mrf%d", minor);
