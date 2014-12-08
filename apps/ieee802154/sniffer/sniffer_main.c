@@ -94,7 +94,7 @@ int scan(int fd)
   for (chan=0;chan < 16; chan++)
     {
       energy = levels[chan] >> 3;
-      printf("%02X : ",chan);
+      printf("%2d : ",chan+11);
       while(energy-- > 0) printf("#");
        printf("\n");
     }
