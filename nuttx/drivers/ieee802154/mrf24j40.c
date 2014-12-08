@@ -180,6 +180,26 @@
 #define MRF24J40_UPNONCE11 0x8000024B
 #define MRF24J40_UPNONCE12 0x8000024C
 
+/* INTSTAT bits */
+#define MRF24J40_INTSTAT_SLPIF     0x80
+#define MRF24J40_INTSTAT_WAKEIF    0x40
+#define MRF24J40_INTSTAT_HSYMTMRIF 0x20
+#define MRF24J40_INTSTAT_SECIF     0x10
+#define MRF24J40_INTSTAT_RXIF      0x08
+#define MRF24J40_INTSTAT_TXG2IF    0x04
+#define MRF24J40_INTSTAT_TXG1IF    0x02
+#define MRF24J40_INTSTAT_TXNIF     0x01
+
+/* INTCON bits */
+#define MRF24J40_INTCON_SLPIE      0x80
+#define MRF24J40_INTCON_WAKEIE     0x40
+#define MRF24J40_INTCON_HSYMTMRIE  0x20
+#define MRF24J40_INTCON_SECIE      0x10
+#define MRF24J40_INTCON_RXIE       0x08
+#define MRF24J40_INTCON_TXG2IE     0x04
+#define MRF24J40_INTCON_TXG1IE     0x02
+#define MRF24J40_INTCON_TXNIE      0x01
+
 /* Definitions for the device structure */
 
 #define MRF24J40_RXMODE_NORMAL  0
@@ -236,6 +256,15 @@ static const struct file_operations mrf24j40_fops =
   , 0             /* poll */
 #endif
 };
+
+/* These are pointers to ALL registered MRF24J40 devices.
+ * This table is used during irqs to find the context
+ * Only one device is supported for now.
+ * More devices can be supported in the future by lookup them up
+ * using the IRQ number. See the ENC28J60 or CC3000 drivers for reference.
+ */
+
+FAR struct mrf24j40_dev_s *g_mrf24j40_devices[1];
 
 /****************************************************************************
  * Private Functions
@@ -543,6 +572,19 @@ static int mrf24j40_regdump(FAR struct mrf24j40_dev_s *dev)
 /* interrupt management routines */
 
 /****************************************************************************
+ * Name: mrf24j40_irqwork_rx
+ *
+ * Description:
+ *   Manage packet reception
+ *
+ ****************************************************************************/
+
+static void mrf24j40_irqwork_rx(FAT struct mrf24j40_dev_s *dev)
+{
+  lowsyslog(LOG_NOTICE, "rx!");
+}
+
+/****************************************************************************
  * Name: mrf24j40_irqworker
  *
  * Description:
@@ -562,6 +604,7 @@ static int mrf24j40_regdump(FAR struct mrf24j40_dev_s *dev)
 static void mrf24j40_irqworker(FAR void *arg)
 {
   FAR struct mrf24j40_dev_s *priv = (FAR struct mrf24j40_dev_s *)arg;
+  uint8_t intstat;
 
   DEBUGASSERT(priv);
   DEBUGASSERT(priv->spi);
@@ -571,7 +614,15 @@ static void mrf24j40_irqworker(FAR void *arg)
 
   /* Read and store INTSTAT - this clears the register. */
 
+  intstat = mrf24j40_getreg(dev->spi, MRF24J40_INTSTAT);
+
   /* Do work according to the pending interrupts */
+
+  if(! (intstat & MRF24J40_INTSTAT_RXIE) )
+    {
+      /* A packet was received, retrieve it */
+      mrf24j40_irqwork_rx(dev);
+    }
 
   /* Re-Enable GPIO interrupts */
 
@@ -601,7 +652,10 @@ static void mrf24j40_irqworker(FAR void *arg)
 
 static int mrf24j40_interrupt(int irq, FAR void *context)
 {
-  register FAR struct mrf24j40_dev_s *priv = (FAR struct mrf24j40_dev_s *)context;
+  /* To support multiple devices,
+   * retrieve the priv structure using the irq number */
+
+  register FAR struct mrf24j40_dev_s *priv = g_mrf24j40_devices[0];
 
   /* In complex environments, we cannot do SPI transfers from the interrupt
    * handler because semaphores are probably used to lock the SPI bus.  In
@@ -816,20 +870,29 @@ int mrf24j40_register(FAR struct spi_dev_s *spi, FAR const struct mrf24j40_lower
 {
   char devname[16];
   FAR struct mrf24j40_dev_s *dev;
+  int ret = -EAGAIN;
+
+  if (minor != 0)
+    {
+      ret = -EINVAL; /* only one device is supported, with minor 0 */
+      goto fail;
+    }
 
   dev = kmm_zalloc(sizeof(struct mrf24j40_dev_s));
 
   if (!dev)
     {
-      return -EAGAIN;
+      ret = -ENOMEM;
+      goto freefail;
     }
 
   /* attach irq */
   if (lower->attach(lower, mrf24j40_interrupt) != 0)
     {
-      free(dev);
-      return -EAGAIN;
+      goto freefail;
     }
+
+  g_mrf24j40_devices[minor] = dev;
 
   dev->spi     = spi;
 
@@ -843,8 +906,9 @@ int mrf24j40_register(FAR struct spi_dev_s *spi, FAR const struct mrf24j40_lower
 
   return register_driver(devname, &mrf24j40_fops, 0666, dev);
 
+freefail:
   free(dev);
-
-  return -EAGAIN;
+fail:
+  return ret;
 }
 

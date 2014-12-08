@@ -146,6 +146,8 @@ static void up_enable(FAR const struct mrf24j40_lower_s *lower, int state)
   FAR struct stm32_mrf24j40lower_s *priv = (FAR struct stm32_mrf24j40lower_s *)lower;
   DEBUGASSERT(priv->handler);
 
+  /* default interrupt in mrf is a falling edge, generate event and irq */
+
   if(state)
     {
       (void)stm32_gpiosetevent(GPIO_MRF24J40_INTR, false, true, true, priv->handler);
@@ -163,7 +165,6 @@ static void up_enable(FAR const struct mrf24j40_lower_s *lower, int state)
 /****************************************************************************
  * Name: up_ieeeinitialize
  ****************************************************************************/
-#define GPIO_MRF24J40  (GPIO_PORTA | GPIO_PIN9 | GPIO_OUTPUT_SET | GPIO_OUTPUT | GPIO_PULLUP | GPIO_SPEED_50MHz)
 
 int stm32_mrf24j40initialize(void)
 {
