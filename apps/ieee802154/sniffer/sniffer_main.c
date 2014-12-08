@@ -102,12 +102,85 @@ int scan(int fd)
   return ret;
 }
 
-int display(FAR struct ieee802154_packet_s *pack)
+/****************************************************************************
+ * Name : status
+ *
+ * Description :
+ *   Show device status
+ ****************************************************************************/
+
+static int status(int fd)
+{
+  int ret,i;
+  uint8_t panid[2], saddr[2], eaddr[8];
+  int promisc, chan;
+
+  /* Get information */
+
+  ret = ioctl(fd, MAC854IOCGPANID, (unsigned long)&panid);
+  if (ret)
+    {
+      printf("MAC854IOCGPANID failed\n");
+      return ret;
+    }
+  ret = ioctl(fd, MAC854IOCGCHAN, (unsigned long)&chan);
+  if (ret)
+    {
+      printf("MAC854IOCGCHAN failed\n");
+      return ret;
+    }
+
+  ret = ioctl(fd, MAC854IOCGSADDR, (unsigned long)&saddr);
+  if (ret)
+    {
+      printf("MAC854IOCGSADDR failed\n");
+      return ret;
+    }
+  ret = ioctl(fd, MAC854IOCGEADDR, (unsigned long)&eaddr);
+  if (ret)
+    {
+      printf("MAC854IOCGEADR failed\n");
+      return ret;
+    }
+  ret = ioctl(fd, MAC854IOCGPROMISC, (unsigned long)&promisc);
+  if (ret)
+    {
+      printf("MAC854IOCGPROMISC failed\n");
+      return ret;
+    }
+
+  /* Display */
+
+  printf("PANID %02X%02X CHAN %2d\nSADDR %02X%02X EADDR ", 
+          panid[0], panid[1], chan, saddr[0], saddr[1]);
+  for (i=0; i<8; i++)
+    {
+      printf("%02X", eaddr[i]);
+    }
+  printf("\nPromisc:%s\n", promisc?"Yes":"No");
+  return 0;
+}
+
+/****************************************************************************
+ * Name : display
+ *
+ * Description :
+ *   Display a single packet
+ ****************************************************************************/
+
+static int display(FAR struct ieee802154_packet_s *pack)
 {
   return 0;
 }
 
-int sniff(int fd, int chan)
+/****************************************************************************
+ * Name : sniff
+ *
+ * Description :
+ *   Listen for all packets with a valid CRC on a given channel.
+ ****************************************************************************/
+
+static int sniff(int fd, int chan)
 {
   int ret;
   ret = ioctl(fd, MAC854IOCSCHAN, chan);
@@ -138,6 +211,10 @@ int sniff(int fd, int chan)
 
 /****************************************************************************
  * Public Functions
+ ****************************************************************************/
+
+/****************************************************************************
+ * usage
  ****************************************************************************/
 
 int usage(void)
@@ -184,6 +261,10 @@ int snif8_main(int argc, char *argv[])
   else if (!strcmp(argv[2], "dump"))
     {
     ret = ioctl(fd, 1000, 0);
+    }
+  else if (!strcmp(argv[2], "stat"))
+    {
+    ret = status(fd);
     }
   else
     {
