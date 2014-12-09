@@ -88,7 +88,9 @@
 #define MAC854IOCSPROMISC  _MAC854IOC(0x000A) /* Set Promiscuous mode (int) */
 #define MAC854IOCGORDER    _MAC854IOC(0x000B) /* Get Beacon and Superframe orders (uint8_t*) */
 #define MAC854IOCSORDER    _MAC854IOC(0x000C) /* Set Beacon and Superframe orders (uint8_t*) */
-#define MAC854IOCGED       _MAC854IOC(0x000D) /* Run energy detection on current channel */
+#define MAC854IOCGTXP      _MAC854IOC(0x000D) /* Get Beacon and Superframe orders (uint8_t*) */
+#define MAC854IOCSTXP      _MAC854IOC(0x000E) /* Set Beacon and Superframe orders (uint8_t*) */
+#define MAC854IOCGED       _MAC854IOC(0x000F) /* Run energy detection on current channel (uint8_t*) */
 
 /****************************************************************************
  * Public Types

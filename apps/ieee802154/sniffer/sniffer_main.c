@@ -60,16 +60,28 @@ static struct ieee802154_packet_s packet;
 
 int scan(int fd)
 {
-  int chan,scan;
+  int chan,scan,oldchan;
   int ret = OK;
   uint8_t energy;
   uint8_t levels[16];
 
-  memset(levels, 0, 16);
 
-  printf("Scanning channels...\n");
-  for(scan=0;scan<64;scan++)
+  /* save original channel */
+
+  ret = ioctl(fd, MAC854IOCGCHAN, (unsigned long)&oldchan);
+  if (ret)
     {
+      printf("MAC854IOCGCHAN failed\n");
+      return ret;
+    }
+
+  /* do scan */
+  
+  printf("Scanning channels ");
+  memset(levels, 0, 16);
+  for(scan=0;scan<256;scan++)
+    {
+      printf("."); fflush(stdout);
       for (chan=0; chan<16; chan++)
         {
           ret = ioctl(fd, MAC854IOCSCHAN, (unsigned long)(chan+11) );
@@ -90,13 +102,22 @@ int scan(int fd)
             }
         }
     }
-
+  printf("\n");
   for (chan=0;chan < 16; chan++)
     {
+      printf("%2d : [%3d] ",chan+11, levels[chan]);
       energy = levels[chan] >> 3;
-      printf("%2d : ",chan+11);
       while(energy-- > 0) printf("#");
-       printf("\n");
+      printf("\n");
+    }
+
+  /* restore original channel */
+
+  ret = ioctl(fd, MAC854IOCSCHAN, (unsigned long)oldchan);
+  if (ret)
+    {
+      printf("MAC854IOCSCHAN failed\n");
+      return ret;
     }
 
   return ret;
@@ -148,13 +169,14 @@ static int status(int fd)
       printf("MAC854IOCGPROMISC failed\n");
       return ret;
     }
+#if 0
   ret = ioctl(fd, MAC854IOCGORDER, (unsigned long)&order);
   if (ret)
     {
       printf("MAC854IOCGORDER failed\n");
       return ret;
     }
-
+#endif
   /* Display */
 
   printf("PANID %02X%02X CHAN %2d\nSADDR %02X%02X EADDR ", 
@@ -163,8 +185,7 @@ static int status(int fd)
     {
       printf("%02X", eaddr[i]);
     }
-  printf("\nBO %2d SO %2d\n", (order>>4)&0xF, order&0xF);
-  printf("Promisc:%s\n", promisc?"Yes":"No");
+  printf("\nPromisc:%s\n", promisc?"Yes":"No");
   return 0;
 }
 
@@ -200,6 +221,7 @@ static int sniff(int fd, int chan)
     {
       printf("Device is not an IEEE 802.15.4 interface!\n");
     }
+  printf("Listening on channel %d\n",chan);
   while (1)
     {
       ret = read(fd, &packet, sizeof(struct ieee802154_packet_s));

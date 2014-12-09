@@ -135,6 +135,7 @@ static int up_attach(FAR const struct mrf24j40_lower_s *lower, xcpt_t handler)
 {
   FAR struct stm32_mrf24j40lower_s *priv = (FAR struct stm32_mrf24j40lower_s *)lower;
 
+  lowsyslog(LOG_NOTICE, "lower: attach %p\n",handler);
   /* Just save the handler for use when the interrupt is enabled */
 
   priv->handler = handler;
@@ -150,10 +151,12 @@ static void up_enable(FAR const struct mrf24j40_lower_s *lower, int state)
 
   if(state)
     {
+      lowsyslog(LOG_NOTICE, "lower: enable irq\n");
       (void)stm32_gpiosetevent(GPIO_MRF24J40_INTR, false, true, true, priv->handler);
     }
   else
     {
+      lowsyslog(LOG_NOTICE, "lower: disable irq\n");
       (void)stm32_gpiosetevent(GPIO_MRF24J40_INTR, false, true, true, NULL);
     }
 }

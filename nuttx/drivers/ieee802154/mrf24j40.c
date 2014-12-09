@@ -231,6 +231,7 @@ struct mrf24j40_dev_s
   uint8_t                           saddr[2]; /* short address, FFFF = not set */
   uint8_t                           channel;  /* 11 to 26 for the 2.4 GHz band */
   uint8_t                           rxmode;   /* Reception mode: Main, no CRC, promiscuous */
+  int                               txpower;  /* TX power in dbm TODO: change to mBm (millibel = 1/10 dBm) */
 };
 
 /****************************************************************************
@@ -247,6 +248,7 @@ static int     mrf24j40_setsaddr(FAR struct mrf24j40_dev_s *dev, FAR uint8_t *pa
 static int     mrf24j40_seteaddr(FAR struct mrf24j40_dev_s *dev, FAR uint8_t *panid);
 static int     mrf24j40_setrxmode(FAR struct mrf24j40_dev_s *dev, int mode);
 static int     mrf24j40_energydetect(FAR struct mrf24j40_dev_s *dev);
+static int     mrf24j40_settxpower(FAR struct mrf24j40_dev_s *dev, int dbm);
 static int     mrf24j40_regdump(FAR struct mrf24j40_dev_s *dev);
 static void    mrf24j40_irqwork_rx(FAR struct mrf24j40_dev_s *dev);
 static void    mrf24j40_irqworker(FAR void *arg);
@@ -397,12 +399,10 @@ static uint8_t mrf24j40_getreg(FAR struct spi_dev_s *spi, uint32_t addr)
 
 static int mrf24j40_initialize(FAR struct mrf24j40_dev_s *dev)
 {
-  /*  1. SOFTRST  (0x2A) = 0x07 – Perform a software Reset. The bits will be automatically cleared to ‘0’ by hardware.*/
   /*  2. PACON2   (0x18) = 0x98 – Initialize FIFOEN = 1 and TXONTS = 0x6.*/
   /*  3. TXSTBL   (0x2E) = 0x95 – Initialize RFSTBL = 0x9.*/
   /*  4. RFCON0  (0x200) = 0x03 – Initialize RFOPT = 0x03.*/
   /*  5. RFCON1  (0x201) = 0x01 – Initialize VCOOPT = 0x02.*/
-  /*  6. RFCON2  (0x202) = 0x80 – Enable PLL (PLLEN = 1).*/
   /*  7. RFCON6  (0x206) = 0x90 – Initialize TXFIL = 1 and 20MRECVR = 1.*/
   /*  8. RFCON7  (0x207) = 0x80 – Initialize SLPCLKSEL = 0x2 (100 kHz Internal oscillator).*/
   /*  9. RFCON8  (0x208) = 0x10 – Initialize RFVCO = 1.*/
@@ -411,36 +411,29 @@ static int mrf24j40_initialize(FAR struct mrf24j40_dev_s *dev)
   /* 12. CCAEDTH         = 0x60 – Set CCA ED threshold.*/
   /* 13. BBREG6   (0x3E) = 0x40 – Set appended RSSI value to RXFIFO.*/
 
-  mrf24j40_setreg(dev->spi, MRF24J40_SOFTRST, 0x07);
+  /* Software reset */
 
-  /* wait end of reset */
-
+  mrf24j40_setreg(dev->spi, MRF24J40_SOFTRST  , 0x07); /* 00000111 Reset */
   while(mrf24j40_getreg(dev->spi, MRF24J40_SOFTRST) & 0x07);
 
-  mrf24j40_setreg(dev->spi, MRF24J40_PACON2 , 0x98);
+  mrf24j40_setreg(dev->spi, MRF24J40_PACON2   , 0x98); /* 10011000 Enable FIFO (default), TXONTS=6 (recommended), TXONT<8:7>=0 (default) */
 
   /* Timing */
 
-  mrf24j40_setreg(dev->spi, MRF24J40_TXSTBL , 0x95); /* set the SIFS period. RFSTBL=9, MSIFS=5, aMinSIFSPeriod=14 (min 12) */
-  mrf24j40_setreg(dev->spi, MRF24J40_TXPEND , 0xF8); /* set the LIFS period, MLIFS=1Fh=31 aMinLIFSPeriod=40 (min 40) */
-  mrf24j40_setreg(dev->spi, MRF24J40_TXTIME , 0x30); /* set the turnaround time, TURNTIME=3 aTurnAroundTime=12 */
+  mrf24j40_setreg(dev->spi, MRF24J40_TXSTBL   , 0x95); /* 10010101 set the SIFS period. RFSTBL=9, MSIFS=5, aMinSIFSPeriod=14 (min 12) */
+  mrf24j40_setreg(dev->spi, MRF24J40_TXPEND   , 0x7C); /* 01111100 set the LIFS period, MLIFS=1Fh=31 aMinLIFSPeriod=40 (min 40) */
+  mrf24j40_setreg(dev->spi, MRF24J40_TXTIME   , 0x30); /* 00110000 set the turnaround time, TURNTIME=3 aTurnAroundTime=12 */
   
-  mrf24j40_setreg(dev->spi, MRF24J40_RFCON0 , 0x03);
-  mrf24j40_setreg(dev->spi, MRF24J40_RFCON1 , 0x01);
-  mrf24j40_setreg(dev->spi, MRF24J40_RFCON2 , 0x80);
-  mrf24j40_setreg(dev->spi, MRF24J40_RFCON6 , 0x90);
-  mrf24j40_setreg(dev->spi, MRF24J40_RFCON7 , 0x80); /* */
-  mrf24j40_setreg(dev->spi, MRF24J40_RFCON8 , 0x10);
-  mrf24j40_setreg(dev->spi, MRF24J40_SLPCON1, 0x21); /* Sleep Clk enable, */
-  mrf24j40_setreg(dev->spi, MRF24J40_BBREG2 , 0x80);
-  mrf24j40_setreg(dev->spi, MRF24J40_CCAEDTH, 0x60);
-  mrf24j40_setreg(dev->spi, MRF24J40_BBREG6 , 0x40);
-
-  /* Calibrate sleep clock */
-
-  /*14. Enable interrupts*/
-
-  /*16. Set transmitter power - See “REGISTER 2-62: RF CONTROL 3 REGISTER (ADDRESS: 0x203)”.*/
+  mrf24j40_setreg(dev->spi, MRF24J40_RFCON0   , 0x03); /* 00000011 Default channel 0, recommended RF options */
+  mrf24j40_setreg(dev->spi, MRF24J40_RFCON1   , 0x02); /* 00000010 VCO optimization, recommended value */
+  mrf24j40_setreg(dev->spi, MRF24J40_RFCON2   , 0x80); /* 10000000 Enable PLL */
+  mrf24j40_setreg(dev->spi, MRF24J40_RFCON6   , 0x90); /* 10010000 TX filter enable, fast 20M recovery, No bat monitor*/
+  mrf24j40_setreg(dev->spi, MRF24J40_RFCON7   , 0x80); /* 10000000 Sleep clock on internal 100 kHz */
+  mrf24j40_setreg(dev->spi, MRF24J40_RFCON8   , 0x10); /* 00010000 VCO control bit, as recommended */
+  mrf24j40_setreg(dev->spi, MRF24J40_SLPCON1  , 0x01); /* 00000001 no CLKOUT, default divisor */
+  mrf24j40_setreg(dev->spi, MRF24J40_BBREG2   , 0x8E); /* 10001110 CCA mode ED, no carrier sense, recommenced CS threshold */
+  mrf24j40_setreg(dev->spi, MRF24J40_CCAEDTH  , 0x60); /* 01100000 CCA ED threshold, recommended, -69dBm */
+  mrf24j40_setreg(dev->spi, MRF24J40_BBREG6   , 0x40); /* 01000000 Append RSSI to rx packets */
 
   return OK;
 }
@@ -463,6 +456,7 @@ static int mrf24j40_setchan(FAR struct mrf24j40_dev_s *dev, int chan)
 {
   if(chan<11 || chan>26)
     {
+      lowsyslog(LOG_ERR, "Invalid chan: %d\n",chan);
       return -EINVAL;
     }
 
@@ -625,6 +619,63 @@ static int mrf24j40_energydetect(FAR struct mrf24j40_dev_s *dev)
   return reg;
 }
 
+/****************************************************************************
+ * Name: mrf24j40_settxpower
+ *
+ * Description:
+ *   Define the transmit power. Value is passed in dBm, it is rounded to
+ *   the nearest value. Some MRF modules have a power amplifier, this routine
+ *   does not care about this. We only change the CHIP output power.
+ *
+ ****************************************************************************/
+
+static int mrf24j40_settxpower(FAR struct mrf24j40_dev_s *dev, int dbm)
+{
+  /* for the moment, do not go into details. Only manage the coarse power. */
+  uint8_t reg;
+  int save_dbm = dbm;
+  if(dbm <= -30 && dbm > -40)
+    {
+      reg = 0xC0;
+      dbm += 30;
+    }
+  else if(dbm <= -20)
+    {
+      reg = 0x80;
+      dbm += 20;
+    }
+  else if(dbm <= -10)
+    {
+      reg = 0x40;
+      dbm += 10;
+    }
+  else if(dbm <= 0)
+    {
+      reg = 0x00;
+    }
+  else
+    {
+      return -EINVAL;
+    }
+
+  switch(dbm)
+    {
+      case -9:
+      case -8:
+      case -7:
+      case -6: reg |= 0x07; break;
+      case -5: reg |= 0x06; break;
+      case -4: reg |= 0x05; break;
+      case -3: reg |= 0x04; break;
+      case -2: reg |= 0x03; break;
+      case -1: reg |= 0x02; break;
+      case  0: reg |= 0x00; break; /* value 0x01 is 0.5 db, not used */
+      default: return -EINVAL;
+    }
+  mrf24j40_setreg(dev->spi, MRF24J40_RFCON3, reg);
+  dev->txpower = save_dbm;
+  return OK;
+}
 
 /****************************************************************************
  * Name: mrf24j40_regdump
@@ -942,8 +993,16 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
         break;
 
       case MAC854IOCGED:
-        *((int*)arg) = mrf24j40_energydetect(dev);
+        *((uint8_t*)arg) = mrf24j40_energydetect(dev);
         ret = OK;
+        break;
+
+      case MAC854IOCSTXP:
+        ret = mrf24j40_settxpower(dev, (int)arg);
+        break;
+
+      case MAC854IOCGTXP:
+        *((int*)arg) = dev->txpower;
         break;
 
       case 1000: /* register dump */
@@ -995,12 +1054,21 @@ int mrf24j40_register(FAR struct spi_dev_s *spi, FAR const struct mrf24j40_lower
 
   g_mrf24j40_devices[minor] = dev;
 
-  dev->spi     = spi;
+  dev->lower   = lower;
 
+  dev->spi     = spi;
   mrf24j40_initialize(dev);
   /* Default device params */
-  mrf24j40_setrxmode(dev, MRF24J40_RXMODE_NORMAL);
+  mrf24j40_setrxmode(dev, MRF24J40_RXMODE_NOCRC);
   mrf24j40_setchan  (dev, 11);
+
+  /*14. Enable interrupts (only rx for now)*/
+  mrf24j40_setreg(dev->spi, MRF24J40_INTCON, ~(MRF24J40_INTCON_RXIE) );
+  lower->enable(lower, TRUE);
+
+  /*16. Set transmitter power - See “REGISTER 2-62: RF CONTROL 3 REGISTER (ADDRESS: 0x203)”.*/
+
+  mrf24j40_settxpower(dev, 0);
 
   sem_init(&dev->sem, 0, 1);
   sprintf(devname, "/dev/mrf%d", minor);
