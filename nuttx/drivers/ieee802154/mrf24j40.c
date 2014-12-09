@@ -192,7 +192,11 @@
 #define MRF24J40_INTSTAT_TXNIF     0x01
 
 /* RXMCR bits */
-#define MRF24J40_RXMCR_NOACKRSP    0x20
+#define MRF24J40_RXMCR_PROMI       0x01 /* Enable promisc mode (rx all valid packets) */ 
+#define MRF24J40_RXMCR_ERRPKT      0x02 /* Do not check CRC */ 
+#define MRF24J40_RXMCR_COORD       0x04 /* Enable coordinator mode     ??? DIFFERENCE ??? */ 
+#define MRF24J40_RXMCR_PANCOORD    0x08 /* Enable PAN coordinator mode ??? DIFFERENCE ??? */ 
+#define MRF24J40_RXMCR_NOACKRSP    0x20 /* Enable auto ACK when a packet is rxed */
 
 /* INTCON bits */
 #define MRF24J40_INTCON_SLPIE      0x80
@@ -203,6 +207,16 @@
 #define MRF24J40_INTCON_TXG2IE     0x04
 #define MRF24J40_INTCON_TXG1IE     0x02
 #define MRF24J40_INTCON_TXNIE      0x01
+
+/* BBREG1 bits */
+#define MRF24J40_BBREG1_RXDECINV   0x04 /* Enable/Disable packet reception */
+
+/* TXNCON bits */
+#define MRF24J40_TXNCON_TXNTRIG    0x01 /* Trigger packet tx, automatically cleared */
+#define MRF24J40_TXNCON_TXNSECEN   0x02 /* Enable security */
+#define MRF24J40_TXNCON_TXNACKREQ  0x04 /* An ACK is requested for this pkt */
+#define MRF24J40_TXNCON_INDIRECT   0x08 /* Activate indirect tx bit (for coordinators) */
+#define MRF24J40_TXNCON_FPSTAT     0x10 /* Status of the frame pending big in txed acks */
 
 /* Definitions for the device structure */
 
@@ -222,6 +236,7 @@ struct mrf24j40_dev_s
   FAR struct spi_dev_s              *spi;     /* Saved SPI interface instance */
   FAR const struct mrf24j40_lower_s *lower;   /* Low-level MCU-specific support */
   sem_t                             sem;      /* Access serialization semaphore */
+  sem_t                             rxsem;    /* Reader semaphore to wait on packet reception */
   int                               opened;   /* this device can only be opened once */
 
   /* real interesting data. actually stored in the device, but copied here when set. */
@@ -399,32 +414,18 @@ static uint8_t mrf24j40_getreg(FAR struct spi_dev_s *spi, uint32_t addr)
 
 static int mrf24j40_initialize(FAR struct mrf24j40_dev_s *dev)
 {
-  /*  2. PACON2   (0x18) = 0x98 – Initialize FIFOEN = 1 and TXONTS = 0x6.*/
-  /*  3. TXSTBL   (0x2E) = 0x95 – Initialize RFSTBL = 0x9.*/
-  /*  4. RFCON0  (0x200) = 0x03 – Initialize RFOPT = 0x03.*/
-  /*  5. RFCON1  (0x201) = 0x01 – Initialize VCOOPT = 0x02.*/
-  /*  7. RFCON6  (0x206) = 0x90 – Initialize TXFIL = 1 and 20MRECVR = 1.*/
-  /*  8. RFCON7  (0x207) = 0x80 – Initialize SLPCLKSEL = 0x2 (100 kHz Internal oscillator).*/
-  /*  9. RFCON8  (0x208) = 0x10 – Initialize RFVCO = 1.*/
-  /* 10. SLPCON1 (0x220) = 0x21 – Initialize CLKOUTEN = 1 and SLPCLKDIV = 0x01.*/
-  /* 11. BBREG2   (0x3A) = 0x80 – Set CCA mode to ED.*/
-  /* 12. CCAEDTH         = 0x60 – Set CCA ED threshold.*/
-  /* 13. BBREG6   (0x3E) = 0x40 – Set appended RSSI value to RXFIFO.*/
-
   /* Software reset */
 
   mrf24j40_setreg(dev->spi, MRF24J40_SOFTRST  , 0x07); /* 00000111 Reset */
   while(mrf24j40_getreg(dev->spi, MRF24J40_SOFTRST) & 0x07);
 
+  /* Apply recommended settings */
+
   mrf24j40_setreg(dev->spi, MRF24J40_PACON2   , 0x98); /* 10011000 Enable FIFO (default), TXONTS=6 (recommended), TXONT<8:7>=0 (default) */
-
-  /* Timing */
-
   mrf24j40_setreg(dev->spi, MRF24J40_TXSTBL   , 0x95); /* 10010101 set the SIFS period. RFSTBL=9, MSIFS=5, aMinSIFSPeriod=14 (min 12) */
   mrf24j40_setreg(dev->spi, MRF24J40_TXPEND   , 0x7C); /* 01111100 set the LIFS period, MLIFS=1Fh=31 aMinLIFSPeriod=40 (min 40) */
   mrf24j40_setreg(dev->spi, MRF24J40_TXTIME   , 0x30); /* 00110000 set the turnaround time, TURNTIME=3 aTurnAroundTime=12 */
-  
-  mrf24j40_setreg(dev->spi, MRF24J40_RFCON0   , 0x03); /* 00000011 Default channel 0, recommended RF options */
+  mrf24j40_setreg(dev->spi, MRF24J40_RFCON0   , 0x03); /* 00000011 Default channel 11, recommended RF options */
   mrf24j40_setreg(dev->spi, MRF24J40_RFCON1   , 0x02); /* 00000010 VCO optimization, recommended value */
   mrf24j40_setreg(dev->spi, MRF24J40_RFCON2   , 0x80); /* 10000000 Enable PLL */
   mrf24j40_setreg(dev->spi, MRF24J40_RFCON6   , 0x90); /* 10010000 TX filter enable, fast 20M recovery, No bat monitor*/
@@ -718,10 +719,36 @@ static int mrf24j40_regdump(FAR struct mrf24j40_dev_s *dev)
  *   Manage packet reception
  *
  ****************************************************************************/
+static struct ieee802154_packet_s rxpk;
 
 static void mrf24j40_irqwork_rx(FAR struct mrf24j40_dev_s *dev)
 {
+  uint32_t addr;
+  uint32_t index;
+
   lowsyslog(LOG_NOTICE, "rx!");
+
+  /* disable packet reception */
+  mrf24j40_setreg(dev->spi, MRF24J40_BBREG1, MRF24J40_BBREG1_RXDECINV);
+
+  /* read packet */
+  addr = 0x8000300;
+  rxpk.len = mrf24j40_getreg(dev->spi, addr++);
+  lowsyslog(LOG_NOTICE, "len %3d\n", rxpk.len);
+
+  for(index = 0; index < rxpk.len; index++)
+    {
+      rxpk.data[index] = mrf24j40_getreg(dev->spi, addr++);
+    }
+
+  rxpk.lqi  = mrf24j40_getreg(dev->spi, addr++);
+  rxpk.rssi = mrf24j40_getreg(dev->spi, addr++);
+
+  sem_post(&dev->rxsem);
+
+  /* enable packet reception */
+  mrf24j40_setreg(dev->spi, MRF24J40_BBREG1, 0);
+
 }
 
 /****************************************************************************
@@ -752,10 +779,11 @@ static void mrf24j40_irqworker(FAR void *arg)
   /* Read and store INTSTAT - this clears the register. */
 
   intstat = mrf24j40_getreg(dev->spi, MRF24J40_INTSTAT);
+  lowsyslog(LOG_NOTICE, "INT%02X\n", intstat);
 
   /* Do work according to the pending interrupts */
 
-  if(! (intstat & MRF24J40_INTSTAT_RXIF) )
+  if( (intstat & MRF24J40_INTSTAT_RXIF) )
     {
       /* A packet was received, retrieve it */
       mrf24j40_irqwork_rx(dev);
@@ -865,8 +893,15 @@ static int mrf24j40_open(FAR struct file *filep)
     }
   else
     {
+
+      /* Enable interrupts (only rx for now)*/
+
+      mrf24j40_setreg(dev->spi, MRF24J40_INTCON, ~(MRF24J40_INTCON_RXIE) );
+      dev->lower->enable(dev->lower, TRUE);
+
       dev->opened = TRUE;
     }
+
   mrf24j40_semgive(dev);
   return OK;
 }
@@ -893,7 +928,12 @@ static int mrf24j40_close(FAR struct file *filep)
     }
   else
     {
-    dev->opened = FALSE;
+      /* Disable interrupts */
+
+      mrf24j40_setreg(dev->spi, MRF24J40_INTCON, 0xFF );
+      dev->lower->enable(dev->lower, FALSE);
+
+      dev->opened = FALSE;
     }
 
   mrf24j40_semgive(dev);
@@ -911,7 +951,34 @@ static int mrf24j40_close(FAR struct file *filep)
 
 static ssize_t mrf24j40_read(FAR struct file *filep, FAR char *buffer, size_t len)
 {
-  return -EACCES;
+  FAR struct inode *inode = filep->f_inode;
+  FAR struct mrf24j40_dev_s *dev = inode->i_private;
+  int ret = OK;
+  mrf24j40_semtake(dev);
+
+  if (len<sizeof(struct ieee802154_packet_s))
+    {
+      ret = -EINVAL;
+      goto done;
+    }
+
+  /* block task until a packet is received */
+
+  ret = sem_trywait(&dev->rxsem);
+  if (ret < 0)
+    {
+      ret = -errno;
+      goto done;
+    }
+
+  /* return packet */
+
+  ret = sizeof(struct ieee802154_packet_s);
+  memcpy(buffer, &rxpk, ret);
+
+done:
+  mrf24j40_semgive(dev);
+  return ret;
 }
 
 /****************************************************************************
@@ -924,7 +991,68 @@ static ssize_t mrf24j40_read(FAR struct file *filep, FAR char *buffer, size_t le
 
 static ssize_t mrf24j40_write(FAR struct file *filep, FAR const char *buffer, size_t len)
 {
-  return -EACCES;
+  FAR struct inode                     *inode = filep->f_inode;
+  FAR struct mrf24j40_dev_s            *dev   = inode->i_private;
+  FAR const struct ieee802154_packet_s *packet;
+  uint8_t  reg;
+  uint32_t addr;
+  int      ret = OK;
+
+  mrf24j40_semtake(dev);
+
+  /* sanity checks */
+
+  if (len<sizeof(struct ieee802154_packet_s))
+    {
+      ret = -EINVAL;
+      goto done;
+    }
+
+  packet = (FAR const struct ieee802154_packet_s*) buffer;
+  if (packet->len > 126)
+    {
+      ret = -EPERM;
+      goto done;
+    }
+
+  /* Copy packet to normal TX buffer
+   * Beacons and GTS transmission is handled via IOCTLs
+   */
+
+  addr = 0x80000000;
+
+  /* header len, 0, TODO for security modes */
+
+  mrf24j40_setreg(dev->spi, addr++, 0);
+
+  /* frame length */
+
+  mrf24j40_setreg(dev->spi, addr++, packet->len);
+
+  /* frame data */
+
+  for (ret=0;ret<len;ret++) /* this sets the correct val for ret */
+    {
+      mrf24j40_setreg(dev->spi, addr++, packet->data[ret]);
+    }
+
+  /* TODO: if the frame control field contains 
+   * an acknowledgment request, set the TXNACKREQ bit.
+   * See IEEE 802.15.4/2003 7.2.1.1 page 112 for info.
+   */
+
+  reg = MRF24J40_TXNCON_TXNTRIG;
+  if (packet->data[0] & IEEE802154_FC1_ACKREQ)
+    {
+      reg |= MRF24J40_TXNCON_TXNACKREQ;
+    }
+
+  /* trigger packet emission */
+  mrf24j40_setreg(dev->spi, MRF24J40_TXNCON, reg);
+
+done:
+  mrf24j40_semgive(dev);
+  return ret;
 }
 
 /****************************************************************************
@@ -1059,18 +1187,20 @@ int mrf24j40_register(FAR struct spi_dev_s *spi, FAR const struct mrf24j40_lower
   dev->spi     = spi;
   mrf24j40_initialize(dev);
   /* Default device params */
-  mrf24j40_setrxmode(dev, MRF24J40_RXMODE_NOCRC);
+  mrf24j40_setrxmode(dev, 3);
   mrf24j40_setchan  (dev, 11);
 
-  /*14. Enable interrupts (only rx for now)*/
-  mrf24j40_setreg(dev->spi, MRF24J40_INTCON, ~(MRF24J40_INTCON_RXIE) );
-  lower->enable(lower, TRUE);
+  mrf24j40_setpanid(dev, (uint8_t*)"\xff\xff");
+  mrf24j40_setsaddr(dev, (uint8_t*)"\xff\xff");
+  mrf24j40_seteaddr(dev, (uint8_t*)"\xff\xff\xff\xff\xff\xff\xff\xff");
 
   /*16. Set transmitter power - See “REGISTER 2-62: RF CONTROL 3 REGISTER (ADDRESS: 0x203)”.*/
 
   mrf24j40_settxpower(dev, 0);
 
   sem_init(&dev->sem, 0, 1);
+  sem_init(&dev->rxsem, 0, 0);
+
   sprintf(devname, "/dev/mrf%d", minor);
 
   return register_driver(devname, &mrf24j40_fops, 0666, dev);

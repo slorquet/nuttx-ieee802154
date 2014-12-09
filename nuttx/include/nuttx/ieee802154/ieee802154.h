@@ -92,6 +92,33 @@
 #define MAC854IOCSTXP      _MAC854IOC(0x000E) /* Set Beacon and Superframe orders (uint8_t*) */
 #define MAC854IOCGED       _MAC854IOC(0x000F) /* Run energy detection on current channel (uint8_t*) */
 
+/* IEEE 802.15.4 definitions */
+
+/* Frame control field masks, 2 bytes 
+ * Seee IEEE 802.15.4/2003 7.2.1.1 page 112
+ */
+
+#define IEEE802154_FC1_FTYPE  0xE0 /* Frame type, bits 0-2 */
+#define IEEE802154_FC1_SEC    0x10 /* Security Enabled, bit 3 */
+#define IEEE802154_FC1_PEND   0x08 /* Frame pending, bit 4 */
+#define IEEE802154_FC1_ACKREQ 0x04 /* Acknowledge request, bit 5 */
+#define IEEE802154_FC1_INTRA  0x02 /* Intra PAN, bit 6 */
+#define IEEE802154_FC2_DADR   0x30 /* Dest   addressing mode, bits 10-11 */
+#define IEEE802154_FC2_SADR   0x03 /* Source addressing mode, bits 14-15 */
+
+/* Frame types */
+
+#define IEEE802154_FRAME_BEACON  0x00
+#define IEEE802154_FRAME_DATA    0x01
+#define IEEE802154_FRAME_ACK     0x02
+#define IEEE802154_FRAME_COMMAND 0x03
+
+/* Addressing modes */
+
+#define IEEE802154_ADDR_NONE     0x00
+#define IEEE802154_ADDR_SHORT    0x02
+#define IEEE802154_ADDR_EXT      0x03
+
 /****************************************************************************
  * Public Types
  ****************************************************************************/

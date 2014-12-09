@@ -58,13 +58,22 @@
 
 static struct ieee802154_packet_s packet;
 
+int setchan(int fd, int chan)
+{
+  int ret = ioctl(fd, MAC854IOCSCHAN, (unsigned long)chan );
+  if (ret<0)
+    {
+      printf("MAC854IOCSCHAN failed\n");
+    }
+  return ret;
+}
+
 int scan(int fd)
 {
   int chan,scan,oldchan;
   int ret = OK;
   uint8_t energy;
   uint8_t levels[16];
-
 
   /* save original channel */
 
@@ -84,12 +93,13 @@ int scan(int fd)
       printf("."); fflush(stdout);
       for (chan=0; chan<16; chan++)
         {
-          ret = ioctl(fd, MAC854IOCSCHAN, (unsigned long)(chan+11) );
+          ret = setchan(fd, chan+11);
           if (ret<0)
             {
               printf("Device is not an IEEE 802.15.4 interface!\n");
               return ret;
             }
+
           ret = ioctl(fd, MAC854IOCGED, (unsigned long)&energy);
           if (ret<0)
             {
@@ -113,12 +123,7 @@ int scan(int fd)
 
   /* restore original channel */
 
-  ret = ioctl(fd, MAC854IOCSCHAN, (unsigned long)oldchan);
-  if (ret)
-    {
-      printf("MAC854IOCSCHAN failed\n");
-      return ret;
-    }
+  ret = setchan(fd, oldchan);
 
   return ret;
 }
@@ -179,8 +184,8 @@ static int status(int fd)
 #endif
   /* Display */
 
-  printf("PANID %02X%02X CHAN %2d\nSADDR %02X%02X EADDR ", 
-          panid[0], panid[1], chan, saddr[0], saddr[1]);
+  printf("PANID %02X%02X CHAN %2d (%d MHz)\nSADDR %02X%02X EADDR ", 
+          panid[0], panid[1], chan, 2350+(5*chan), saddr[0], saddr[1]);
   for (i=0; i<8; i++)
     {
       printf("%02X", eaddr[i]);
@@ -198,6 +203,7 @@ static int status(int fd)
 
 static int display(FAR struct ieee802154_packet_s *pack)
 {
+  printf("Packet len=%d\n", pack->len);
   return 0;
 }
 
@@ -215,21 +221,33 @@ static int sniff(int fd, int chan)
   if (ret<0)
     {
       printf("Device is not an IEEE 802.15.4 interface!\n");
+      return ret;
     }
+#if 0
   ret = ioctl(fd, MAC854IOCSPROMISC, TRUE);
   if (ret<0)
     {
       printf("Device is not an IEEE 802.15.4 interface!\n");
+      return ret;
     }
+#endif
   printf("Listening on channel %d\n",chan);
   while (1)
     {
       ret = read(fd, &packet, sizeof(struct ieee802154_packet_s));
-      if(ret != 0)
+      if(ret < 0)
         {
-          printf("read: errno=%d\n",errno);
-          break;
-        }
+          if (errno == EAGAIN)
+            {
+            usleep(1000);
+            continue;
+            }
+          else
+            {
+              printf("read: errno=%d\n",errno);
+              break;
+            }
+        } 
 
       /* Display packet */
       display(&packet);
@@ -248,7 +266,10 @@ static int sniff(int fd, int chan)
 
 int usage(void)
 {
-  printf("snif8 <device> scan|<chan>\n"
+  printf("snif8 <device> scan\n"
+         "               dump\n"
+         "               stat\n"
+         "               chan <ch>\n"
          );
   return ERROR;
 }
@@ -294,6 +315,14 @@ int snif8_main(int argc, char *argv[])
   else if (!strcmp(argv[2], "stat"))
     {
     ret = status(fd);
+    }
+  else if (!strcmp(argv[2], "chan"))
+    {
+      if(argc != 4)
+        {
+        ret = usage();
+        }
+      ret = setchan(fd, atoi(argv[3]));
     }
   else
     {
