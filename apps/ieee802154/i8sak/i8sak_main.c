@@ -1,6 +1,6 @@
 /****************************************************************************
- * examples/ieeedump/sniffer_main.c
- * IEEE 802.15.4 Packet Sniffer/Dumper
+ * ieee802154/i8/i8_main.c
+ * IEEE 802.15.4 Swiss Army Knife
  *
  *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
  *   Author: Sebastien Lorquet <sebastien@lorquet.fr>
@@ -281,7 +281,7 @@ int usage(void)
 #ifdef CONFIG_BUILD_KERNEL
 int main(int argc, FAR char *argv[])
 #else
-int snif8_main(int argc, char *argv[])
+int i8_main(int argc, char *argv[])
 #endif
 {
   int fd;

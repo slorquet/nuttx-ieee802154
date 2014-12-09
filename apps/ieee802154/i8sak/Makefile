@@ -1,8 +1,8 @@
 ############################################################################
-# apps/ieee802154/sniffer/Makefile
+# apps/ieee802154/i8/Makefile
 #
 #   Copyright (C) 2008, 2010-2013 Gregory Nutt. All rights reserved.
-#   Author: Gregory Nutt <gnutt@nuttx.org>
+#   Author: Sebastien Lorquet <sebastien@lorquet.fr>
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -37,17 +37,17 @@
 -include $(TOPDIR)/Make.defs
 include $(APPDIR)/Make.defs
 
-# IEEE 802.15.4 packet sniffer/dumper built-in application info
+# IEEE 802.15.4  SAK (swiss army knife )
 
-APPNAME = snif8
+APPNAME = i8
 PRIORITY = SCHED_PRIORITY_DEFAULT
 STACKSIZE = 2048
 
-# IEEE 802.15.4 packet sniffer/dumper Example
+# IEEE 802.15.4 SAK (Swiss Army Knife)
 
 ASRCS =
 CSRCS =
-MAINSRC = sniffer_main.c
+MAINSRC = i8sak_main.c
 
 AOBJS = $(ASRCS:.S=$(OBJEXT))
 COBJS = $(CSRCS:.c=$(OBJEXT))
