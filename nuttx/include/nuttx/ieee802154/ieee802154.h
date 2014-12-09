@@ -86,8 +86,9 @@
 #define MAC854IOCSEADDR    _MAC854IOC(0x0008) /* Set Ext address (uint8_t[8]) */
 #define MAC854IOCGPROMISC  _MAC854IOC(0x0009) /* Get Promiscuous mode (int*) */
 #define MAC854IOCSPROMISC  _MAC854IOC(0x000A) /* Set Promiscuous mode (int) */
-
-#define MAC854IOCGED       _MAC854IOC(0x000B) /* Run energy detection on current channel */
+#define MAC854IOCGORDER    _MAC854IOC(0x000B) /* Get Beacon and Superframe orders (uint8_t*) */
+#define MAC854IOCSORDER    _MAC854IOC(0x000C) /* Set Beacon and Superframe orders (uint8_t*) */
+#define MAC854IOCGED       _MAC854IOC(0x000D) /* Run energy detection on current channel */
 
 /****************************************************************************
  * Public Types

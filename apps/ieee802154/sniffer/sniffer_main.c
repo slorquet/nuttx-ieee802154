@@ -112,7 +112,7 @@ int scan(int fd)
 static int status(int fd)
 {
   int ret,i;
-  uint8_t panid[2], saddr[2], eaddr[8];
+  uint8_t panid[2], saddr[2], eaddr[8], order;
   int promisc, chan;
 
   /* Get information */
@@ -148,6 +148,12 @@ static int status(int fd)
       printf("MAC854IOCGPROMISC failed\n");
       return ret;
     }
+  ret = ioctl(fd, MAC854IOCGORDER, (unsigned long)&order);
+  if (ret)
+    {
+      printf("MAC854IOCGORDER failed\n");
+      return ret;
+    }
 
   /* Display */
 
@@ -157,7 +163,8 @@ static int status(int fd)
     {
       printf("%02X", eaddr[i]);
     }
-  printf("\nPromisc:%s\n", promisc?"Yes":"No");
+  printf("\nBO %2d SO %2d\n", (order>>4)&0xF, order&0xF);
+  printf("Promisc:%s\n", promisc?"Yes":"No");
   return 0;
 }
 

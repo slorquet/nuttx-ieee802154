@@ -191,6 +191,9 @@
 #define MRF24J40_INTSTAT_TXG1IF    0x02
 #define MRF24J40_INTSTAT_TXNIF     0x01
 
+/* RXMCR bits */
+#define MRF24J40_RXMCR_NOACKRSP    0x20
+
 /* INTCON bits */
 #define MRF24J40_INTCON_SLPIE      0x80
 #define MRF24J40_INTCON_WAKEIE     0x40
@@ -411,20 +414,29 @@ static int mrf24j40_initialize(FAR struct mrf24j40_dev_s *dev)
   mrf24j40_setreg(dev->spi, MRF24J40_SOFTRST, 0x07);
 
   /* wait end of reset */
+
   while(mrf24j40_getreg(dev->spi, MRF24J40_SOFTRST) & 0x07);
 
   mrf24j40_setreg(dev->spi, MRF24J40_PACON2 , 0x98);
-  mrf24j40_setreg(dev->spi, MRF24J40_TXSTBL , 0x95);
+
+  /* Timing */
+
+  mrf24j40_setreg(dev->spi, MRF24J40_TXSTBL , 0x95); /* set the SIFS period. RFSTBL=9, MSIFS=5, aMinSIFSPeriod=14 (min 12) */
+  mrf24j40_setreg(dev->spi, MRF24J40_TXPEND , 0xF8); /* set the LIFS period, MLIFS=1Fh=31 aMinLIFSPeriod=40 (min 40) */
+  mrf24j40_setreg(dev->spi, MRF24J40_TXTIME , 0x30); /* set the turnaround time, TURNTIME=3 aTurnAroundTime=12 */
+  
   mrf24j40_setreg(dev->spi, MRF24J40_RFCON0 , 0x03);
   mrf24j40_setreg(dev->spi, MRF24J40_RFCON1 , 0x01);
   mrf24j40_setreg(dev->spi, MRF24J40_RFCON2 , 0x80);
   mrf24j40_setreg(dev->spi, MRF24J40_RFCON6 , 0x90);
-  mrf24j40_setreg(dev->spi, MRF24J40_RFCON7 , 0x80);
+  mrf24j40_setreg(dev->spi, MRF24J40_RFCON7 , 0x80); /* */
   mrf24j40_setreg(dev->spi, MRF24J40_RFCON8 , 0x10);
-  mrf24j40_setreg(dev->spi, MRF24J40_SLPCON1, 0x21);
+  mrf24j40_setreg(dev->spi, MRF24J40_SLPCON1, 0x21); /* Sleep Clk enable, */
   mrf24j40_setreg(dev->spi, MRF24J40_BBREG2 , 0x80);
   mrf24j40_setreg(dev->spi, MRF24J40_CCAEDTH, 0x60);
   mrf24j40_setreg(dev->spi, MRF24J40_BBREG6 , 0x40);
+
+  /* Calibrate sleep clock */
 
   /*14. Enable interrupts*/
 
@@ -551,7 +563,7 @@ static int mrf24j40_seteaddr(FAR struct mrf24j40_dev_s *dev, FAR uint8_t *eaddr)
 int mrf24j40_setrxmode(FAR struct mrf24j40_dev_s *dev, int mode)
 {
   uint8_t reg;
-  if(mode<MRF24J40_RXMODE_NORMAL || mode>MRF24J40_RXMODE_NOCRC)
+  if (mode<MRF24J40_RXMODE_NORMAL || mode>MRF24J40_RXMODE_NOCRC)
     {
       return -EINVAL;
     }
@@ -559,6 +571,22 @@ int mrf24j40_setrxmode(FAR struct mrf24j40_dev_s *dev, int mode)
   reg &= ~0x03;
   reg |= mode;
   mrf24j40_setreg(dev->spi, MRF24J40_RXMCR, reg);
+
+  /* set mode options */
+  if (mode != MRF24J40_RXMODE_NORMAL)
+    {
+      /* Promisc and error modes: Disable auto ACK */
+      reg = mrf24j40_getreg(dev->spi, MRF24J40_RXMCR);
+      reg |= MRF24J40_RXMCR_NOACKRSP;
+      mrf24j40_setreg(dev->spi, MRF24J40_RXMCR, reg);
+    }
+  else
+    {
+      /* Normal mode : enable auto-ACK */
+      reg = mrf24j40_getreg(dev->spi, MRF24J40_RXMCR);
+      reg &= ~MRF24J40_RXMCR_NOACKRSP;
+      mrf24j40_setreg(dev->spi, MRF24J40_RXMCR, reg);
+    }
   dev->rxmode = mode;
   return OK;
 }
