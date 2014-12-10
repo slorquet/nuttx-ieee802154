@@ -102,6 +102,7 @@ struct mrf24j40_dev_s
   uint8_t                           saddr[2]; /* short address, FFFF = not set */
   uint8_t                           channel;  /* 11 to 26 for the 2.4 GHz band */
   uint8_t                           rxmode;   /* Reception mode: Main, no CRC, promiscuous */
+  uint8_t                           edth;     /* Energy detection threshold for packet demod */
   int                               txpower;  /* TX power in dbm TODO: change to mBm (millibel = 1/10 dBm) */
 };
 
@@ -120,6 +121,7 @@ static int     mrf24j40_seteaddr(FAR struct mrf24j40_dev_s *dev, FAR uint8_t *pa
 static int     mrf24j40_setrxmode(FAR struct mrf24j40_dev_s *dev, int mode);
 static int     mrf24j40_energydetect(FAR struct mrf24j40_dev_s *dev);
 static int     mrf24j40_settxpower(FAR struct mrf24j40_dev_s *dev, int dbm);
+static int     mrf24j40_setedth(FAR struct mrf24j40_dev_s *dev, int dbm);
 static int     mrf24j40_regdump(FAR struct mrf24j40_dev_s *dev);
 static void    mrf24j40_irqwork_rx(FAR struct mrf24j40_dev_s *dev);
 static void    mrf24j40_irqworker(FAR void *arg);
@@ -535,6 +537,18 @@ static int mrf24j40_settxpower(FAR struct mrf24j40_dev_s *dev, int dbm)
 }
 
 /****************************************************************************
+ * Name: mrf24j40_setedth
+ *
+ * Description:
+ *   Define the Energy Detection Threshold for packet reception.
+ *
+ ****************************************************************************/
+
+static int mrf24j40_setedth(FAR struct mrf24j40_dev_s *dev, int dbm)
+{
+}
+
+/****************************************************************************
  * Name: mrf24j40_regdump
  *
  * Description:
@@ -929,6 +943,8 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
 
   switch(cmd)
     {
+      /* Getters and Setters */
+
       case MAC854IOCSCHAN:
         ret = mrf24j40_setchan(dev, (int)arg);
         break;
@@ -976,17 +992,26 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
         ret = OK;
         break;
 
-      case MAC854IOCGED:
-        *((uint8_t*)arg) = mrf24j40_energydetect(dev);
-        ret = OK;
-        break;
-
       case MAC854IOCSTXP:
         ret = mrf24j40_settxpower(dev, (int)arg);
         break;
 
       case MAC854IOCGTXP:
         *((int*)arg) = dev->txpower;
+        break;
+
+      case MAC854IOCGEDTH:
+        ret = mrf24j40_setedth(dev, (uint8_t)arg);
+        break;
+
+      case MAC854IOCGEDTH:
+        *((uint8_t*)arg) = dev->edth;
+        break;
+
+      /* Special operations */
+      case MAC854IOCGED:
+        *((uint8_t*)arg) = mrf24j40_energydetect(dev);
+        ret = OK;
         break;
 
       case 1000: /* register dump */
