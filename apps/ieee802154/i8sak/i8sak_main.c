@@ -68,6 +68,16 @@ int setchan(int fd, int chan)
   return ret;
 }
 
+int setedth(int fd, uint8_t edth)
+{
+  int ret = ioctl(fd, MAC854IOCSEDTH, (unsigned long)edth );
+  if (ret<0)
+    {
+      printf("MAC854IOCSEDTH failed\n");
+    }
+  return ret;
+}
+
 int scan(int fd)
 {
   int chan,scan,oldchan;
@@ -138,7 +148,7 @@ int scan(int fd)
 static int status(int fd)
 {
   int ret,i;
-  uint8_t panid[2], saddr[2], eaddr[8], order;
+  uint8_t panid[2], saddr[2], eaddr[8], edth;
   int promisc, chan;
 
   /* Get information */
@@ -174,6 +184,12 @@ static int status(int fd)
       printf("MAC854IOCGPROMISC failed\n");
       return ret;
     }
+  ret = ioctl(fd, MAC854IOCGEDTH, (unsigned long)&edth);
+  if (ret)
+    {
+      printf("MAC854IOCGORDER failed\n");
+      return ret;
+    }
 #if 0
   ret = ioctl(fd, MAC854IOCGORDER, (unsigned long)&order);
   if (ret)
@@ -190,6 +206,7 @@ static int status(int fd)
     {
       printf("%02X", eaddr[i]);
     }
+  printf("CCA : ED, th %3d\n", edth);
   printf("\nPromisc:%s\n", promisc?"Yes":"No");
   return 0;
 }
@@ -286,6 +303,7 @@ int i8_main(int argc, char *argv[])
 {
   int fd;
   int ret = OK;
+  unsigned long arg;
 
   printf("IEEE packet sniffer/dumper\n");
   if (argc<3)
@@ -293,6 +311,10 @@ int i8_main(int argc, char *argv[])
       return usage();
     }
 
+  if (argc==4)
+    {
+    arg = atol(argv[4]);
+    }
   /* open device */
 
   fd = open(argv[1], O_RDWR);
@@ -322,7 +344,15 @@ int i8_main(int argc, char *argv[])
         {
         ret = usage();
         }
-      ret = setchan(fd, atoi(argv[3]));
+      ret = setchan(fd, arg);
+    }
+  else if (!strcmp(argv[2], "edth"))
+    {
+      if(argc != 4)
+        {
+        ret = usage();
+        }
+      ret = setedth(fd, arg);
     }
   else
     {
