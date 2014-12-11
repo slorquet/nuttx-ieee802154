@@ -68,12 +68,22 @@ int setchan(int fd, int chan)
   return ret;
 }
 
-int setedth(int fd, uint8_t edth)
+int setcca(int fd, struct ieee802154_cca_s *cca)
 {
-  int ret = ioctl(fd, MAC854IOCSEDTH, (unsigned long)edth );
+  int ret = ioctl(fd, MAC854IOCSCCA, (unsigned long)cca );
   if (ret<0)
     {
-      printf("MAC854IOCSEDTH failed\n");
+      printf("MAC854IOCSCCA failed\n");
+    }
+  return ret;
+}
+
+int getcca(int fd, struct ieee802154_cca_s *cca)
+{
+  int ret = ioctl(fd, MAC854IOCGCCA, (unsigned long)cca );
+  if (ret<0)
+    {
+      printf("MAC854IOCGCCA failed\n");
     }
   return ret;
 }
@@ -148,8 +158,9 @@ int scan(int fd)
 static int status(int fd)
 {
   int ret,i;
-  uint8_t panid[2], saddr[2], eaddr[8], edth;
+  uint8_t panid[2], saddr[2], eaddr[8];
   int promisc, chan;
+  struct ieee802154_cca_s cca;
 
   /* Get information */
 
@@ -184,10 +195,10 @@ static int status(int fd)
       printf("MAC854IOCGPROMISC failed\n");
       return ret;
     }
-  ret = ioctl(fd, MAC854IOCGEDTH, (unsigned long)&edth);
+  ret = ioctl(fd, MAC854IOCGCCA, (unsigned long)&cca);
   if (ret)
     {
-      printf("MAC854IOCGORDER failed\n");
+      printf("MAC854IOCGCCA failed\n");
       return ret;
     }
 #if 0
@@ -206,7 +217,15 @@ static int status(int fd)
     {
       printf("%02X", eaddr[i]);
     }
-  printf("CCA : ED, th %3d\n", edth);
+  printf("\nCCA: ");
+  if (cca.use_ed)
+    {
+      printf("ED (%d) ", cca.edth);
+    }
+  if (cca.use_cs)
+    {
+      printf("CS (%d)", cca.csth);
+    }
   printf("\nPromisc:%s\n", promisc?"Yes":"No");
   return 0;
 }
@@ -234,10 +253,9 @@ static int display(FAR struct ieee802154_packet_s *pack)
 static int sniff(int fd, int chan)
 {
   int ret;
-  ret = ioctl(fd, MAC854IOCSCHAN, chan);
+  ret = setchan(fd, chan);
   if (ret<0)
     {
-      printf("Device is not an IEEE 802.15.4 interface!\n");
       return ret;
     }
 #if 0
@@ -283,10 +301,13 @@ static int sniff(int fd, int chan)
 
 int usage(void)
 {
-  printf("snif8 <device> scan\n"
-         "               dump\n"
-         "               stat\n"
-         "               chan <ch>\n"
+  printf("i8 <device> <op> <arg>\n"
+         "  scan\n"
+         "  dump\n"
+         "  stat\n"
+         "  chan <ch>\n"
+         "  edth <off|rssi>\n"
+         "  csth <off|corr>\n"
          );
   return ERROR;
 }
@@ -304,6 +325,7 @@ int i8_main(int argc, char *argv[])
   int fd;
   int ret = OK;
   unsigned long arg;
+  struct ieee802154_cca_s cca;
 
   printf("IEEE packet sniffer/dumper\n");
   if (argc<3)
@@ -313,7 +335,7 @@ int i8_main(int argc, char *argv[])
 
   if (argc==4)
     {
-    arg = atol(argv[4]);
+    arg = atol(argv[3]);
     }
   /* open device */
 
@@ -350,13 +372,46 @@ int i8_main(int argc, char *argv[])
     {
       if(argc != 4)
         {
-        ret = usage();
+        goto usage;
         }
-      ret = setedth(fd, arg);
+      ret = getcca(fd, &cca);
+      if(!strcmp("off",argv[4]))
+        {
+          cca.use_ed = 0;
+        }
+      else
+        {
+          cca.use_ed = 1;
+          cca.edth   = arg;
+        }
+      ret = setcca(fd, &cca);
+    }
+  else if (!strcmp(argv[2], "csth"))
+    {
+      if(argc != 4)
+        {
+        goto usage;
+        }
+      ret = getcca(fd, &cca);
+      if(!strcmp("off",argv[4]))
+        {
+          cca.use_cs = 0;
+        }
+      else
+        {
+          cca.use_cs = 1;
+          cca.csth   = arg;
+        }
+      ret = setcca(fd, &cca);
+    }
+  else if (!strcmp(argv[2], "snif"))
+    {
+    ret = sniff(fd,arg);
     }
   else
     {
-    ret = sniff(fd,atoi(argv[2]));
+usage:
+    ret = usage();
     }
  
   close(fd);

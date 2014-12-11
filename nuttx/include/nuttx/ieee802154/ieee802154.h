@@ -68,14 +68,6 @@
  * 3) The ioctl() method supports the commands documented below:
  */
 
-/* Command:     MAC854IOC_SUPPORTED
- * Description: Report the set of button events supported by the hardware;
- * Argument:    A pointer to writeable integer value in which to return the
- *              set of supported buttons.
- * Return:      Zero (OK) on success.  Minus one will be returned on failure
- *              with the errno value set appropriately.
- */
-
 #define MAC854IOCGCHAN     _MAC854IOC(0x0001) /* Get current channel (int*) */
 #define MAC854IOCSCHAN     _MAC854IOC(0x0002) /* Set current channel (int) */
 #define MAC854IOCGPANID    _MAC854IOC(0x0003) /* Get PAN ID (uint8_t[2]) */
@@ -89,13 +81,13 @@
 #define MAC854IOCGTXP      _MAC854IOC(0x000B) /* Get TX power (int*) */
 #define MAC854IOCSTXP      _MAC854IOC(0x000C) /* Set TX power in mdBm (int) */
 
-#define MAC854IOCGEDTH     _MAC854IOC(0x000D) /* Get Energy detection RX threshold (uint8_t*) */
-#define MAC854IOCSEDTH     _MAC854IOC(0x000E) /* Set Energy detection RX threshold (uint8_t) */
+#define MAC854IOCGCCA      _MAC854IOC(0x000D) /* Get Clear Channel Assessement settings (struct ieee802154_cca_s*) */
+#define MAC854IOCSCCA      _MAC854IOC(0x000E) /* Set Clear Channel Assessement settings (struct ieee802154_cca_s*) */
 
-#define MAC854IOCGORDER    _MAC854IOC(0x000D) /* Get Beacon and Superframe orders (uint8_t*) */
-#define MAC854IOCSORDER    _MAC854IOC(0x000E) /* Set Beacon and Superframe orders (uint8_t) */
+#define MAC854IOCGORDER    _MAC854IOC(0x000F) /* Get Beacon and Superframe orders (uint8_t*) */
+#define MAC854IOCSORDER    _MAC854IOC(0x0010) /* Set Beacon and Superframe orders (uint8_t) */
 
-#define MAC854IOCGED       _MAC854IOC(0x000F) /* Run energy detection on current channel (uint8_t*) */
+#define MAC854IOCGED       _MAC854IOC(0x0011) /* Run energy detection on current channel (uint8_t*) */
 
 /* IEEE 802.15.4 definitions */
 
@@ -133,6 +125,14 @@ struct ieee802154_packet_s {
   uint8_t data[127];
   uint8_t lqi;
   uint8_t rssi;
+};
+
+struct ieee802154_cca_s
+{
+  uint8_t                           use_ed  : 1; /* CCA using ED */
+  uint8_t                           use_cs  : 1; /* CCA using carrier sense */
+  uint8_t                           edth;     /* Energy detection threshold for CCA */
+  uint8_t                           csth;     /* Carrier sense threshold for CCA */
 };
 
 #ifdef __cplusplus

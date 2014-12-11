@@ -175,6 +175,10 @@
 /* BBREG1 bits */
 #define MRF24J40_BBREG1_RXDECINV   0x04 /* Enable/Disable packet reception */
 
+/* BBREG2 bits */
+#define MRF24J40_BBREG2_CCAMODE_ED 0x80
+#define MRF24J40_BBREG2_CCAMODE_CS 0x40
+
 /* TXNCON bits */
 #define MRF24J40_TXNCON_TXNTRIG    0x01 /* Trigger packet tx, automatically cleared */
 #define MRF24J40_TXNCON_TXNSECEN   0x02 /* Enable security */

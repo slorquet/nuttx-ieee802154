@@ -101,9 +101,11 @@ struct mrf24j40_dev_s
   uint8_t                           panid[2]; /* PAN identifier, FFFF = not set */
   uint8_t                           saddr[2]; /* short address, FFFF = not set */
   uint8_t                           channel;  /* 11 to 26 for the 2.4 GHz band */
-  uint8_t                           rxmode;   /* Reception mode: Main, no CRC, promiscuous */
-  uint8_t                           edth;     /* Energy detection threshold for CCA */
   int                               txpower;  /* TX power in dbm TODO: change to mBm (millibel = 1/10 dBm) */
+
+  uint8_t                           rxmode;   /* Reception mode: Main, no CRC, promiscuous */
+  struct ieee802154_cca_s           cca;      /* Clear channel assessement method */
+
 };
 
 /****************************************************************************
@@ -121,7 +123,7 @@ static int     mrf24j40_seteaddr(FAR struct mrf24j40_dev_s *dev, FAR uint8_t *pa
 static int     mrf24j40_setrxmode(FAR struct mrf24j40_dev_s *dev, int mode);
 static int     mrf24j40_energydetect(FAR struct mrf24j40_dev_s *dev);
 static int     mrf24j40_settxpower(FAR struct mrf24j40_dev_s *dev, int dbm);
-static int     mrf24j40_setedth(FAR struct mrf24j40_dev_s *dev, uint8_t dbm);
+static int     mrf24j40_setcca(FAR struct mrf24j40_dev_s *dev, struct ieee802154_cca_s *cca);
 static int     mrf24j40_regdump(FAR struct mrf24j40_dev_s *dev);
 static void    mrf24j40_irqwork_rx(FAR struct mrf24j40_dev_s *dev);
 static void    mrf24j40_irqworker(FAR void *arg);
@@ -272,6 +274,8 @@ static uint8_t mrf24j40_getreg(FAR struct spi_dev_s *spi, uint32_t addr)
 
 static int mrf24j40_initialize(FAR struct mrf24j40_dev_s *dev)
 {
+  struct ieee802154_cca_s cca;
+
   /* Software reset */
 
   mrf24j40_setreg(dev->spi, MRF24J40_SOFTRST  , 0x07); /* 00000111 Reset */
@@ -283,15 +287,20 @@ static int mrf24j40_initialize(FAR struct mrf24j40_dev_s *dev)
   mrf24j40_setreg(dev->spi, MRF24J40_TXSTBL   , 0x95); /* 10010101 set the SIFS period. RFSTBL=9, MSIFS=5, aMinSIFSPeriod=14 (min 12) */
   mrf24j40_setreg(dev->spi, MRF24J40_TXPEND   , 0x7C); /* 01111100 set the LIFS period, MLIFS=1Fh=31 aMinLIFSPeriod=40 (min 40) */
   mrf24j40_setreg(dev->spi, MRF24J40_TXTIME   , 0x30); /* 00110000 set the turnaround time, TURNTIME=3 aTurnAroundTime=12 */
-  mrf24j40_setreg(dev->spi, MRF24J40_RFCON0   , 0x03); /* 00000011 Default channel 11, recommended RF options */
   mrf24j40_setreg(dev->spi, MRF24J40_RFCON1   , 0x02); /* 00000010 VCO optimization, recommended value */
   mrf24j40_setreg(dev->spi, MRF24J40_RFCON2   , 0x80); /* 10000000 Enable PLL */
   mrf24j40_setreg(dev->spi, MRF24J40_RFCON6   , 0x90); /* 10010000 TX filter enable, fast 20M recovery, No bat monitor*/
   mrf24j40_setreg(dev->spi, MRF24J40_RFCON7   , 0x80); /* 10000000 Sleep clock on internal 100 kHz */
   mrf24j40_setreg(dev->spi, MRF24J40_RFCON8   , 0x10); /* 00010000 VCO control bit, as recommended */
   mrf24j40_setreg(dev->spi, MRF24J40_SLPCON1  , 0x01); /* 00000001 no CLKOUT, default divisor */
-  mrf24j40_setreg(dev->spi, MRF24J40_BBREG2   , 0x8E); /* 10001110 CCA mode ED, no carrier sense, recommenced CS threshold */
-  mrf24j40_setreg(dev->spi, MRF24J40_CCAEDTH  , 0x60); /* 01100000 CCA ED threshold, recommended, -69dBm */
+
+  mrf24j40_setchan(dev, 11);
+
+  cca.use_ed = 1;
+  cca.use_cs = 0;
+  cca.edth = 0x60; /* CCA mode ED, no carrier sense, recommenced ED threshold -69 dBm */
+  mrf24j40_setcca(dev, &cca);
+
   mrf24j40_setreg(dev->spi, MRF24J40_BBREG6   , 0x40); /* 01000000 Append RSSI to rx packets */
 
   return OK;
@@ -537,17 +546,40 @@ static int mrf24j40_settxpower(FAR struct mrf24j40_dev_s *dev, int dbm)
 }
 
 /****************************************************************************
- * Name: mrf24j40_setedth
+ * Name: mrf24j40_setcca
  *
  * Description:
  *   Define the Energy Detection Threshold for CCA.
  *
  ****************************************************************************/
 
-static int mrf24j40_setedth(FAR struct mrf24j40_dev_s *dev, uint8_t dbm)
+static int mrf24j40_setcca(FAR struct mrf24j40_dev_s *dev, struct ieee802154_cca_s *cca)
 {
-  mrf24j40_setreg(dev->spi, MRF24J40_CCAEDTH, dbm);
-  dev->edth = dbm;
+  uint8_t mode;
+  if (!cca->use_ed && !cca->use_cs)
+    {
+      return -EINVAL;
+    }
+  if (cca->use_cs && cca->csth > 0x0f)
+    {
+      return -EINVAL;
+    }
+
+  mode  = mrf24j40_getreg(dev->spi, MRF24J40_BBREG2);
+  mode &= 0x03;
+
+  if (cca->use_ed)
+    {
+      mode |= MRF24J40_BBREG2_CCAMODE_ED;
+      mrf24j40_setreg(dev->spi, MRF24J40_CCAEDTH, cca->edth);
+    }
+  if (cca->use_cs)
+    {
+      mode |= MRF24J40_BBREG2_CCAMODE_CS;
+      mode |= cca->csth << 2;
+    }
+  mrf24j40_setreg(dev->spi, MRF24J40_BBREG2, mode);
+  memcpy(&dev->cca, cca, sizeof(struct ieee802154_cca_s));
   return OK;
 }
 
@@ -940,7 +972,7 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
 {
   FAR struct inode *inode = filep->f_inode;
   FAR struct mrf24j40_dev_s *dev = inode->i_private;
-  int ret = -EINVAL;
+  int ret = OK;
 
   mrf24j40_semtake(dev);
 
@@ -954,7 +986,6 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
 
       case MAC854IOCGCHAN:
         *((int*)arg) = dev->channel;
-        ret = OK;
         break;
 
       case MAC854IOCSPANID:
@@ -964,7 +995,6 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
       case MAC854IOCGPANID:
         *((uint8_t*)(arg+0)) = dev->panid[0];
         *((uint8_t*)(arg+1)) = dev->panid[1];
-        ret = OK;
         break;
 
       case MAC854IOCSSADDR:
@@ -974,7 +1004,6 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
       case MAC854IOCGSADDR:
         *((uint8_t*)(arg+0)) = dev->saddr[0];
         *((uint8_t*)(arg+1)) = dev->saddr[1];
-        ret = OK;
         break;
 
       case MAC854IOCSEADDR:
@@ -983,7 +1012,6 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
 
       case MAC854IOCGEADDR:
         memcpy((uint8_t*)arg, dev->eaddr, 8);
-        ret = OK;
         break;
 
       case MAC854IOCSPROMISC:
@@ -992,7 +1020,6 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
 
       case MAC854IOCGPROMISC:
         *((int*)arg) = (dev->rxmode==MRF24J40_RXMODE_PROMISC);
-        ret = OK;
         break;
 
       case MAC854IOCSTXP:
@@ -1003,22 +1030,24 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
         *((int*)arg) = dev->txpower;
         break;
 
-      case MAC854IOCSEDTH:
-        ret = mrf24j40_setedth(dev, (uint8_t)arg);
+      case MAC854IOCSCCA:
+        ret = mrf24j40_setcca(dev, (struct ieee802154_cca_s*)arg);
         break;
 
-      case MAC854IOCGEDTH:
-        *((uint8_t*)arg) = dev->edth;
+      case MAC854IOCGCCA:
+        memcpy((void*)arg, &dev->cca, sizeof(struct ieee802154_cca_s));
         break;
 
       /* Special operations */
       case MAC854IOCGED:
         *((uint8_t*)arg) = mrf24j40_energydetect(dev);
-        ret = OK;
         break;
 
       case 1000: /* register dump */
         ret = mrf24j40_regdump(dev);
+
+      default:
+        ret = -EINVAL;
     }
 
   mrf24j40_semgive(dev);
