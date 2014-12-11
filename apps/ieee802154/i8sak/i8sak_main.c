@@ -375,7 +375,7 @@ int i8_main(int argc, char *argv[])
         goto usage;
         }
       ret = getcca(fd, &cca);
-      if(!strcmp("off",argv[4]))
+      if(!strcmp("off",argv[3]))
         {
           cca.use_ed = 0;
         }
@@ -393,7 +393,7 @@ int i8_main(int argc, char *argv[])
         goto usage;
         }
       ret = getcca(fd, &cca);
-      if(!strcmp("off",argv[4]))
+      if(!strcmp("off",argv[3]))
         {
           cca.use_cs = 0;
         }
