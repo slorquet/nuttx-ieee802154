@@ -39,24 +39,12 @@
 
 #include <nuttx/config.h>
 
-#include <stdio.h>
-#include <syslog.h>
-#include <errno.h>
-
-#include <nuttx/spi/spi.h>
-#include <nuttx/mmcsd.h>
+#include "tm4c123g-launchpad.h"
 
 /****************************************************************************
  * Pre-Processor Definitions
  ****************************************************************************/
 
-/* Configuration ************************************************************/
-
-/* Can't support USB features if USB is not enabled */
-
-#ifndef CONFIG_USBDEV
-#  undef NSH_HAVEUSBDEV
-#endif
 
 /****************************************************************************
  * Public Functions
@@ -72,5 +60,13 @@
 
 int nsh_archinitialize(void)
 {
+  /* If CONFIG_BOARD_INITIALIZE is selected then board initialization was
+   * already performed in board_initialize.
+   */
+
+#ifndef CONFIG_BOARD_INITIALIZE
+  return tm4c_bringup();
+#else
   return OK;
+#endif
 }

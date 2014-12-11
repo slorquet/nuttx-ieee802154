@@ -54,7 +54,6 @@
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
-
 /* Everything related to the camera POV is defined in the camera section. */
 
 #define CAMERA_SECTION_NAME    "camera"
@@ -415,7 +414,7 @@ static int trv_manage_wldfile(INIHANDLE inihandle, FAR const char *wldpath)
       return ret;
     }
 
-  ret = trv_load_bitmapfile(filename);
+  ret = trv_load_bitmapfile(filename, wldpath);
   free(filename);
 
   return ret;
@@ -449,13 +448,14 @@ int trv_world_create(FAR const char *wldpath, FAR const char *wldfile)
 
   if (!inihandle)
     {
-      fprintf(stderr, "ERROR:  Could not open INI file=\"%s\"\n", fullpath);
+      fprintf(stderr, "ERROR: Could not open INI file=\"%s/%s\"\n",
+			  wldpath, wldfile);
       return -ENOENT;
     }
 
   /* Load the world file data */
 
-  ret = trv_manage_wldfile(inihandle, wldfile);
+  ret = trv_manage_wldfile(inihandle, wldpath);
 
   /* Close the INI file and return */
 
