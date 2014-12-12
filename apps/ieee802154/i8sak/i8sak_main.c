@@ -426,12 +426,17 @@ int i8_main(int argc, char *argv[])
     int len = strlen(argv[3]);
     FAR char *ptr = argv[3];
 
+    if (len & 1)
+      {
+        goto data_error;
+      }
+
     /* decode hex packet */
 
     while (id<125 && len>0)
       {
         int dat;
-        if (sscanf(ptr, "%02X", &dat)==1)
+        if (sscanf(ptr, "%2x", &dat)==1)
           {
             txpacket.data[id++] = dat;
             ptr += 2;
@@ -439,6 +444,7 @@ int i8_main(int argc, char *argv[])
           }
         else
           {
+data_error:
             printf("data error\n");
             ret = ERROR;
             goto error;
