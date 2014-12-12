@@ -91,8 +91,9 @@ struct mrf24j40_dev_s
   struct work_s                     irqwork;  /* Interrupt continuation work queue support */
   FAR struct spi_dev_s              *spi;     /* Saved SPI interface instance */
   FAR const struct mrf24j40_lower_s *lower;   /* Low-level MCU-specific support */
-  sem_t                             sem;      /* Access serialization semaphore */
+  sem_t                             devsem;      /* Device access serialization semaphore */
   sem_t                             rxsem;    /* Reader semaphore to wait on packet reception */
+  sem_t                             txsem;    /* Writer semaphore to wait on packet transmission */
   int                               opened;   /* this device can only be opened once */
 
   /* real interesting data. actually stored in the device, but copied here when set. */
@@ -126,6 +127,7 @@ static int     mrf24j40_settxpower(FAR struct mrf24j40_dev_s *dev, int dbm);
 static int     mrf24j40_setcca(FAR struct mrf24j40_dev_s *dev, struct ieee802154_cca_s *cca);
 static int     mrf24j40_regdump(FAR struct mrf24j40_dev_s *dev);
 static void    mrf24j40_irqwork_rx(FAR struct mrf24j40_dev_s *dev);
+static void    mrf24j40_irqwork_tx(FAR struct mrf24j40_dev_s *dev);
 static void    mrf24j40_irqworker(FAR void *arg);
 static int     mrf24j40_interrupt(int irq, FAR void *context);
 
@@ -274,8 +276,6 @@ static uint8_t mrf24j40_getreg(FAR struct spi_dev_s *spi, uint32_t addr)
 
 static int mrf24j40_initialize(FAR struct mrf24j40_dev_s *dev)
 {
-  struct ieee802154_cca_s cca;
-
   /* Software reset */
 
   mrf24j40_setreg(dev->spi, MRF24J40_SOFTRST  , 0x07); /* 00000111 Reset */
@@ -283,7 +283,7 @@ static int mrf24j40_initialize(FAR struct mrf24j40_dev_s *dev)
 
   /* Apply recommended settings */
 
-  mrf24j40_setreg(dev->spi, MRF24J40_PACON2   , 0x98); /* 10011000 Enable FIFO (default), TXONTS=6 (recommended), TXONT<8:7>=0 (default) */
+  mrf24j40_setreg(dev->spi, MRF24J40_PACON2   , 0x98); /* 10011000 Enable FIFO (default), TXONTS=6 (recommended), TXONT<8:7>=0 */
   mrf24j40_setreg(dev->spi, MRF24J40_TXSTBL   , 0x95); /* 10010101 set the SIFS period. RFSTBL=9, MSIFS=5, aMinSIFSPeriod=14 (min 12) */
   mrf24j40_setreg(dev->spi, MRF24J40_TXPEND   , 0x7C); /* 01111100 set the LIFS period, MLIFS=1Fh=31 aMinLIFSPeriod=40 (min 40) */
   mrf24j40_setreg(dev->spi, MRF24J40_TXTIME   , 0x30); /* 00110000 set the turnaround time, TURNTIME=3 aTurnAroundTime=12 */
@@ -293,14 +293,6 @@ static int mrf24j40_initialize(FAR struct mrf24j40_dev_s *dev)
   mrf24j40_setreg(dev->spi, MRF24J40_RFCON7   , 0x80); /* 10000000 Sleep clock on internal 100 kHz */
   mrf24j40_setreg(dev->spi, MRF24J40_RFCON8   , 0x10); /* 00010000 VCO control bit, as recommended */
   mrf24j40_setreg(dev->spi, MRF24J40_SLPCON1  , 0x01); /* 00000001 no CLKOUT, default divisor */
-
-  mrf24j40_setchan(dev, 11);
-
-  cca.use_ed = 1;
-  cca.use_cs = 0;
-  cca.edth = 0x60; /* CCA mode ED, no carrier sense, recommenced ED threshold -69 dBm */
-  mrf24j40_setcca(dev, &cca);
-
   mrf24j40_setreg(dev->spi, MRF24J40_BBREG6   , 0x40); /* 01000000 Append RSSI to rx packets */
 
   return OK;
@@ -409,7 +401,6 @@ static int mrf24j40_seteaddr(FAR struct mrf24j40_dev_s *dev, FAR uint8_t *eaddr)
       mrf24j40_setreg(dev->spi, MRF24J40_EADR0 + i, eaddr[i]);
       dev->eaddr[i] = eaddr[i];
     }
-
 
   return OK;
 }
@@ -553,7 +544,7 @@ static int mrf24j40_settxpower(FAR struct mrf24j40_dev_s *dev, int dbm)
  *
  ****************************************************************************/
 
-static int mrf24j40_setcca(FAR struct mrf24j40_dev_s *dev, struct ieee802154_cca_s *cca)
+static int mrf24j40_setcca(FAR struct mrf24j40_dev_s *dev, FAR struct ieee802154_cca_s *cca)
 {
   uint8_t mode;
   if (!cca->use_ed && !cca->use_cs)
@@ -621,7 +612,7 @@ static int mrf24j40_regdump(FAR struct mrf24j40_dev_s *dev)
  * Name: mrf24j40_irqwork_rx
  *
  * Description:
- *   Manage packet reception
+ *   Manage packet reception.
  *
  ****************************************************************************/
 static struct ieee802154_packet_s rxpk;
@@ -654,6 +645,21 @@ static void mrf24j40_irqwork_rx(FAR struct mrf24j40_dev_s *dev)
   /* enable packet reception */
   mrf24j40_setreg(dev->spi, MRF24J40_BBREG1, 0);
 
+}
+
+/****************************************************************************
+ * Name: mrf24j40_irqwork_tx
+ *
+ * Description:
+ *   Manage completion of packet transmission.
+ *
+ ****************************************************************************/
+
+static void mrf24j40_irqwork_tx(FAR struct mrf24j40_dev_s *dev)
+{
+  lowsyslog(LOG_NOTICE, "rx!");
+
+  sem_post(&dev->txsem);
 }
 
 /****************************************************************************
@@ -692,6 +698,12 @@ static void mrf24j40_irqworker(FAR void *arg)
     {
       /* A packet was received, retrieve it */
       mrf24j40_irqwork_rx(dev);
+    }
+
+  if( (intstat & MRF24J40_INTSTAT_TXNIF) )
+    {
+      /* A packet was transmitted or failed*/
+      mrf24j40_irqwork_tx(dev);
     }
 
   /* Re-Enable GPIO interrupts */
@@ -755,7 +767,7 @@ static void mrf24j40_semtake(FAR struct mrf24j40_dev_s *dev)
 {
   /* Take the semaphore (perhaps waiting) */
 
-  while (sem_wait(&dev->sem) != 0)
+  while (sem_wait(&dev->devsem) != 0)
     {
       /* The only case that an error should occur here is if
        * the wait was awakened by a signal.
@@ -774,7 +786,7 @@ static void mrf24j40_semtake(FAR struct mrf24j40_dev_s *dev)
 
 static inline void mrf24j40_semgive(FAR struct mrf24j40_dev_s *dev)
 {
-  sem_post(&dev->sem);
+  sem_post(&dev->devsem);
 }
 
 /****************************************************************************
@@ -849,7 +861,8 @@ static int mrf24j40_close(FAR struct file *filep)
  * Name: mrf24j40_read
  *
  * Description:
- *   Return a packet from the receive queue. The buffer must be a pointer to a
+ *   Return the last received packet.
+ *   TODO: Return a packet from the receive queue. The buffer must be a pointer to a
  *   struct ieee802154_packet_s structure, with a correct length.
  *
  ****************************************************************************/
@@ -859,7 +872,11 @@ static ssize_t mrf24j40_read(FAR struct file *filep, FAR char *buffer, size_t le
   FAR struct inode *inode = filep->f_inode;
   FAR struct mrf24j40_dev_s *dev = inode->i_private;
   int ret = OK;
-  mrf24j40_semtake(dev);
+
+  /* do not take the semaphone. open is responsible for
+   * ensuring that the device can only be opened once.
+   mrf24j40_semtake(dev);
+   */
 
   if (len<sizeof(struct ieee802154_packet_s))
     {
@@ -867,7 +884,9 @@ static ssize_t mrf24j40_read(FAR struct file *filep, FAR char *buffer, size_t le
       goto done;
     }
 
-  /* block task until a packet is received */
+  /* if no packet is received, this will produce -EAGAIN
+   * The user is responsible for sleeping until sth arrives
+   */
 
   ret = sem_trywait(&dev->rxsem);
   if (ret < 0)
@@ -882,7 +901,7 @@ static ssize_t mrf24j40_read(FAR struct file *filep, FAR char *buffer, size_t le
   memcpy(buffer, &rxpk, ret);
 
 done:
-  mrf24j40_semgive(dev);
+  /*mrf24j40_semgive(dev);*/
   return ret;
 }
 
@@ -890,7 +909,9 @@ done:
  * Name: mrf24j40_write
  *
  * Description:
- *   Put a packet in the send queue. The packet will be sent as soon as possible.
+ *   Send a packet immediately.
+ *   TODO: Put a packet in the send queue. The packet will be sent as soon as possible.
+ *   The buffer must point to a struct ieee802154_packet_s with the correct length.
  *
  ****************************************************************************/
 
@@ -903,7 +924,11 @@ static ssize_t mrf24j40_write(FAR struct file *filep, FAR const char *buffer, si
   uint32_t addr;
   int      ret = OK;
 
-  mrf24j40_semtake(dev);
+  /* do not take the semaphone. open is responsible for
+   * ensuring that the device can only be opened once.
+   * We want the ability to simultaneously read and write the device.
+   mrf24j40_semtake(dev);
+   */
 
   /* sanity checks */
 
@@ -914,14 +939,14 @@ static ssize_t mrf24j40_write(FAR struct file *filep, FAR const char *buffer, si
     }
 
   packet = (FAR const struct ieee802154_packet_s*) buffer;
-  if (packet->len > 126)
+  if (packet->len > 125) /* Max len 125, 2 FCS bytes auto added by mrf*/
     {
       ret = -EPERM;
       goto done;
     }
 
   /* Copy packet to normal TX buffer
-   * Beacons and GTS transmission is handled via IOCTLs
+   * Beacons and GTS transmission will be handled via IOCTLs
    */
 
   addr = 0x80000000;
@@ -936,7 +961,7 @@ static ssize_t mrf24j40_write(FAR struct file *filep, FAR const char *buffer, si
 
   /* frame data */
 
-  for (ret=0;ret<len;ret++) /* this sets the correct val for ret */
+  for (ret = 0; ret < packet->len; ret++) /* this sets the correct val for ret */
     {
       mrf24j40_setreg(dev->spi, addr++, packet->data[ret]);
     }
@@ -956,7 +981,21 @@ static ssize_t mrf24j40_write(FAR struct file *filep, FAR const char *buffer, si
   mrf24j40_setreg(dev->spi, MRF24J40_TXNCON, reg);
 
 done:
-  mrf24j40_semgive(dev);
+  /*mrf24j40_semgive(dev);*/
+
+  /* block until the tx interrupt has fired */
+  /* TODO timeout */
+  if (sem_wait(&dev->txsem) != 0)
+    {
+      ret = -errno; /* semaphore waiting has failed because of a signal */
+    }
+
+  /* okay, tx interrupt received. check transmission status to decide success. */
+
+  if (ret>0)
+    {
+    }
+
   return ret;
 }
 
@@ -974,7 +1013,11 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
   FAR struct mrf24j40_dev_s *dev = inode->i_private;
   int ret = OK;
 
-  mrf24j40_semtake(dev);
+  /* do not take the semaphone. open is responsible for
+   * ensuring that the device can only be opened once.
+   * We want the ability to simultaneously read and control the device.
+   mrf24j40_semtake(dev);
+   */
 
   switch(cmd)
     {
@@ -985,33 +1028,33 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
         break;
 
       case MAC854IOCGCHAN:
-        *((int*)arg) = dev->channel;
+        *((FAR int*)arg) = dev->channel;
         break;
 
       case MAC854IOCSPANID:
-        ret = mrf24j40_setpanid(dev, (uint8_t*)arg);
+        ret = mrf24j40_setpanid(dev, (FAR uint8_t*)arg);
         break;
 
       case MAC854IOCGPANID:
-        *((uint8_t*)(arg+0)) = dev->panid[0];
-        *((uint8_t*)(arg+1)) = dev->panid[1];
+        *((FAR uint8_t*)(arg+0)) = dev->panid[0];
+        *((FAR uint8_t*)(arg+1)) = dev->panid[1];
         break;
 
       case MAC854IOCSSADDR:
-        ret = mrf24j40_setsaddr(dev, (uint8_t*)arg);
+        ret = mrf24j40_setsaddr(dev, (FAR uint8_t*)arg);
         break;
 
       case MAC854IOCGSADDR:
-        *((uint8_t*)(arg+0)) = dev->saddr[0];
-        *((uint8_t*)(arg+1)) = dev->saddr[1];
+        *((FAR uint8_t*)(arg+0)) = dev->saddr[0];
+        *((FAR uint8_t*)(arg+1)) = dev->saddr[1];
         break;
 
       case MAC854IOCSEADDR:
-        ret = mrf24j40_seteaddr(dev, (uint8_t*)arg);
+        ret = mrf24j40_seteaddr(dev, (FAR uint8_t*)arg);
         break;
 
       case MAC854IOCGEADDR:
-        memcpy((uint8_t*)arg, dev->eaddr, 8);
+        memcpy((FAR uint8_t*)arg, dev->eaddr, 8);
         break;
 
       case MAC854IOCSPROMISC:
@@ -1019,7 +1062,7 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
         break;
 
       case MAC854IOCGPROMISC:
-        *((int*)arg) = (dev->rxmode==MRF24J40_RXMODE_PROMISC);
+        *((FAR int*)arg) = (dev->rxmode==MRF24J40_RXMODE_PROMISC);
         break;
 
       case MAC854IOCSTXP:
@@ -1027,20 +1070,20 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
         break;
 
       case MAC854IOCGTXP:
-        *((int*)arg) = dev->txpower;
+        *((FAR int*)arg) = dev->txpower;
         break;
 
       case MAC854IOCSCCA:
-        ret = mrf24j40_setcca(dev, (struct ieee802154_cca_s*)arg);
+        ret = mrf24j40_setcca(dev, (FAR struct ieee802154_cca_s*)arg);
         break;
 
       case MAC854IOCGCCA:
-        memcpy((void*)arg, &dev->cca, sizeof(struct ieee802154_cca_s));
+        memcpy((FAR void*)arg, &dev->cca, sizeof(struct ieee802154_cca_s));
         break;
 
       /* Special operations */
       case MAC854IOCGED:
-        *((uint8_t*)arg) = mrf24j40_energydetect(dev);
+        *((FAR uint8_t*)arg) = mrf24j40_energydetect(dev);
         break;
 
       case 1000: /* register dump */
@@ -1050,7 +1093,7 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
         ret = -EINVAL;
     }
 
-  mrf24j40_semgive(dev);
+  /*mrf24j40_semgive(dev);*/
   return ret;
 }
 
@@ -1069,8 +1112,9 @@ static int mrf24j40_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
 
 int mrf24j40_register(FAR struct spi_dev_s *spi, FAR const struct mrf24j40_lower_s *lower, int minor)
 {
-  char devname[16];
+  char                      devname[16];
   FAR struct mrf24j40_dev_s *dev;
+  struct ieee802154_cca_s   cca;
   int ret = -EAGAIN;
 
   if (minor != 0)
@@ -1099,20 +1143,25 @@ int mrf24j40_register(FAR struct spi_dev_s *spi, FAR const struct mrf24j40_lower
 
   dev->spi     = spi;
   mrf24j40_initialize(dev);
-  /* Default device params */
-  mrf24j40_setrxmode(dev, 3);
-  mrf24j40_setchan  (dev, 11);
 
+  /* Default device params */
+  cca.use_ed = 1;
+  cca.use_cs = 0;
+  cca.edth = 0x60; /* CCA mode ED, no carrier sense, recommenced ED threshold -69 dBm */
+  mrf24j40_setcca(dev, &cca);
+
+  mrf24j40_setrxmode(dev, 3);
+
+  mrf24j40_settxpower(dev, 0); /*16. Set transmitter power .*/
+
+  mrf24j40_setchan (dev, 11);
   mrf24j40_setpanid(dev, (uint8_t*)"\xff\xff");
   mrf24j40_setsaddr(dev, (uint8_t*)"\xff\xff");
   mrf24j40_seteaddr(dev, (uint8_t*)"\xff\xff\xff\xff\xff\xff\xff\xff");
 
-  /*16. Set transmitter power - See “REGISTER 2-62: RF CONTROL 3 REGISTER (ADDRESS: 0x203)”.*/
-
-  mrf24j40_settxpower(dev, 0);
-
-  sem_init(&dev->sem, 0, 1);
-  sem_init(&dev->rxsem, 0, 0);
+  sem_init(&dev->devsem  , 0, 1); /* Allow the device to be opened once before blocking */
+  sem_init(&dev->rxsem   , 0, 0); /* No packet is received yet. read() will return EAGAIN */
+  sem_init(&dev->txsem   , 0, 0); /* Allow blocking the write routine until the tx int has fired. */
 
   sprintf(devname, "/dev/mrf%d", minor);
 

@@ -56,7 +56,8 @@
  * Private Data
  ****************************************************************************/
 
-static struct ieee802154_packet_s packet;
+static struct ieee802154_packet_s rxpacket;
+static struct ieee802154_packet_s txpacket;
 
 int setchan(int fd, int chan)
 {
@@ -68,7 +69,7 @@ int setchan(int fd, int chan)
   return ret;
 }
 
-int setcca(int fd, struct ieee802154_cca_s *cca)
+int setcca(int fd, FAR struct ieee802154_cca_s *cca)
 {
   int ret = ioctl(fd, MAC854IOCSCCA, (unsigned long)cca );
   if (ret<0)
@@ -78,7 +79,7 @@ int setcca(int fd, struct ieee802154_cca_s *cca)
   return ret;
 }
 
-int getcca(int fd, struct ieee802154_cca_s *cca)
+int getcca(int fd, FAR struct ieee802154_cca_s *cca)
 {
   int ret = ioctl(fd, MAC854IOCGCCA, (unsigned long)cca );
   if (ret<0)
@@ -269,7 +270,7 @@ static int sniff(int fd, int chan)
   printf("Listening on channel %d\n",chan);
   while (1)
     {
-      ret = read(fd, &packet, sizeof(struct ieee802154_packet_s));
+      ret = read(fd, &rxpacket, sizeof(struct ieee802154_packet_s));
       if(ret < 0)
         {
           if (errno == EAGAIN)
@@ -285,10 +286,21 @@ static int sniff(int fd, int chan)
         } 
 
       /* Display packet */
-      display(&packet);
+      display(&rxpacket);
     }
   
   return ret;
+}
+
+static int tx(int fd, FAR struct ieee802154_packet_s *packet)
+{
+  int i;
+  for (i = 0; i < packet->len; i++)
+    {
+      printf("%02X", packet->data[i]);
+    }
+  printf("\n");
+  return OK;
 }
 
 /****************************************************************************
@@ -408,12 +420,41 @@ int i8_main(int argc, char *argv[])
     {
     ret = sniff(fd,arg);
     }
+  else if (!strcmp(argv[2], "tx"))
+    {
+    int id=0;
+    int len = strlen(argv[3]);
+    FAR char *ptr = argv[3];
+
+    /* decode hex packet */
+
+    while (id<125 && len>0)
+      {
+        int dat;
+        if (sscanf(ptr, "%02X", &dat)==1)
+          {
+            txpacket.data[id++] = dat;
+            ptr += 2;
+            len -= 2;
+          }
+        else
+          {
+            printf("data error\n");
+            ret = ERROR;
+            goto error;
+          }
+      }
+    txpacket.len = id;
+
+    ret = tx(fd,&txpacket);
+    }
   else
     {
 usage:
     ret = usage();
     }
  
+error:
   close(fd);
 exit:
   return ret;
