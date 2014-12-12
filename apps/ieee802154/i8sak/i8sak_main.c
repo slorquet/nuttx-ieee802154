@@ -1,5 +1,5 @@
 /****************************************************************************
- * ieee802154/i8/i8_main.c
+ * ieee802154/i8sak/i8sak_main.c
  * IEEE 802.15.4 Swiss Army Knife
  *
  *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
@@ -31,6 +31,18 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ ****************************************************************************/
+
+/****************************************************************************
+ * This app can be used to control an IEEE 802.15.4 device from command line.
+ * Example valid ieee802154 packets:
+ *
+ * Beacon request, seq number 01:
+ *   xx xx 01
+ *
+ * Simple data packet 
+ * from long address xx to long address yy, pan id pp for src and dest
  *
  ****************************************************************************/
 
@@ -320,12 +332,13 @@ int usage(void)
          "  chan <ch>\n"
          "  edth <off|rssi>\n"
          "  csth <off|corr>\n"
+         "  tx <hexpacket>\n"
          );
   return ERROR;
 }
 
 /****************************************************************************
- * ieeedump_main
+ * i8_main
  ****************************************************************************/
 
 #ifdef CONFIG_BUILD_KERNEL
