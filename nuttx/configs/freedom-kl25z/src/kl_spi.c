@@ -1,7 +1,7 @@
 /****************************************************************************
  * configs/freedom-kl25z/src/kl_spi.c
  *
- *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2013-2014 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -57,18 +57,14 @@
 
 /* Enables debug output from this file (needs CONFIG_DEBUG too) */
 
-#undef SPI_DEBUG   /* Define to enable debug */
-#undef SPI_VERBOSE /* Define to enable verbose debug */
-
-#ifdef SPI_DEBUG
+#ifdef CONFIG_DEBUG_SPI
 #  define spidbg  lldbg
-#  ifdef SPI_VERBOSE
+#  ifdef CONFIG_DEBUG_VERBOSE
 #    define spivdbg lldbg
 #  else
 #    define spivdbg(x...)
 #  endif
 #else
-#  undef SPI_VERBOSE
 #  define spidbg(x...)
 #  define spivdbg(x...)
 #endif
@@ -94,6 +90,15 @@ void weak_function kl_spiinitialize(void)
   /* Configure SPI0 chip selects */
 
 #ifdef CONFIG_KL_SPI0
+# ifdef CONFIG_ADXL345_SPI
+  kl_configgpio(GPIO_ADXL345_CS);
+#endif
+
+# ifdef CONFIG_WL_CC3000
+  kl_configgpio(GPIO_WIFI_CS);
+  kl_configgpio(GPIO_WIFI_EN);
+  kl_configgpio(GPIO_WIFI_INT);
+# endif
 #endif
 
   /* Configure SPI1 chip selects */
@@ -161,6 +166,23 @@ void kl_spi0select(FAR struct spi_dev_s *dev, enum spi_dev_e devid,
 {
   spivdbg("devid: %d CS: %s\n",
            (int)devid, selected ? "assert" : "de-assert");
+
+#ifdef CONFIG_ADXL345_SPI
+  if (devid == SPIDEV_GSENSOR)
+    {
+      /* Active low */
+
+      kl_gpiowrite(GPIO_ADXL345_CS, !selected);
+    }
+#endif
+
+#if defined(CONFIG_WL_CC3000)
+  if (devid == SPIDEV_WIRELESS)
+    {
+      kl_gpiowrite(GPIO_WIFI_CS, !selected);
+    }
+#endif
+
 }
 #endif
 
@@ -205,7 +227,7 @@ uint8_t kl_spi1status(FAR struct spi_dev_s *dev, enum spi_dev_e devid)
  * Name: kl_spi[n]cmddata
  *
  * Description:
- *   Some SPI interfaces, particularly with LCDs, and an auxilary 9th data
+ *   Some SPI interfaces, particularly with LCDs, and an auxiliary 9th data
  *   input that determines where the other 8 data bits represent command or
  *   data.  These interfaces control that CMD/DATA GPIO output
  *

@@ -5132,6 +5132,14 @@ static void stm32_hwinitialize(FAR struct stm32_usbdev_s *priv)
 
   stm32_putreg(OTGHS_GAHBCFG_TXFELVL, STM32_OTGHS_GAHBCFG);
 
+  /* Set the PHYSEL bit in the GUSBCFG register to select the OTG HS serial
+   * transceiver: "This bit is always 1 with write-only access"
+   */
+
+  regval  = stm32_getreg(STM32_OTGHS_GUSBCFG);
+  regval |= OTGHS_GUSBCFG_PHYSEL;
+  stm32_putreg(regval, STM32_OTGHS_GUSBCFG);
+
   /* Common USB OTG core initialization */
   /* Reset after a PHY select and set Host mode.  First, wait for AHB master
    * IDLE state.
@@ -5300,6 +5308,16 @@ static void stm32_hwinitialize(FAR struct stm32_usbdev_s *priv)
   /* Clear any pending interrupts */
 
   stm32_putreg(0xbfffffff, STM32_OTGHS_GINTSTS);
+
+  /* Disable the ULPI Clock enable in RCC AHB1 Register.  This must
+   * be done because if both the ULPI and the FS PHY clock enable bits
+   * are set at the same time, the ARM never awakens from WFI due to
+   * some bug / errata in the chip.
+   */
+
+  regval = stm32_getreg(STM32_RCC_AHB1LPENR);
+  regval &= ~RCC_AHB1ENR_OTGHSULPIEN;
+  stm32_putreg(regval, STM32_RCC_AHB1LPENR);
 
   /* Enable the interrupts in the INTMSK */
 

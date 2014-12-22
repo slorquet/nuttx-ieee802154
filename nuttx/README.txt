@@ -1026,6 +1026,8 @@ nuttx
  |   |   `- README.txt
  |   |- demo0s12ne64/
  |   |   `- README.txt
+ |   |- dk-tm4c129x/
+ |   |   `- README.txt
  |   |- ea3131/
  |   |   `- README.txt
  |   |- ea3152/
@@ -1174,6 +1176,7 @@ nuttx
  |   |- stm32f4discovery/
  |   |   `- README.txt
  |   |- stm32f429i-disco/
+ |   |   |- ltdc/README.txt
  |   |   `- README.txt
  |   |- stm32ldiscovery/
  |   |   `- README.txt
@@ -1221,6 +1224,8 @@ nuttx
  |   |- lcd/
  |   |   `- README.txt
  |   |- mtd/
+ |   |   `- README.txt
+ |   |- sensors/
  |   |   `- README.txt
  |   |- sercomm/
  |   |   `- README.txt

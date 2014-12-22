@@ -9198,4 +9198,134 @@
 	  size of the M24P16 part.  From Lazlo (2014-12-10).
 	* libc/string/lib_strncpy.c:  Commit d0c76ccacf0dc8988f9617ad82bf4349f456bb08
 	  will trash a lot of memory if n == 0.  From Yasuhiro Osaki (2014-12-11).
- 
+	* arch/arm/src/stm32/stm32_otghsdev.c.  Fix for OTGHS device driver
+	  working in FS mode.  From Ken Pettit (2014-12-12).
+	* libc/stdio/lib_sscanf.c: Accept %X as well as %x as a format
+	  specifier.  From Sébastien Lorquet (2014-12-12).
+	* libc/stdio/lib_sscanf.c: Also accept %F as well as %f (2014-12-12).
+	* arch/arm/src/stm32/stm32_otghsdev.c: For STM32 OTG HS DEV (in FS
+	  mode): Disable ULPI clock enable in RCC AHB1 Register.  If Both ULPI
+	  and the FS clock enable bits are set in FS mode, then the ARM never
+	  awakens from WFI due to a chip issue.  This is only an issue if you
+	  are using the internal PHY.  From Ken Pettit (2014-12-13).
+	* drivers/serial/serial.c: In case a thread is doing a blockingi
+	  operation (e.g. read()) on a serial device, while it is being
+	  terminated by pthread_cancel(), then uart_close() gets called, but
+	  the semaphore (dev->recv.sem in the above example) is still blocked.
+	  This means that once the serial device is opened next time, data will
+	  arrive on the serial port (and driver interrupts handled as normal),
+	  but the received characters never arrive in the reader thread.
+	  Th problem was fixed by re-initializing the semaphores on the last
+	  uart_close() on the device. From Harald Welte (2014-12-13).
+	* sched/semaphore/sem_recover.c, Make.defs, seamphore.c,
+	  sched/wdog/wd_recover.c, Make.defs, wdog.h, sched/task/task_recover.c:
+	  Add logic to clean up after task_delete() or pthread_cancel() if the
+	  task happens to be waiting on a semaphore when it is cancelled
+	  (2014-12-13).
+	* arch/arm/src/kl/kl_gpioirq.c, Kconfig, Make.defs, and kl_irq.c: Add
+	  GPIO interrupt capability for the KL architecture. The patch is
+	  almost the same as kinetis_pinirq.c, just minor modifications and
+	  rename kl_pinirq to kl_gpioirq to make it more generic to developers.
+	  From Alan Carvalho de Assis (2014-12-13).
+	* arch/sim/src/up_ajoystick.c, Kconfig, Makefile, up_idle.c,
+	  up_internal.h, up_x11eventloop.c, up_x11framebuffer.c,
+	  configs/sim/src/Makefile, sim_boot.c, and traveler/defconfig: Add an
+	  X11 mouse-based simulation of an analog joystick device (2014-12-14).
+	* drivers/sensors/adxl345*, include/nuttx/sensors/adxl345.h and other
+	  files:  Add driver support for the ADXL345 accelerometer.  From  Alan
+	  Carvalho de Assis (2014-12-16).
+	* configs/freedom-kl25z: Add board support for the ADXL345 accelerometer.
+	  From  Alan Carvalho de Assis (2014-12-16).
+	* Kconfig, include/debug.h, drivers/sensors/*, and Qencoder logic in
+	  arch/arm/src/stm32 and various QEncoder board support files under
+	  config/: Unify sensor debug.  ADX driver was using input debug; LM75
+	  and QENCODE that their own custom debug.  Now all use
+	  CONFIG_DEBUG_SENSOR, sndbg() (2014-12-16).
+	* configs/dk-tm4c129x:  Initial board support for the Tiva DK-TM4C129x
+	  Connected Development Kit.  The initial commit is just the Tiva
+	  TM4C123G-Launchpad board support with naming changes (2014-12-16).
+	* include/nuttx/sched.h, sched/Kconfig, sched/init/os_start.c,
+	  sched/pthread/pthread_create.c, sched/task/task_prctl.c,
+	  sched/task/task_setup.c: strncpy() will not copy the terminating \0
+	  into the destination if the source is larger than the size of the
+	  destination. Ensure that the last byte is always zero and let strncpy
+	  only copy CONFIG_TASK_NAME_SIZE bytes. The issue of unterminated names
+	  can be observed in ps when creating a pthread while
+	  CONFIG_TASK_NAME_SIZE is set to 8.  From  Daniel Willmann (2014-12-17).
+	* configs/*/*/defconfig: The previous change increased the task name
+	  size allocation by one to hold a NUL terminator.  This changes reduces
+	  the configured name size by one so that no additional memory is used
+	  (2014-12-17).
+	* drivers/wireless/cc3000/cc3000.c: CC3000 Fix: Data can be unaligned.
+	  When dereferenced as an input ntosh(), a bad value is returned.
+	  Reported by Alan Carvalho de Assis (2014-12-18).
+	* configs/freedom-kl25z: Update the Freedom KL25Z board CC3000 support
+	  to use the current CC300 interfaces.  From Alan Carvalho de Assis
+	  (2014-12-18).
+	* arch/arm/src/tiva, include/tiva, and many configurations:  Change
+	  negative Tiva logic CONFIG_TIVA_DISABLE_GPIOx_IRQS to positive logic
+	  CONFIG_TIVA_GPIOx_IRQ (2014-12-18).
+	* arch/arm/src/tiva/Kconfig:  Fix configuration logic for IRQ interrupts.
+	  The various parts support varying numbers of GPIO blocks and with varying
+	  capabilities to support interrupts on the pins of different GPIO blocks
+	  (2014-12-18).
+	* arch/arm/src/stm32/chip/stm32f40xxx_rcc.h: PLLSAI register name to
+	  this one in the reference manual. From Marco Krahl (2014-12-19).
+	* arch/arm/src/stm32/chip/stm32_ltdc.h: Rename CFBLR register name to
+	  the name used in the reference manual. From Marco Krahl (2014-12-19).
+	* arch/arm/src/stm32/chip/stm32_ltdc.h: Add missing clut register
+	  definition. From Marco Krahl (2014-12-19).
+	* arch/arm/src/stm32/stm32f40xxx_rcc.c:  Configure PLLSAI clock to
+	  enable ltdc register access. From Marco Krahl (2014-12-19).
+	* configs/stm32f429i-disco/include/board.h:  Update board definition for
+	  the ili9341 LCD display. This configures all LCD settings for the RGB
+	  interface. Also adds a customer LCD display template. From Marco Krahl
+	  (2014-12-19).
+	* arch/arm/src/stm32/stm32_ltdc.h: Define a common layer description for
+	  the ltdc and dma2d controller. From Marco Krahl (2014-12-19).
+	* arch/arm/src/stm32/stm32_dma2d.c/.h and related files:  Add
+	  infrastructure for dma2d support. From Marco Krahl (2014-12-19).
+	* arch/arm/include/stm32/ltdc.h:  Add interface to perform hardware
+	  accelerated layer operation. The following methods must be supported
+	  by the implementation: gevideoinfo, getplaneinfo, getlid, setclut,
+	  getclut, setcolor, getcolor, setcolorkey, getcolorkey, setalpha,
+	  getalpha, setblendmode, getblendmode, setarea, getarea, and update.
+	  And if DMA2D is supported: blit and blend.  The method up_ltdcgetlayer
+	  provides access to a reference of a specific ltdc layer. From Marco
+	  Krahl (2014-12-19).
+	* arch/arm/src/stm32/stm32_ltdc.c: Implements ltdc frambuffer support
+	  for the generic nuttx framebuffer interface, (see nuttx/video/fb.h).
+	  This also implements the interface to perform hardware accelerated
+	  layer operation by the ltdc controller and dma2d controller later
+	  (see nuttx/video/ltdc.h). The following methods are supported by the
+	  ltdc interface: getvideoinfo, getplaneinfo, getlid, setclut, getclut,
+	  setcolor, getcolor, setcolorkey, getcolorkey, setalpha, getalpha,
+	  setblendmode, getblendmode, setarea, getarea, and update. From Marco
+	  Krahl (2014-12-19).
+	* include/nuttx/lcd/ili9341.h: Update interface control definitions.
+	  From Marco Krahl (2014-12-19).
+	* configs/stm32f429i-disco/src/stm32_lcd.c:  Add support for
+	  initializing ltdc framebuffer and the configured lcd display.  This
+	  adds support for initializing of the ltdc controller and the lcd
+	  device connected on the stm32f429i-disco. The following methods are
+	  provided for the generic fb interface: up_fbinitialize,
+	  up_fbgetvplane, and fb_uninitialize. The following methods are
+	  provided for the ltdc interface: up_ltdcgetlayer. From Marco Krahl
+	  (2014-12-19).
+	* zrch/arm/src/stm32/Kconfig: Add configuration option for ltdc.  This
+	  adds the following ltdc configuration options: dither support, cmap
+	  support, is this the right place for CONFIG_FB_CMAP?, support for
+	  extended ltdc interface. From Marco Krahl (2014-12-19).
+	*  nuttx/configs/stm32f429i-disco: Enable configuration of framebuffer
+	  support for the ltdc controller. From Marco Krahl (2014-12-19).
+	* configs/stm32f429i-disco/src/stm32_boot.c: Initialize ltdc during
+	  bootup. From Marco Krahl (2014-12-19).
+	* configs/stm32f429i-disco/ltdc: Add default platform configuration to
+	  test framebuffer support for the ltdc. . From Marco Krahl
+	  (2014-12-19).
+	* libnx/nxfonts/nxfonts_getfont.c: A patch to add previous added font
+	  into nxf_getfonthandle function.  From  Pierre-Noel Bouteville
+	  (2014-12-19).
+	* arch/arm/src/tiva, include/tiva, and many configurations:  Change
+	  negative Tiva logic CONFIG_SSIx_DISABLE to positive logic
+	  CONFIG_TIVA_SSIx.  Add support for SSI2 and SSI3 (2014-12-21).

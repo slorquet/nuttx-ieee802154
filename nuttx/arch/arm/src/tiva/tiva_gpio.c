@@ -48,6 +48,8 @@
 #include <arch/irq.h>
 
 #include "up_arch.h"
+#include "tiva_enablepwr.h"
+#include "tiva_enableclks.h"
 #include "tiva_gpio.h"
 
 /****************************************************************************
@@ -191,6 +193,15 @@ static const uintptr_t g_gpiobase[TIVA_NPORTS] =
 #endif
 #if TIVA_NPORTS > 14
   , TIVA_GPIOQ_BASE
+#endif
+#if TIVA_NPORTS > 15
+  , TIVA_GPIOR_BASE
+#endif
+#if TIVA_NPORTS > 16
+  , TIVA_GPIOS_BASE
+#endif
+#if TIVA_NPORTS > 17
+  , TIVA_GPIOT_BASE
 #endif
 };
 
@@ -805,7 +816,6 @@ int tiva_configgpio(uint32_t cfgset)
   unsigned int pinno;
   uintptr_t    base;
   uint32_t     pin;
-  uint32_t     regval;
 
   /* Decode the basics */
 
@@ -825,14 +835,18 @@ int tiva_configgpio(uint32_t cfgset)
 
   flags = irqsave();
 
-  /* Enable clocking for this GPIO peripheral. "To use the GPIO, the peripheral
-   * clock must be enabled by setting the appropriate GPIO Port bit field (GPIOn)
-   * in the RCGC2 register."
+  /* Enable power and clocking for this GPIO peripheral.
+   *
+   * - Enable Power (TM4C129 family only):  Applies power (only) to the GPIO
+   *   peripheral.  This is not an essential step since enabling clocking
+   *   will also apply power.  The only significance is that the GPIO state
+   *   will be retained if the GPIO clocking is subsequently disabled.
+   * - Enable Clocking (All families):  Applies both power and clocking to
+   *   the GPIO peripheral, bringing it a fully functional state.
    */
 
-  regval = getreg32(TIVA_SYSCON_RCGC2);
-  regval |= SYSCON_RCGC2_GPIO(port);
-  putreg32(regval, TIVA_SYSCON_RCGC2);
+  tiva_gpio_enablepwr(port);
+  tiva_gpio_enableclk(port);
 
   /* First, set the port to digital input.  This is the safest state in which
    * to perform reconfiguration.
@@ -918,7 +932,7 @@ void tiva_gpiowrite(uint32_t pinset, bool value)
  *
  ****************************************************************************/
 
-bool tiva_gpioread(uint32_t pinset, bool value)
+bool tiva_gpioread(uint32_t pinset)
 {
   unsigned int port;
   unsigned int pinno;

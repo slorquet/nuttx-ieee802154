@@ -43,11 +43,13 @@
 #include <nuttx/wdog.h>
 #include <nuttx/sched.h>
 
+#include "semaphore/semaphore.h"
+#include "wdog/wdog.h"
 #include "mqueue/mqueue.h"
 #include "task/task.h"
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /****************************************************************************
@@ -78,9 +80,9 @@
  * Name: task_recover
  *
  * Description:
- *   This function is called when a task is deleted via task_deleted or
- *   via pthread_cancel. I checks if the task was waiting for a message
- *   queue event and adjusts counts appropriately.
+ *   This function is called when a task is deleted via task_delete() or
+ *   via pthread_cancel.  I checks checks for semaphores, message queue, and
+ *   watchdog timer resources stranded in bad conditions.
  *
  * Inputs:
  *   tcb - The TCB of the terminated task or thread
@@ -95,28 +97,19 @@
 
 void task_recover(FAR struct tcb_s *tcb)
 {
-  irqstate_t flags;
+  /* The task is being deleted.  Cancel in pending timeout events. */
 
-  /* The task is being deleted.  If it is waiting for any timed event, then
-   * tcb->waitdog will be non-NULL.  Cancel the watchdog now so that no
-   * events occur after the watchdog expires.  Obviously there are lots of
-   * race conditions here so this will most certainly have to be revisited in
-   * the future.
+  wd_recover(tcb);
+
+  /* If the thread holds semaphore counts or is waiting for a semaphore count,
+   * then release the counts.
    */
 
-  flags = irqsave();
-  if (tcb->waitdog)
-    {
-      (void)wd_cancel(tcb->waitdog);
-      (void)wd_delete(tcb->waitdog);
-      tcb->waitdog = NULL;
-    }
-
-  irqrestore(flags);
-
-  /* Handle cases where the thread was waiting for a message queue event */
+  sem_recover(tcb);
 
 #ifndef CONFIG_DISABLE_MQUEUE
+  /* Handle cases where the thread was waiting for a message queue event */
+
   mq_recover(tcb);
 #endif
 }

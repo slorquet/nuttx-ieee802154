@@ -1,12 +1,12 @@
 README
-^^^^^^
+======
 
 README for NuttX port to the Tiva TM4C123G LaunchPad.  The Tiva TM4C123G
 LaunchPad Evaluation Board is a low-cost evaluation platform for ARM®
 Cortex™-M4F-based microcontrollers from Texas Instruments.
 
 Contents
-^^^^^^^^
+========
 
   On-Board GPIO Usage
   Development Environment
@@ -40,7 +40,7 @@ PIN SIGNAL(S)                                LanchPad Function
 
  45 PB0/T2CCP0/U1Rx                          GPIO, J1 pin 3
  46 PB1/T2CCP1/U1Tx                          GPIO, J1 pin 4
- 47 PB2/I2C0SCL/T3CCP0                       GPIO, J2, pin 3
+ 47 PB2/I2C0SCL/T3CCP0                       GPIO, J2 pin 2
  48 PB3/I2C0SDA/T3CCP1                       GPIO, J4 pin 3
  58 PB4/AIN10/CAN0Rx/SSI2CLK/T1CCP0          GPIO, J1 pin 7
  57 PB5/AIN11/CAN0Tx/SSI2FSS/T1CCP1          GPIO, J1 pin 2
@@ -82,7 +82,7 @@ PIN SIGNAL(S)                                LanchPad Function
  05 PF4/T2CCP0                               USR_SW1 (Low when pressed), GPIO, J4 pin 10
 
 AT24 Serial EEPROM
-^^^^^^^^^^^^^^^^^^
+==================
 
   AT24 Connections
   ----------------
@@ -94,10 +94,12 @@ AT24 Serial EEPROM
   The Serial EEPROM was mounted on an external adaptor board and connected
   to the LaunchPad thusly:
 
-    - VCC -- VCC
-    - GND -- GND
-    - PB2 -- SCL
-    - PB3 -- SDA
+    - VCC  J1 pin 1  3.3V
+           J3 pin 1  5.0V
+    - GND  J2 pin 1  GND
+           J3 pin 2  GND
+    - PB2  J2 pin 2  SCL
+    - PB3  J4 pin 3  SDA
 
   Configuration Settings
   ----------------------
@@ -147,6 +149,12 @@ AT24 Serial EEPROM
      -rw-rw-rw-      16 atest.txt
     nsh> cat /mnt/at24/atest.txt
     This is a test
+
+  STATUS:
+  2014-12-12:  I was unsuccessful getting my AT24 module to work on the TM4C123G
+    LaunchPad.  I was unable to successuflly communication with the AT24 via
+    I2C.  I did verify I2C using the I2C tool and other I2C devices and I now
+    belive that my AT24 module is not fully functional.
 
 I2C Tool
 ========
@@ -228,7 +236,7 @@ I2C Tool
     devices responding at addresses 0x1a, 0x39, 0x3d, and 0x60.
 
 Using OpenOCD and GDB with an FT2232 JTAG emulator
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+==================================================
 
   Building OpenOCD under Cygwin:
 
@@ -332,7 +340,7 @@ Using OpenOCD and GDB with an FT2232 JTAG emulator
     3. The 'monitor' command can be abbreviated as just 'mon'.
 
 Development Environment
-^^^^^^^^^^^^^^^^^^^^^^^
+=======================
 
   Either Linux or Cygwin on Windows can be used for the development environment.
   The source has been built only using the GNU toolchain (see below).  Other
@@ -340,7 +348,7 @@ Development Environment
   environment.
 
 GNU Toolchain Options
-^^^^^^^^^^^^^^^^^^^^^
+=====================
 
   The NuttX make system has been modified to support the following different
   toolchain options.
@@ -405,7 +413,7 @@ GNU Toolchain Options
   path or will get the wrong version of make.
 
 IDEs
-^^^^
+====
 
   NuttX is built using command-line make.  It can be used with an IDE, but some
   effort will be required to create the project.
@@ -435,7 +443,7 @@ IDEs
   is arch/arm/src/tiva/tiva_vectors.S.
 
 NuttX EABI "buildroot" Toolchain
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+================================
 
   A GNU GCC-based toolchain is assumed.  The files */setenv.sh should
   be modified to point to the correct path to the Cortex-M3 GCC toolchain (if
@@ -478,7 +486,7 @@ NuttX EABI "buildroot" Toolchain
   See instructions below.
 
 NuttX OABI "buildroot" Toolchain
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+================================
 
   The older, OABI buildroot toolchain is also available.  To use the OABI
   toolchain:
@@ -497,7 +505,7 @@ NuttX OABI "buildroot" Toolchain
     -NXFLATLDFLAGS2 = $(NXFLATLDFLAGS1) -T$(TOPDIR)/binfmt/libnxflat/gnu-nxflat-pcrel.ld -no-check-sections
 
 NXFLAT Toolchain
-^^^^^^^^^^^^^^^^
+================
 
   If you are *not* using the NuttX buildroot toolchain and you want to use
   the NXFLAT tools, then you will still have to build a portion of the buildroot
@@ -510,7 +518,7 @@ NXFLAT Toolchain
   1. You must have already configured Nuttx in <some-dir>/nuttx.
 
      cd tools
-     ./configure.sh lpcxpresso-lpc1768/<sub-dir>
+     ./configure.sh tm4c123g-launchpad/<sub-dir>
 
   2. Download the latest buildroot package into <some-dir>
 
@@ -530,7 +538,7 @@ NXFLAT Toolchain
      the path to the newly builtNXFLAT binaries.
 
 LEDs
-^^^^
+====
   The TM4C123G has a single RGB LED.  If CONFIG_ARCH_LEDS is defined, then
   support for the LaunchPad LEDs will be included in the build.  See:
 
@@ -563,7 +571,7 @@ LEDs
     extinguished and the RED component will FLASH at a 2Hz rate.
 
 Serial Console
-^^^^^^^^^^^^^^
+==============
 
   By default, all configurations use UART0 which connects to the USB VCOM
   on the DEBUG port on the TM4C123G LaunchPad:
@@ -607,7 +615,7 @@ Serial Console
     UART7 TX - PE.1
 
 USB Device Controller Functions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+===============================
 
   Device Overview
 
@@ -646,7 +654,7 @@ USB Device Controller Functions
     driver is installed, Windows assigns a COM port number to the VCP channel.
 
 TM4C123G LaunchPad Configuration Options
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+=======================================================
 
     CONFIG_ARCH - Identifies the arch/ subdirectory.  This should
        be set to:
@@ -713,25 +721,12 @@ TM4C123G LaunchPad Configuration Options
        the delay actually is 100 seconds.
 
   There are configurations for disabling support for interrupts GPIO ports.
-  GPIOJ must be disabled because it does not exist on the TM4C123G.
-  Additional interrupt support can be disabled if desired to reduce memory
-  footprint.
+  Only GPIOP and GPIOQ pins can be used as interrupting sources on the
+  TM4C129x.  Additional interrupt support can be disabled if desired to
+  reduce memory footprint.
 
-    CONFIG_TIVA_DISABLE_GPIOA_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOB_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOC_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOD_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOE_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOF_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOG_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOH_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOJ_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOK_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOL_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOM_IRQS=n
-    CONFIG_TIVA_DISABLE_GPION_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOP_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOQ_IRQS=n
+    CONFIG_TIVA_GPIOP_IRQS=y
+    CONFIG_TIVA_GPIOQ_IRQS=y
 
   TM4C123G specific device driver settings
 
@@ -746,8 +741,8 @@ TM4C123G LaunchPad Configuration Options
     CONFIG_UARTn_PARTIY - 0=no parity, 1=odd parity, 2=even parity
     CONFIG_UARTn_2STOP - Two stop bits
 
-    CONFIG_SSI0_DISABLE - Select to disable support for SSI0
-    CONFIG_SSI1_DISABLE - Select to disable support for SSI1
+    CONFIG_TIVA_SSI0 - Select to enable support for SSI0
+    CONFIG_TIVA_SSI1 - Select to enable support for SSI1
     CONFIG_SSI_POLLWAIT - Select to disable interrupt driven SSI support.
       Poll-waiting is recommended if the interrupt rate would be to
       high in the interrupt driven case.
@@ -770,7 +765,7 @@ TM4C123G LaunchPad Configuration Options
     CONFIG_TIVA_DUMPPACKET - Dump each packet received/sent to the console.
 
 Configurations
-^^^^^^^^^^^^^^
+==============
 
 Each TM4C123G LaunchPad configuration is maintained in a
 sub-directory and can be selected as follow:

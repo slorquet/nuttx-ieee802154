@@ -1,5 +1,5 @@
 /********************************************************************************************
- * arch/arm/src/tiva/chip/tm4c_syscontrol.h
+ * arch/arm/src/tiva/chip/tm4c123_syscontrol.h
  *
  *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -33,8 +33,8 @@
  *
  ********************************************************************************************/
 
-#ifndef __ARCH_ARM_SRC_TIVA_CHIP_TM4C_SYSCONTROL_H
-#define __ARCH_ARM_SRC_TIVA_CHIP_TM4C_SYSCONTROL_H
+#ifndef __ARCH_ARM_SRC_TIVA_CHIP_TM4C123_SYSCONTROL_H
+#define __ARCH_ARM_SRC_TIVA_CHIP_TM4C123_SYSCONTROL_H
 
 /********************************************************************************************
  * Included Files
@@ -386,7 +386,7 @@
 #define SYSCON_DID1_QUAL_SHIFT        0         /* Bits 1-0: Qualification Status */
 #define SYSCON_DID1_QUAL_MASK         (0x03 << SYSCON_DID1_QUAL_SHIFT)
 #define SYSCON_DID1_ROHS              (1 << 2)  /* Bit 2: RoHS-Compliance */
-#define SYSCON_DID1_PKG_SHIFT         3 /* Bits 4-3: Package Type */
+#define SYSCON_DID1_PKG_SHIFT         3         /* Bits 4-3: Package Type */
 #define SYSCON_DID1_PKG_MASK          (0x03 << SYSCON_DID1_PKG_SHIFT)
 #define SYSCON_DID1_TEMP_SHIFT        5         /* Bits 7-5: Temperature Range */
 #define SYSCON_DID1_TEMP_MASK         (0x07 << SYSCON_DID1_TEMP_SHIFT)
@@ -416,13 +416,13 @@
 
 /* Interrupt Mask Control */
 
-#define SYSCON_IMC_BORR1RIM           (1 << 1)  /* Bit 1:  VDD under BOR1 Raw Interrupt Mask */
-#define SYSCON_IMC_MOFRIM             (1 << 3)  /* Bit 3:  Main Oscillator Failure Raw Interrupt Mask */
-#define SYSCON_IMC_PLLLRIM            (1 << 6)  /* Bit 6:  PLL Lock Raw Interrupt Mask */
-#define SYSCON_IMC_USBPLLLRIM         (1 << 7)  /* Bit 7:  USB PLL Lock Raw Interrupt Mask */
-#define SYSCON_IMC_MOSCPUPRIM         (1 << 8)  /* Bit 8:  MOSC Power Up Raw Interrupt Mask */
-#define SYSCON_IMC_VDDARIM            (1 << 10) /* Bit 10: VDDA Power OK Event Raw Interrupt Mask */
-#define SYSCON_IMC_BOR0RIM            (1 << 11) /* Bit 11: VDD under BOR0 Raw Interrupt Mask */
+#define SYSCON_IMC_BORR1IM            (1 << 1)  /* Bit 1:  VDD under BOR1 Interrupt Mask */
+#define SYSCON_IMC_MOFIM              (1 << 3)  /* Bit 3:  Main Oscillator Failure Interrupt Mask */
+#define SYSCON_IMC_PLLLIM             (1 << 6)  /* Bit 6:  PLL Lock Interrupt Mask */
+#define SYSCON_IMC_USBPLLLIM          (1 << 7)  /* Bit 7:  USB PLL Lock Interrupt Mask */
+#define SYSCON_IMC_MOSCPUPIM          (1 << 8)  /* Bit 8:  MOSC Power Up Interrupt Mask */
+#define SYSCON_IMC_VDDAIM             (1 << 10) /* Bit 10: VDDA Power OK Event Interrupt Mask */
+#define SYSCON_IMC_BOR0IM             (1 << 11) /* Bit 11: VDD under BOR0 Interrupt Mask */
 
 /* Masked Interrupt Status and Clear */
 
@@ -609,7 +609,7 @@
 #define SYSCON_SLPPWRCFG_SRAMPM_MASK       (3 << SYSCON_SLPPWRCFG_SRAMPM_SHIFT)
 #  define SYSCON_SLPPWRCFG_SRAMPM_ACTIVE   (0 << SYSCON_SLPPWRCFG_SRAMPM_SHIFT) /* Active Mode */
 #  define SYSCON_SLPPWRCFG_SRAMPM_STANDBY  (1 << SYSCON_SLPPWRCFG_SRAMPM_SHIFT) /* Standby Mode */
-#  define SYSCON_SLPPWRCFG_SRAMPM_LOWPWR   (2 << SYSCON_SLPPWRCFG_SRAMPM_SHIFT) /* Low Power Mode */
+#  define SYSCON_SLPPWRCFG_SRAMPM_LOWPWR   (3 << SYSCON_SLPPWRCFG_SRAMPM_SHIFT) /* Low Power Mode */
 #define SYSCON_SLPPWRCFG_FLASHPM_SHIFT     (4)  /* Bits 5-4: Flash Power Modes */
 #define SYSCON_SLPPWRCFG_FLASHPM_MASK      (3 << SYSCON_SLPPWRCFG_FLASHPM_SHIFT)
 #  define SYSCON_SLPPWRCFG_FLASHPM_ACTIVE  (0 << SYSCON_SLPPWRCFG_FLASHPM_SHIFT) /* Active Mode */
@@ -621,7 +621,7 @@
 #define SYSCON_DSLPPWRCFG_SRAMPM_MASK      (3 << SYSCON_DSLPPWRCFG_SRAMPM_SHIFT)
 #  define SYSCON_DSLPPWRCFG_SRAMPM_ACTIVE  (0 << SYSCON_DSLPPWRCFG_SRAMPM_SHIFT) /* Active Mode */
 #  define SYSCON_DSLPPWRCFG_SRAMPM_STANDBY (1 << SYSCON_DSLPPWRCFG_SRAMPM_SHIFT) /* Standby Mode */
-#  define SYSCON_DSLPPWRCFG_SRAMPM_LOWPWR  (2 << SYSCON_DSLPPWRCFG_SRAMPM_SHIFT) /* Low Power Mode */
+#  define SYSCON_DSLPPWRCFG_SRAMPM_LOWPWR  (3 << SYSCON_DSLPPWRCFG_SRAMPM_SHIFT) /* Low Power Mode */
 #define SYSCON_DSLPPWRCFG_FLASHPM_SHIFT    (4)  /* Bits 5-4: Flash Power Modes */
 #define SYSCON_DSLPPWRCFG_FLASHPM_MASK     (3 << SYSCON_DSLPPWRCFG_FLASHPM_SHIFT)
 #  define SYSCON_DSLPPWRCFG_FLASHPM_ACTIVE (0 << SYSCON_DSLPPWRCFG_FLASHPM_SHIFT) /* Active Mode */
@@ -784,7 +784,7 @@
 
 /* USB Peripheral Present */
 
-#define SYSCON_PPUSB_P0               (1 << 0)   /* USB Module Present */
+#define SYSCON_PPUSB_P0               (1 << 0)   /* Bit 0: USB Module Present */
 
 /* CAN Peripheral Present */
 
@@ -857,11 +857,11 @@
 #  define SYSCON_SRPGIO_R7            (1 << 7)   /* Bit 7:  GPIO Port H Software Reset */
 #  define SYSCON_SRPGIO_R8            (1 << 8)   /* Bit 8:  GPIO Port J Software Reset */
 #  define SYSCON_SRPGIO_R9            (1 << 9)   /* Bit 9:  GPIO Port K Software Reset */
-#  define SYSCON_SRPGIO_R10           (1 << 0)   /* Bit 0:  GPIO Port L Software Reset */
-#  define SYSCON_SRPGIO_R11           (1 << 1)   /* Bit 1:  GPIO Port M Software Reset */
-#  define SYSCON_SRPGIO_R12           (1 << 2)   /* Bit 2:  GPIO Port N Software Reset */
-#  define SYSCON_SRPGIO_R13           (1 << 3)   /* Bit 3:  GPIO Port P Software Reset */
-#  define SYSCON_SRPGIO_R14           (1 << 4)   /* Bit 4:  GPIO Port Q Software Reset */
+#  define SYSCON_SRPGIO_R10           (1 << 10)  /* Bit 10:  GPIO Port L Software Reset */
+#  define SYSCON_SRPGIO_R11           (1 << 11)  /* Bit 11:  GPIO Port M Software Reset */
+#  define SYSCON_SRPGIO_R12           (1 << 12)  /* Bit 12:  GPIO Port N Software Reset */
+#  define SYSCON_SRPGIO_R13           (1 << 13)  /* Bit 13:  GPIO Port P Software Reset */
+#  define SYSCON_SRPGIO_R14           (1 << 14)  /* Bit 14:  GPIO Port Q Software Reset */
 
 /* uDMA Software Reset */
 
@@ -928,7 +928,7 @@
 #  define SYSCON_SRPWM_R1             (1 << 1)   /* Bit 1:  PWM Module 1 Software Reset */
 
 /* Quadrature Encoder Interface Software Reset */
-#define SYSCON_SRQEI_
+
 #define SYSCON_SRQEI(n)               (1 << (n)) /* Bit n:  QEI Module n Software Reset */
 #  define SYSCON_SRQEI_R0             (1 << 0)   /* Bit 0:  QEI Module 0 Software Reset */
 #  define SYSCON_SRQEI_R1             (1 << 1)   /* Bit 1:  QEI Module 1 Software Reset */
@@ -1095,11 +1095,11 @@
 #  define SYSCON_SCGCGPIO_S7          (1 << 7)   /* Bit 7:  GPIO Port H Sleep Mode Clock Gating Control */
 #  define SYSCON_SCGCGPIO_S8          (1 << 8)   /* Bit 8:  GPIO Port J Sleep Mode Clock Gating Control */
 #  define SYSCON_SCGCGPIO_S9          (1 << 9)   /* Bit 9:  GPIO Port K Sleep Mode Clock Gating Control */
-#  define SYSCON_SCGCGPIO_S10         (1 << 10)  /* Bit 10:  GPIO Port L Sleep Mode Clock Gating Control */
-#  define SYSCON_SCGCGPIO_S11         (1 << 11)  /* Bit 11:  GPIO Port M Sleep Mode Clock Gating Control */
-#  define SYSCON_SCGCGPIO_S12         (1 << 12)  /* Bit 12:  GPIO Port N Sleep Mode Clock Gating Control */
-#  define SYSCON_SCGCGPIO_S13         (1 << 13)  /* Bit 13:  GPIO Port P Sleep Mode Clock Gating Control */
-#  define SYSCON_SCGCGPIO_S14         (1 << 14)  /* Bit 14:  GPIO Port Q Sleep Mode Clock Gating Control */
+#  define SYSCON_SCGCGPIO_S10         (1 << 10)  /* Bit 10: GPIO Port L Sleep Mode Clock Gating Control */
+#  define SYSCON_SCGCGPIO_S11         (1 << 11)  /* Bit 11: GPIO Port M Sleep Mode Clock Gating Control */
+#  define SYSCON_SCGCGPIO_S12         (1 << 12)  /* Bit 12: GPIO Port N Sleep Mode Clock Gating Control */
+#  define SYSCON_SCGCGPIO_S13         (1 << 13)  /* Bit 13: GPIO Port P Sleep Mode Clock Gating Control */
+#  define SYSCON_SCGCGPIO_S14         (1 << 14)  /* Bit 14: GPIO Port Q Sleep Mode Clock Gating Control */
 
 /* uDMA Sleep Mode Clock Gating Control */
 
@@ -1856,4 +1856,4 @@
  * Public Functions
  ********************************************************************************************/
 
-#endif /* __ARCH_ARM_SRC_TIVA_CHIP_TM4C_SYSCONTROL_H */
+#endif /* __ARCH_ARM_SRC_TIVA_CHIP_TM4C123_SYSCONTROL_H */

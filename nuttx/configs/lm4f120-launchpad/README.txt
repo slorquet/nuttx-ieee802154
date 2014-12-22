@@ -622,15 +622,15 @@ LM4F120 LaunchPad Configuration Options
   Additional interrupt support can be disabled if desired to reduce memory
   footprint.
 
-    CONFIG_TIVA_DISABLE_GPIOA_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOB_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOC_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOD_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOE_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOF_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOG_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOH_IRQS=n
-    CONFIG_TIVA_DISABLE_GPIOJ_IRQS=y
+    CONFIG_TIVA_GPIOA_IRQS=y
+    CONFIG_TIVA_GPIOB_IRQS=y
+    CONFIG_TIVA_GPIOC_IRQS=y
+    CONFIG_TIVA_GPIOD_IRQS=y
+    CONFIG_TIVA_GPIOE_IRQS=y
+    CONFIG_TIVA_GPIOF_IRQS=y
+    CONFIG_TIVA_GPIOG_IRQS=y
+    CONFIG_TIVA_GPIOH_IRQS=y
+    CONFIG_TIVA_GPIOJ_IRQS=n << Always
 
   LM4F120 specific device driver settings
 
@@ -645,8 +645,8 @@ LM4F120 LaunchPad Configuration Options
     CONFIG_UARTn_PARTIY - 0=no parity, 1=odd parity, 2=even parity
     CONFIG_UARTn_2STOP - Two stop bits
 
-    CONFIG_SSI0_DISABLE - Select to disable support for SSI0
-    CONFIG_SSI1_DISABLE - Select to disable support for SSI1
+    CONFIG_TIVA_SSI0 - Select to enable support for SSI0
+    CONFIG_TIVA_SSI1 - Select to enable support for SSI1
     CONFIG_SSI_POLLWAIT - Select to disable interrupt driven SSI support.
       Poll-waiting is recommended if the interrupt rate would be to
       high in the interrupt driven case.

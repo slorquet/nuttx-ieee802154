@@ -52,6 +52,7 @@
 #include <stdbool.h>
 #include <semaphore.h>
 #include <errno.h>
+#include <assert.h>
 #include <debug.h>
 
 #include <nuttx/arch.h>
@@ -64,6 +65,8 @@
 
 #include "up_arch.h"
 
+#include "tiva_enablepwr.h"
+#include "tiva_enableclks.h"
 #include "tiva_gpio.h"
 #include "chip/tiva_pinmap.h"
 #include "chip/tiva_syscontrol.h"
@@ -73,7 +76,9 @@
 
 #if defined(CONFIG_TIVA_I2C0) || defined(CONFIG_TIVA_I2C1) || \
     defined(CONFIG_TIVA_I2C2) || defined(CONFIG_TIVA_I2C3) || \
-    defined(CONFIG_TIVA_I2C4) || defined(CONFIG_TIVA_I2C5)
+    defined(CONFIG_TIVA_I2C4) || defined(CONFIG_TIVA_I2C5) || \
+    defined(CONFIG_TIVA_I2C6) || defined(CONFIG_TIVA_I2C7) || \
+    defined(CONFIG_TIVA_I2C8) || defined(CONFIG_TIVA_I2C9)
 
 /************************************************************************************
  * Pre-processor Definitions
@@ -105,6 +110,7 @@
 #  define CONFIG_TIVA_I2C_DYNTIMEO_STARTSTOP TICK2USEC(CONFIG_TIVA_I2C_TIMEOTICKS)
 #endif
 
+/* GPIO pins ************************************************************************/
 /* Macros to convert a I2C pin to a GPIO output */
 
 #define I2C_INPUT  (GPIO_FUNC_INPUT)
@@ -122,6 +128,10 @@
 #else
 #  define i2cdbg(x...)
 #  define i2cvdbg(x...)
+#endif
+
+#ifndef CONFIG_DEBUG
+#  undef CONFIG_TIVA_I2C_REGDEBUG
 #endif
 
 /* I2C event trace logic.  NOTE:  trace uses the internal, non-standard, low-level
@@ -148,8 +158,7 @@
 enum tiva_intstate_e
 {
   INTSTATE_IDLE = 0,      /* No I2C activity */
-  INTSTATE_ADDRESS,       /* Address sent, waiting for completion */
-  INTSTATE_XFRWAIT,       /* Waiting for data transfer to complete */
+  INTSTATE_WAITING,       /* Waiting for data transfer to complete */
   INTSTATE_DONE           /* Interrupt activity complete */
 };
 
@@ -161,11 +170,12 @@ enum tiva_trace_e
   I2CEVENT_SENDADDRESS,   /* Address sent, param = address */
   I2CEVENT_ERROR,         /* Error occurred, param = MCS */
   I2CEVENT_BUSY,          /* Still busy, param = MCS */
-  I2CEVENT_XFRDONE,       /* Transfer completed without error, param = dcnt */
-  I2CEVENT_RECVSETUP,     /* Setup to receive the next byte, param = dcnt */
-  I2CEVENT_SENDBYTE,      /* Send byte, param = dcnt */
+  I2CEVENT_XFRDONE,       /* Transfer completed without error, param = mcnt */
+  I2CEVENT_RECVSETUP,     /* Setup to receive the next byte, param = mcnt */
+  I2CEVENT_SENDBYTE,      /* Send byte, param = mcnt */
   I2CEVENT_SPURIOUS,      /* Spurious interrupt received, param = msgc */
   I2CEVENT_NEXTMSG,       /* Starting next message, param = msgc */
+  I2CEVENT_TIMEOUT,       /* Software detected timeout, param = RIS */
   I2CEVENT_DONE           /* All messages transferred, param = intstate */
 };
 
@@ -173,11 +183,11 @@ enum tiva_trace_e
 
 struct tiva_trace_s
 {
-  uint32_t status;             /* I2C 32-bit SR2|SR1 status */
-  uint32_t count;              /* Interrupt count when status change */
-  enum tiva_intstate_e event;  /* Last event that occurred with this status */
-  uint32_t parm;               /* Parameter associated with the event */
-  uint32_t time;               /* First of event or first status */
+  uint32_t status;          /* I2C 32-bit SR2|SR1 status */
+  uint32_t count;           /* Interrupt count when status change */
+  enum tiva_trace_e event;  /* Last event that occurred with this status */
+  uint32_t parm;            /* Parameter associated with the event */
+  uint32_t time;            /* First of event or first status */
 };
 
 /* I2C Device hardware configuration */
@@ -186,7 +196,10 @@ struct tiva_i2c_config_s
 {
   uintptr_t base;             /* I2C base address */
 #ifndef TIVA_SYSCON_RCGCI2C
-  uint32_t rcgbit;            /* Bits in RCG1 register to enable clocking */
+  uint32_t rcgbit;            /* Bit in the RCG1 register to enable clocking */
+#endif
+#ifndef TIVA_SYSCON_SRI2C
+  uint32_t rstbit;            /* Bit in the SRCR1 register to reset I2C */
 #endif
   uint32_t scl_pin;           /* GPIO configuration for SCL as SCL */
   uint32_t sda_pin;           /* GPIO configuration for SDA as SDA */
@@ -202,25 +215,36 @@ struct tiva_i2c_config_s
 struct tiva_i2c_priv_s
 {
   const struct tiva_i2c_config_s *config; /* Port configuration */
-  int refs;                    /* Reference count */
   sem_t exclsem;              /* Mutual exclusion semaphore */
 #ifndef CONFIG_I2C_POLLED
   sem_t waitsem;               /* Interrupt wait semaphore */
 #endif
+  uint8_t refs;                /* Reference count */
   volatile uint8_t intstate;   /* Interrupt handshake (see enum tiva_intstate_e) */
 
   uint8_t msgc;                /* Message count */
   struct i2c_msg_s *msgv;      /* Message list */
-  uint8_t *ptr;                /* Current message buffer */
-  int dcnt;                    /* Current message length */
-  uint16_t flags;              /* Current message flags */
-  uint32_t status;             /* MCS register at the end of the transfer */
+  uint8_t *mptr;               /* Current message buffer */
+  int mcnt;                    /* Current message length */
+  uint16_t mflags;             /* Current message flags */
+  uint32_t mstatus;            /* MCS register at the end of the transfer */
 
-  /* I2C trace support */
+#ifdef CONFIG_TIVA_I2C_REGDEBUG
+  /* Register level debug */
+
+   bool wrlast;                /* Last was a write */
+   uintptr_t addrlast;         /* Last address */
+   uint32_t vallast;           /* Last value */
+   int ntimes;                 /* Number of times */
+#endif
 
 #ifdef CONFIG_I2C_TRACE
+  /* I2C trace support */
+
   int tndx;                    /* Trace array index */
-  uint32_t start_time;         /* Time when the trace was started */
+  int tcount;                  /* Number of events with this status */
+  uint32_t ttime;              /* Time when the trace was started */
+  uint32_t tstatus;            /* Last status read */
 
   /* The actual trace data */
 
@@ -244,17 +268,22 @@ struct tiva_i2c_inst_s
  * Private Function Prototypes
  ************************************************************************************/
 
+#ifdef CONFIG_TIVA_I2C_REGDEBUG
+static bool tiva_i2c_checkreg(struct tiva_i2c_priv_s *priv, bool wr,
+                              uint32_t regval, uintptr_t regaddr);
+static uint32_t tiva_i2c_getreg(struct tiva_i2c_priv_s *priv, unsigned int offset);
+static void tiva_i2c_putreg(struct tiva_i2c_priv_s *priv, unsigned int offset,
+                            uint32_t value);
+#else
 static inline uint32_t tiva_i2c_getreg(struct tiva_i2c_priv_s *priv,
                                        unsigned int offset);
 static inline void tiva_i2c_putreg(struct tiva_i2c_priv_s *priv,
                                    unsigned int offset, uint32_t value);
-static inline void tiva_i2c_modifyreg(struct tiva_i2c_priv_s *priv,
-                                      uint8_t offset, uint16_t clearbits,
-                                      uint16_t setbits);
+#endif
 static inline void tiva_i2c_sem_wait(struct i2c_dev_s *dev);
 
 #ifdef CONFIG_TIVA_I2C_DYNTIMEO
-static useconds_t tiva_i2c_tousecs(int msgc, struct i2c_msg_s *msgs);
+static useconds_t tiva_i2c_tousecs(int msgc, struct i2c_msg_s *msgv);
 #endif /* CONFIG_TIVA_I2C_DYNTIMEO */
 
 static inline int  tiva_i2c_sem_waitdone(struct tiva_i2c_priv_s *priv);
@@ -270,8 +299,8 @@ static void tiva_i2c_traceevent(struct tiva_i2c_priv_s *priv,
 static void tiva_i2c_tracedump(struct tiva_i2c_priv_s *priv);
 #endif /* CONFIG_I2C_TRACE */
 
-static void tiva_i2c_sendaddress(struct tiva_i2c_priv_s *priv);
-static void tiva_i2c_nextxfr(struct tiva_i2c_priv_s *priv);
+static void tiva_i2c_startxfr(struct tiva_i2c_priv_s *priv);
+static void tiva_i2c_nextxfr(struct tiva_i2c_priv_s *priv, uint32_t cmd);
 static int tiva_i2c_interrupt(struct tiva_i2c_priv_s * priv, uint32_t status);
 
 #ifndef CONFIG_I2C_POLLED
@@ -293,17 +322,29 @@ static int tiva_i2c4_interrupt(int irq, void *context);
 #ifdef CONFIG_TIVA_I2C5
 static int tiva_i2c5_interrupt(int irq, void *context);
 #endif
+#ifdef CONFIG_TIVA_I2C6
+static int tiva_i2c6_interrupt(int irq, void *context);
+#endif
+#ifdef CONFIG_TIVA_I2C7
+static int tiva_i2c7_interrupt(int irq, void *context);
+#endif
+#ifdef CONFIG_TIVA_I2C8
+static int tiva_i2c8_interrupt(int irq, void *context);
+#endif
+#ifdef CONFIG_TIVA_I2C9
+static int tiva_i2c9_interrupt(int irq, void *context);
+#endif
 #endif /* !CONFIG_I2C_POLLED */
 
-static int tiva_i2c_initialize(struct tiva_i2c_priv_s *priv);
+static int tiva_i2c_initialize(struct tiva_i2c_priv_s *priv, uint32_t frequency);
 static int tiva_i2c_uninitialize(struct tiva_i2c_priv_s *priv);
 static uint32_t tiva_i2c_setclock(struct tiva_i2c_priv_s *priv,
                                   uint32_t frequency);
 static uint32_t tiva_i2c_setfrequency(struct i2c_dev_s *dev,
                                       uint32_t frequency);
 static int tiva_i2c_setaddress(struct i2c_dev_s *dev, int addr, int nbits);
-static int tiva_i2c_process(struct i2c_dev_s *dev, struct i2c_msg_s *msgs,
-                            int count);
+static int tiva_i2c_process(struct i2c_dev_s *dev, struct i2c_msg_s *msgv,
+                            int msgc);
 static int tiva_i2c_write(struct i2c_dev_s *dev, const uint8_t *buffer,
                           int buflen);
 static int tiva_i2c_read(struct i2c_dev_s *dev, uint8_t *buffer, int buflen);
@@ -315,8 +356,8 @@ static int tiva_i2c_writeread(struct i2c_dev_s *dev,
 #endif /* CONFIG_I2C_WRITEREAD */
 
 #ifdef CONFIG_I2C_TRANSFER
-static int tiva_i2c_transfer(struct i2c_dev_s *dev, struct i2c_msg_s *msgs,
-                             int count);
+static int tiva_i2c_transfer(struct i2c_dev_s *dev, struct i2c_msg_s *msgv,
+                             int msgc);
 #endif /* CONFIG_I2C_TRANSFER */
 
 /************************************************************************************
@@ -329,6 +370,9 @@ static const struct tiva_i2c_config_s tiva_i2c0_config =
   .base       = TIVA_I2C0_BASE,
 #ifndef TIVA_SYSCON_RCGCI2C
   .rcgbit     = SYSCON_RCGC1_I2C0,
+#endif
+#ifndef TIVA_SYSCON_SRI2C
+  .rstbit     = SYSCON_SRCR1_I2C0,
 #endif
   .scl_pin    = GPIO_I2C0_SCL,
   .sda_pin    = GPIO_I2C0_SDA,
@@ -349,6 +393,9 @@ static const struct tiva_i2c_config_s tiva_i2c1_config =
 #ifndef TIVA_SYSCON_RCGCI2C
   .rcgbit     = SYSCON_RCGC1_I2C1,
 #endif
+#ifndef TIVA_SYSCON_SRI2C
+  .rstbit     = SYSCON_SRCR1_I2C1,
+#endif
   .scl_pin    = GPIO_I2C1_SCL,
   .sda_pin    = GPIO_I2C1_SDA,
 #ifndef CONFIG_I2C_POLLED
@@ -367,6 +414,9 @@ static const struct tiva_i2c_config_s tiva_i2c2_config =
   .base       = TIVA_I2C2_BASE,
 #ifndef TIVA_SYSCON_RCGCI2C
   .rcgbit     = SYSCON_RCGC1_I2C2,
+#endif
+#ifndef TIVA_SYSCON_SRI2C
+  .rstbit     = SYSCON_SRCR1_I2C2,
 #endif
   .scl_pin    = GPIO_I2C2_SCL,
   .sda_pin    = GPIO_I2C2_SDA,
@@ -387,6 +437,9 @@ static const struct tiva_i2c_config_s tiva_i2c3_config =
 #ifndef TIVA_SYSCON_RCGCI2C
   .rcgbit     = SYSCON_RCGC1_I2C3,
 #endif
+#ifndef TIVA_SYSCON_SRI2C
+  .rstbit     = SYSCON_SRCR1_I2C3,
+#endif
   .scl_pin    = GPIO_I2C3_SCL,
   .sda_pin    = GPIO_I2C3_SDA,
 #ifndef CONFIG_I2C_POLLED
@@ -405,6 +458,9 @@ static const struct tiva_i2c_config_s tiva_i2c4_config =
   .base       = TIVA_I2C4_BASE,
 #ifndef TIVA_SYSCON_RCGCI2C
   .rcgbit     = SYSCON_RCGC1_I2C4,
+#endif
+#ifndef TIVA_SYSCON_SRI2C
+  .rstbit     = SYSCON_SRCR1_I2C4,
 #endif
   .scl_pin    = GPIO_I2C4_SCL,
   .sda_pin    = GPIO_I2C4_SDA,
@@ -425,6 +481,9 @@ static const struct tiva_i2c_config_s tiva_i2c5_config =
 #ifndef TIVA_SYSCON_RCGCI2C
   .rcgbit     = SYSCON_RCGC1_I2C5,
 #endif
+#ifndef TIVA_SYSCON_SRI2C
+  .rstbit     = SYSCON_SRCR1_I2C5,
+#endif
   .scl_pin    = GPIO_I2C5_SCL,
   .sda_pin    = GPIO_I2C5_SDA,
 #ifndef CONFIG_I2C_POLLED
@@ -435,6 +494,94 @@ static const struct tiva_i2c_config_s tiva_i2c5_config =
 };
 
 static struct tiva_i2c_priv_s tiva_i2c5_priv;
+#endif
+
+#ifdef CONFIG_TIVA_I2C6
+static const struct tiva_i2c_config_s tiva_i2c6_config =
+{
+  .base       = TIVA_I2C6_BASE,
+#ifndef TIVA_SYSCON_RCGCI2C
+  .rcgbit     = SYSCON_RCGC1_I2C6,
+#endif
+#ifndef TIVA_SYSCON_SRI2C
+  .rstbit     = SYSCON_SRCR1_I2C6,
+#endif
+  .scl_pin    = GPIO_I2C6_SCL,
+  .sda_pin    = GPIO_I2C6_SDA,
+#ifndef CONFIG_I2C_POLLED
+  .isr        = tiva_i2c6_interrupt,
+  .irq        = TIVA_IRQ_I2C6,
+#endif
+  .devno      = 6,
+};
+
+static struct tiva_i2c_priv_s tiva_i2c7_priv;
+#endif
+
+#ifdef CONFIG_TIVA_I2C7
+static const struct tiva_i2c_config_s tiva_i2c7_config =
+{
+  .base       = TIVA_I2C7_BASE,
+#ifndef TIVA_SYSCON_RCGCI2C
+  .rcgbit     = SYSCON_RCGC1_I2C7,
+#endif
+#ifndef TIVA_SYSCON_SRI2C
+  .rstbit     = SYSCON_SRCR1_I2C7,
+#endif
+  .scl_pin    = GPIO_I2C7_SCL,
+  .sda_pin    = GPIO_I2C7_SDA,
+#ifndef CONFIG_I2C_POLLED
+  .isr        = tiva_i2c7_interrupt,
+  .irq        = TIVA_IRQ_I2C7,
+#endif
+  .devno      = 7,
+};
+
+static struct tiva_i2c_priv_s tiva_i2c8_priv;
+#endif
+
+#ifdef CONFIG_TIVA_I2C8
+static const struct tiva_i2c_config_s tiva_i2c8_config =
+{
+  .base       = TIVA_I2C8_BASE,
+#ifndef TIVA_SYSCON_RCGCI2C
+  .rcgbit     = SYSCON_RCGC1_I2C8,
+#endif
+#ifndef TIVA_SYSCON_SRI2C
+  .rstbit     = SYSCON_SRCR1_I2C8,
+#endif
+  .scl_pin    = GPIO_I2C8_SCL,
+  .sda_pin    = GPIO_I2C8_SDA,
+#ifndef CONFIG_I2C_POLLED
+  .isr        = tiva_i2c8_interrupt,
+  .irq        = TIVA_IRQ_I2C8,
+#endif
+  .devno      = 8,
+};
+
+static struct tiva_i2c_priv_s tiva_i2c9_priv;
+#endif
+
+#ifdef CONFIG_TIVA_I2C9
+static const struct tiva_i2c_config_s tiva_i2c9_config =
+{
+  .base       = TIVA_I2C9_BASE,
+#ifndef TIVA_SYSCON_RCGCI2C
+  .rcgbit     = SYSCON_RCGC1_I2C9,
+#endif
+#ifndef TIVA_SYSCON_SRI2C
+  .rstbit     = SYSCON_SRCR1_I2C9,
+#endif
+  .scl_pin    = GPIO_I2C9_SCL,
+  .sda_pin    = GPIO_I2C9_SDA,
+#ifndef CONFIG_I2C_POLLED
+  .isr        = tiva_i2c9_interrupt,
+  .irq        = TIVA_IRQ_I2C9,
+#endif
+  .devno      = 9,
+};
+
+static struct tiva_i2c_priv_s tiva_i2c0_priv;
 #endif
 
 /* Device Structures, Instantiation */
@@ -462,6 +609,60 @@ static const struct i2c_ops_s tiva_i2c_ops =
  ************************************************************************************/
 
 /************************************************************************************
+ * Name: sam_checkreg
+ *
+ * Description:
+ *   Check if the current register access is a duplicate of the preceding.
+ *
+ * Input Parameters:
+ *   regval  - The value to be written
+ *   regaddr - The address of the register to write to
+ *
+ * Returned Value:
+ *   true:  This is the first register access of this type.
+ *   flase: This is the same as the preceding register access.
+ *
+ ************************************************************************************/
+
+#ifdef CONFIG_TIVA_I2C_REGDEBUG
+static bool tiva_i2c_checkreg(struct tiva_i2c_priv_s *priv, bool wr,
+                              uint32_t regval, uintptr_t regaddr)
+{
+  if (wr      == priv->wrlast &&   /* Same kind of access? */
+      regval  == priv->vallast &&  /* Same value? */
+      regaddr == priv->addrlast)   /* Same address? */
+    {
+      /* Yes, then just keep a count of the number of times we did this. */
+
+      priv->ntimes++;
+      return false;
+    }
+  else
+    {
+      /* Did we do the previous operation more than once? */
+
+      if (priv->ntimes > 0)
+        {
+          /* Yes... show how many times we did it */
+
+          lldbg("...[Repeats %d times]...\n", priv->ntimes);
+        }
+
+      /* Save information about the new access */
+
+      priv->wrlast   = wr;
+      priv->vallast  = regval;
+      priv->addrlast = regaddr;
+      priv->ntimes   = 0;
+    }
+
+  /* Return true if this is the first time that we have done this operation */
+
+  return true;
+}
+#endif
+
+/************************************************************************************
  * Name: tiva_i2c_getreg
  *
  * Description:
@@ -469,11 +670,26 @@ static const struct i2c_ops_s tiva_i2c_ops =
  *
  ************************************************************************************/
 
+#ifdef CONFIG_TIVA_I2C_REGDEBUG
+static uint32_t tiva_i2c_getreg(struct tiva_i2c_priv_s *priv, unsigned int offset)
+{
+  uintptr_t regaddr = priv->config->base + offset;
+  uint32_t regval   = getreg32(regaddr);
+
+  if (tiva_i2c_checkreg(priv, false, regval, regaddr))
+    {
+      lldbg("%08x->%08x\n", regaddr, regval);
+    }
+
+  return regval;
+}
+#else
 static inline uint32_t tiva_i2c_getreg(struct tiva_i2c_priv_s *priv,
                                        unsigned int offset)
 {
   return getreg32(priv->config->base + offset);
 }
+#endif
 
 /************************************************************************************
  * Name: tiva_i2c_putreg
@@ -483,26 +699,26 @@ static inline uint32_t tiva_i2c_getreg(struct tiva_i2c_priv_s *priv,
  *
  ************************************************************************************/
 
+#ifdef CONFIG_TIVA_I2C_REGDEBUG
+static void tiva_i2c_putreg(struct tiva_i2c_priv_s *priv, unsigned int offset,
+                            uint32_t regval)
+{
+  uintptr_t regaddr = priv->config->base + offset;
+
+  if (tiva_i2c_checkreg(priv, true, regval, regaddr))
+    {
+      lldbg("%08x<-%08x\n", regaddr, regval);
+    }
+
+  putreg32(regval, regaddr);
+}
+#else
 static inline void tiva_i2c_putreg(struct tiva_i2c_priv_s *priv,
                                    unsigned int offset, uint32_t regval)
 {
   putreg32(regval, priv->config->base + offset);
 }
-
-/************************************************************************************
- * Name: tiva_i2c_modifyreg
- *
- * Description:
- *   Modify a 16-bit register value by offset
- *
- ************************************************************************************/
-
-static inline void tiva_i2c_modifyreg(struct tiva_i2c_priv_s *priv,
-                                      uint8_t offset, uint16_t clearbits,
-                                      uint16_t setbits)
-{
-  modifyreg16(priv->config->base + offset, clearbits, setbits);
-}
+#endif
 
 /************************************************************************************
  * Name: tiva_i2c_sem_wait
@@ -531,7 +747,7 @@ static inline void tiva_i2c_sem_wait(struct i2c_dev_s *dev)
  ************************************************************************************/
 
 #ifdef CONFIG_TIVA_I2C_DYNTIMEO
-static useconds_t tiva_i2c_tousecs(int msgc, struct i2c_msg_s *msgs)
+static useconds_t tiva_i2c_tousecs(int msgc, struct i2c_msg_s *msgv)
 {
   size_t bytecount = 0;
   int i;
@@ -540,7 +756,7 @@ static useconds_t tiva_i2c_tousecs(int msgc, struct i2c_msg_s *msgs)
 
   for (i = 0; i < msgc; i++)
     {
-      bytecount += msgs[i].length;
+      bytecount += msgv[i].length;
     }
 
   /* Then return a number of microseconds based on a user provided scaling
@@ -621,6 +837,8 @@ static inline int tiva_i2c_sem_waitdone(struct tiva_i2c_priv_s *priv)
            * NOTE that we try again if we are awakened by a signal (EINTR).
            */
 
+          tiva_i2c_traceevent(priv, I2CEVENT_TIMEOUT,
+                              tiva_i2c_getreg(priv, TIVA_I2CM_RIS_OFFSET));
           break;
         }
     }
@@ -748,7 +966,7 @@ static inline void tiva_i2c_sem_destroy(struct i2c_dev_s *dev)
 }
 
 /************************************************************************************
- * Name: tiva_i2c_trace*
+ * Name: tiva_i2c_trace
  *
  * Description:
  *   I2C trace instrumentation
@@ -771,8 +989,10 @@ static void tiva_i2c_tracereset(struct tiva_i2c_priv_s *priv)
 {
   /* Reset the trace info for a new data collection */
 
-  priv->tndx       = 0;
-  priv->start_time = clock_systimer();
+  priv->tndx    = 0;
+  priv->tcount  = 0;
+  priv->ttime   = clock_systimer();
+  priv->tstatus = 0;
   tiva_i2c_traceclear(priv);
 }
 
@@ -792,7 +1012,7 @@ static void tiva_i2c_tracenew(struct tiva_i2c_priv_s *priv, uint32_t status)
 
           if (priv->tndx >= (CONFIG_I2C_NTRACE-1))
             {
-              i2cdbg("Trace table overflow\n");
+              i2cdbg("I2C%d: ERROR: Trace table overflow\n", priv->config->devno);
               return;
             }
 
@@ -806,6 +1026,11 @@ static void tiva_i2c_tracenew(struct tiva_i2c_priv_s *priv, uint32_t status)
       trace->status = status;
       trace->count  = 1;
       trace->time   = clock_systimer();
+
+      /* Save the status and reset the count */
+
+      priv->tstatus = status;
+      priv->tcount  = 1;
     }
   else
     {
@@ -823,22 +1048,36 @@ static void tiva_i2c_traceevent(struct tiva_i2c_priv_s *priv,
   if (event != I2CEVENT_NONE)
     {
       trace = &priv->trace[priv->tndx];
-
-      /* Initialize the new trace entry */
-
-      trace->event  = event;
-      trace->parm   = parm;
-
-      /* Bump up the trace index (unless we are out of trace entries) */
-
-      if (priv->tndx >= (CONFIG_I2C_NTRACE-1))
+      if (trace->event != event)
         {
-          i2cdbg("Trace table overflow\n");
-          return;
-        }
+          /* Initialize the new trace entry */
 
-      priv->tndx++;
-      tiva_i2c_traceclear(priv);
+          trace->event = event;
+          trace->parm  = parm;
+          trace->count = priv->tcount;
+          trace->time  = clock_systimer();
+
+          /* Bump up the trace index (unless we are out of trace entries) */
+
+          if (priv->tndx >= (CONFIG_I2C_NTRACE-1))
+            {
+              i2cdbg("I2C%d: ERROR: Trace table overflow\n", priv->config->devno);
+              return;
+            }
+
+          priv->tndx++;
+          priv->tcount++;
+          tiva_i2c_traceclear(priv);
+
+          trace         = &priv->trace[priv->tndx];
+          trace->status = priv->tstatus;
+          trace->count  = priv->tcount;
+          trace->time   = clock_systimer();
+        }
+      else
+        {
+          priv->tcount++;
+        }
     }
 }
 
@@ -848,7 +1087,7 @@ static void tiva_i2c_tracedump(struct tiva_i2c_priv_s *priv)
   int i;
 
   syslog(LOG_DEBUG, "Elapsed time: %d\n",
-         clock_systimer() - priv->start_time);
+         clock_systimer() - priv->ttime);
 
   for (i = 0; i <= priv->tndx; i++)
     {
@@ -856,36 +1095,32 @@ static void tiva_i2c_tracedump(struct tiva_i2c_priv_s *priv)
       syslog(LOG_DEBUG,
              "%2d. STATUS: %08x COUNT: %3d EVENT: %2d PARM: %08x TIME: %d\n",
              i+1, trace->status, trace->count,  trace->event, trace->parm,
-             trace->time - priv->start_time);
+             trace->time - priv->ttime);
     }
 }
 #endif /* CONFIG_I2C_TRACE */
 
 /************************************************************************************
- * Name: tiva_i2c_sendaddress
+ * Name: tiva_i2c_startxfr
  *
  * Description:
  *   Send the START conditions/force Master mode
  *
  ************************************************************************************/
 
-static void tiva_i2c_sendaddress(struct tiva_i2c_priv_s *priv)
+static void tiva_i2c_startxfr(struct tiva_i2c_priv_s *priv)
 {
   struct i2c_msg_s *msg;
   uint32_t regval;
 
   DEBUGASSERT(priv && priv->msgc > 0);
 
-  /* Check for new trace setup, post the SENADDRESS event */
-
-  tiva_i2c_tracenew(priv, 0);
-
   /* Get run-time data for the next message */
 
-  msg         = priv->msgv;
-  priv->ptr   = msg->buffer;
-  priv->dcnt  = msg->length;
-  priv->flags = msg->flags;
+  msg          = priv->msgv;
+  priv->mptr   = msg->buffer;
+  priv->mcnt   = msg->length;
+  priv->mflags = msg->flags;
 
   /* Set the Master Slave Address */
 
@@ -896,24 +1131,11 @@ static void tiva_i2c_sendaddress(struct tiva_i2c_priv_s *priv)
     }
 
   tiva_i2c_putreg(priv, TIVA_I2CM_SA_OFFSET, regval);
-
-  /* Write the command to the control register */
-
-  regval = I2CM_CS_RUN;
-  if ((msg->flags & I2C_M_NORESTART) == 0)
-    {
-      regval |= I2CM_CS_START;
-    }
-
-  if (priv->dcnt < 1)
-    {
-      regval |= I2CM_CS_STOP;
-    }
-
-  tiva_i2c_putreg(priv, TIVA_I2CM_CS_OFFSET, regval);
-
   tiva_i2c_traceevent(priv, I2CEVENT_SENDADDRESS, msg->addr);
-  priv->intstate = INTSTATE_ADDRESS;
+
+  /* Then initiate the transfer */
+
+  tiva_i2c_nextxfr(priv, I2CM_CS_START);
 }
 
 /************************************************************************************
@@ -924,34 +1146,70 @@ static void tiva_i2c_sendaddress(struct tiva_i2c_priv_s *priv)
  *
  ************************************************************************************/
 
-static void tiva_i2c_nextxfr(struct tiva_i2c_priv_s *priv)
+static void tiva_i2c_nextxfr(struct tiva_i2c_priv_s *priv, uint32_t cmd)
 {
-  uint32_t cmd;
-
-  /* Set up the basic command.  The STOP bit should be set on the last transfer
-   * UNLESS this there is a repeated start.
+  /* Set up the basic command.  The STOP bit should be set on the last byte transfer.
+   *
+   * - CASE 1: If this is the last message in the sequence, then the stop bit should
+   *   always be set.
+   * - CASE 2.1.1: The next message may be another read or write of the SAME
+   *   direction (read or write) and to the SAME address WITHOUT repeated start, in
+   *   which case this is really just a continuation of the message.  No STOP is
+   *   needed.
+   * - CASE 2.x.2: The next message may be to the SAME address WITH repeated start.
+   *   Because the repeated start, a direction change is possible.  This is still
+   *   a continuation of the same message sequence and so no STOP is needed.
+   * - CASE 2.2.x: The next message may be a DIFFERENT address WITHOUT repeated
+   *   start.  This would be an error; The STOP will be sent, the next message will
+   *   fail.
    */
 
-  cmd = I2CM_CS_RUN;
-  if (priv->msgc < 2 && priv->dcnt < 2)
+  cmd |= I2CM_CS_RUN;
+  if (priv->mcnt < 2)
     {
-      /* This is the last byte of the last message... add the STOP bit */
+      /* Are there more messages in this sequence? */
 
-      cmd |= I2CM_CS_STOP;
+      if (priv->msgc < 2)
+        {
+          /* No.. send the STOP */
+
+          cmd |= I2CM_CS_STOP;
+        }
+      else
+        {
+          /* Yes.. peek at the next message */
+
+          struct i2c_msg_s *curr = priv->msgv;
+          struct i2c_msg_s *next = curr + 1;
+
+          /* Same address as the current message? */
+
+          if (curr->addr != next->addr)
+            {
+              /* No.. send the STOP */
+
+              cmd |= I2CM_CS_STOP;
+            }
+        }
     }
 
   /* Set up to transfer the next byte.  Are we sending or receiving? */
 
-  if ((priv->flags & I2C_M_READ) != 0)
+  if ((priv->mflags & I2C_M_READ) != 0)
     {
-      /* We are receiving data.  Write the command to the control register to
-       * receive the next byte.
+      /* We are receiving data.  We need to ACK UNLESS we are going to send
+       * STOP.
        */
 
-      cmd |= I2CM_CS_ACK;
+      if ((cmd & I2CM_CS_STOP) == 0)
+        {
+          cmd |= I2CM_CS_ACK;
+        }
+
+      /* Write the command to the control register to receive the next byte. */
 
       tiva_i2c_putreg(priv, TIVA_I2CM_CS_OFFSET, cmd);
-      tiva_i2c_traceevent(priv, I2CEVENT_RECVSETUP, priv->dcnt);
+      tiva_i2c_traceevent(priv, I2CEVENT_RECVSETUP, priv->mcnt);
     }
   else
     {
@@ -959,7 +1217,7 @@ static void tiva_i2c_nextxfr(struct tiva_i2c_priv_s *priv)
 
       /* We are sending data.  Write the data to be sent to the DR register. */
 
-      dr = (uint32_t)*priv->ptr++;
+      dr = (uint32_t)*priv->mptr++;
       tiva_i2c_putreg(priv, TIVA_I2CM_DR_OFFSET, dr << I2CM_DR_SHIFT);
 
       /* Write the command to the control register to send the byte in the DR
@@ -967,10 +1225,10 @@ static void tiva_i2c_nextxfr(struct tiva_i2c_priv_s *priv)
        */
 
       tiva_i2c_putreg(priv, TIVA_I2CM_CS_OFFSET, cmd);
-      tiva_i2c_traceevent(priv, I2CEVENT_SENDBYTE, priv->dcnt);
+      tiva_i2c_traceevent(priv, I2CEVENT_SENDBYTE, priv->mcnt);
     }
 
-  priv->intstate = INTSTATE_XFRWAIT;
+  priv->intstate = INTSTATE_WAITING;
 }
 
 /************************************************************************************
@@ -1025,7 +1283,11 @@ static int tiva_i2c_interrupt(struct tiva_i2c_priv_s *priv, uint32_t status)
 
       /* Check for errors, in which case, stop the transfer and return. */
 
-      else if ((mcs & I2CM_CS_ERROR) != 0)
+#if 0 /* I2CM_CS_CLKTO */
+      else if ((mcs & (I2CM_CS_ERROR | I2CM_CS_ARBLST | I2CM_CS_CLKTO)) != 0)
+#else
+      else if ((mcs & (I2CM_CS_ERROR | I2CM_CS_ARBLST)) != 0)
+#endif
         {
           tiva_i2c_traceevent(priv, I2CEVENT_ERROR, mcs);
 
@@ -1044,11 +1306,11 @@ static int tiva_i2c_interrupt(struct tiva_i2c_priv_s *priv, uint32_t status)
                */
 
               sem_post(&priv->waitsem);
-              priv->status   = mcs;
+              priv->mstatus   = mcs;
               priv->intstate = INTSTATE_DONE;
             }
 #else
-          priv->status   = mcs;
+          priv->mstatus   = mcs;
           priv->intstate = INTSTATE_DONE;
 #endif
         }
@@ -1059,7 +1321,7 @@ static int tiva_i2c_interrupt(struct tiva_i2c_priv_s *priv, uint32_t status)
         {
           int dr;
 
-          tiva_i2c_traceevent(priv, I2CEVENT_XFRDONE, priv->dcnt);
+          tiva_i2c_traceevent(priv, I2CEVENT_XFRDONE, priv->mcnt);
 
           /* Read from the DR register */
 
@@ -1076,33 +1338,33 @@ static int tiva_i2c_interrupt(struct tiva_i2c_priv_s *priv, uint32_t status)
                * of the transfer?
                */
 
-              DEBUGASSERT(priv->dcnt > 0);
+              DEBUGASSERT(priv->mcnt > 0);
 
-              if (priv->intstate == INTSTATE_XFRWAIT)
+              if (priv->intstate == INTSTATE_WAITING)
                 {
                   /* Data transfer completed.  Are we sending or receiving data? */
 
-                  if ((priv->flags & I2C_M_READ) != 0)
+                  if ((priv->mflags & I2C_M_READ) != 0)
                     {
                       /* We are receiving data.  Copy the received data to
                        * the user buffer
                        */
 
-                      *priv->ptr++ = (uint8_t)dr;
+                      *priv->mptr++ = (uint8_t)dr;
                     }
 
                   /* Decrement the count of bytes remaining to be sent */
 
-                  priv->dcnt--;
+                  priv->mcnt--;
                 }
 
               /* Was that the last byte of this message? */
 
-              if (priv->dcnt > 0)
+              if (priv->mcnt > 0)
                 {
                   /* Send the next byte */
 
-                  tiva_i2c_nextxfr(priv);
+                  tiva_i2c_nextxfr(priv, 0);
                 }
               else
                 {
@@ -1121,7 +1383,7 @@ static int tiva_i2c_interrupt(struct tiva_i2c_priv_s *priv, uint32_t status)
                        */
 
                       tiva_i2c_traceevent(priv, I2CEVENT_NEXTMSG, priv->msgc);
-                      if (priv->msgv->flags & I2C_M_NORESTART)
+                      if ((priv->msgv->flags & I2C_M_NORESTART) != 0)
                         {
                           /* Just continue transferring data.  In this case,
                            * no STOP was sent at the end of the last message
@@ -1132,7 +1394,7 @@ static int tiva_i2c_interrupt(struct tiva_i2c_priv_s *priv, uint32_t status)
                            * change
                            */
 
-                          tiva_i2c_nextxfr(priv);
+                          tiva_i2c_nextxfr(priv, 0);
                         }
                       else
                         {
@@ -1140,7 +1402,7 @@ static int tiva_i2c_interrupt(struct tiva_i2c_priv_s *priv, uint32_t status)
                            * end of the previous message.
                            */
 
-                          tiva_i2c_sendaddress(priv);
+                          tiva_i2c_startxfr(priv);
                         }
                     }
                   else
@@ -1166,11 +1428,11 @@ static int tiva_i2c_interrupt(struct tiva_i2c_priv_s *priv, uint32_t status)
                            */
 
                           sem_post(&priv->waitsem);
-                          priv->status   = mcs;
+                          priv->mstatus   = 0;
                           priv->intstate = INTSTATE_DONE;
                         }
 #else
-                      priv->status   = mcs;
+                      priv->mstatus   = 0;
                       priv->intstate = INTSTATE_DONE;
 #endif
                     }
@@ -1345,6 +1607,106 @@ static int tiva_i2c5_interrupt(int irq, void *context)
 #endif
 
 /************************************************************************************
+ * Name: tiva_i2c6_interrupt
+ *
+ * Description:
+ *   I2C6 interrupt service routine
+ *
+ ************************************************************************************/
+
+#if !defined(CONFIG_I2C_POLLED) && defined(CONFIG_TIVA_I2C6)
+static int tiva_i2c6_interrupt(int irq, void *context)
+{
+  struct tiva_i2c_priv_s *priv;
+  uint32_t status;
+
+  /* Read the masked interrupt status */
+
+  priv   = &tiva_i2c6_priv;
+  status = tiva_i2c_getreg(priv, TIVA_I2CM_MIS_OFFSET);
+
+  /* Let the common interrupt handler do the rest of the work */
+
+  return tiva_i2c_interrupt(priv, status);
+}
+#endif
+
+/************************************************************************************
+ * Name: tiva_i2c7_interrupt
+ *
+ * Description:
+ *   I2C7 interrupt service routine
+ *
+ ************************************************************************************/
+
+#if !defined(CONFIG_I2C_POLLED) && defined(CONFIG_TIVA_I2C7)
+static int tiva_i2c7_interrupt(int irq, void *context)
+{
+  struct tiva_i2c_priv_s *priv;
+  uint32_t status;
+
+  /* Read the masked interrupt status */
+
+  priv   = &tiva_i2c7_priv;
+  status = tiva_i2c_getreg(priv, TIVA_I2CM_MIS_OFFSET);
+
+  /* Let the common interrupt handler do the rest of the work */
+
+  return tiva_i2c_interrupt(priv, status);
+}
+#endif
+
+/************************************************************************************
+ * Name: tiva_i2c8_interrupt
+ *
+ * Description:
+ *   I2C8 interrupt service routine
+ *
+ ************************************************************************************/
+
+#if !defined(CONFIG_I2C_POLLED) && defined(CONFIG_TIVA_I2C8)
+static int tiva_i2c8_interrupt(int irq, void *context)
+{
+  struct tiva_i2c_priv_s *priv;
+  uint32_t status;
+
+  /* Read the masked interrupt status */
+
+  priv   = &tiva_i2c8_priv;
+  status = tiva_i2c_getreg(priv, TIVA_I2CM_MIS_OFFSET);
+
+  /* Let the common interrupt handler do the rest of the work */
+
+  return tiva_i2c_interrupt(priv, status);
+}
+#endif
+
+/************************************************************************************
+ * Name: tiva_i2c9_interrupt
+ *
+ * Description:
+ *   I2C9 interrupt service routine
+ *
+ ************************************************************************************/
+
+#if !defined(CONFIG_I2C_POLLED) && defined(CONFIG_TIVA_I2C9)
+static int tiva_i2c9_interrupt(int irq, void *context)
+{
+  struct tiva_i2c_priv_s *priv;
+  uint32_t status;
+
+  /* Read the masked interrupt status */
+
+  priv   = &tiva_i2c9_priv;
+  status = tiva_i2c_getreg(priv, TIVA_I2CM_MIS_OFFSET);
+
+  /* Let the common interrupt handler do the rest of the work */
+
+  return tiva_i2c_interrupt(priv, status);
+}
+#endif
+
+/************************************************************************************
  * Name: tiva_i2c_initialize
  *
  * Description:
@@ -1352,31 +1714,66 @@ static int tiva_i2c5_interrupt(int irq, void *context)
  *
  ************************************************************************************/
 
-static int tiva_i2c_initialize(struct tiva_i2c_priv_s *priv)
+static int tiva_i2c_initialize(struct tiva_i2c_priv_s *priv, uint32_t frequency)
 {
+  const struct tiva_i2c_config_s *config = priv->config;
   uint32_t regval;
   int ret;
 
-  /* Enable clocking to the I2C peripheral */
+  i2cvdbg("I2C%d: refs=%d\n", config->devno, priv->refs);
+
+  /* Enable power and clocking to the I2C peripheral.
+   *
+   * - Enable Power (TM4C129 family only):  Applies power (only) to the I2C
+   *   peripheral.  This is not an essential step since enabling clocking
+   *   will also apply power.  The only significance is that the I2C state
+   *   will be retained if the I2C clocking is subsequently disabled.
+   * - Enable Clocking (All families):  Applies both power and clocking to
+   *   the I2C peripheral, bringing it a fully functional state.
+   */
 
 #ifdef TIVA_SYSCON_RCGCI2C
-  modifyreg32(TIVA_SYSCON_RCGCI2C, 0, SYSCON_RCGCI2C(priv->config->devno));
+  tiva_i2c_enablepwr(config->devno);
+  tiva_i2c_enableclk(config->devno);
+
+  i2cvdbg("I2C%d: RCGI2C[%08x]=%08x\n",
+          config->devno, TIVA_SYSCON_RCGCI2C, getreg32(TIVA_SYSCON_RCGCI2C));
 #else
   modifyreg32(TIVA_SYSCON_RCGC1, 0, priv->rcgbit);
+
+  i2cvdbg("I2C%d: RCGC1[%08x]=%08x\n",
+          config->devno, TIVA_SYSCON_RCGC1, getreg32(TIVA_SYSCON_RCGC1));
+#endif
+
+  /* Reset the I2C block */
+
+#ifdef TIVA_SYSCON_SRI2C
+  modifyreg32(TIVA_SYSCON_SRI2C, 0, SYSCON_SRI2C(config->devno));
+  modifyreg32(TIVA_SYSCON_SRI2C, SYSCON_SRI2C(config->devno), 0);
+#else
+  modifyreg32(TIVA_SYSCON_SRCR1, 0, priv->rstbit);
+  modifyreg32(TIVA_SYSCON_SRCR1, priv->rstbit, 0);
 #endif
 
   /* Configure pins */
 
-  ret = tiva_configgpio(priv->config->scl_pin);
+  i2cvdbg("I2C%d: SCL=%08x SDA=%08x\n",
+          config->devno, config->scl_pin, config->sda_pin);
+
+  ret = tiva_configgpio(config->scl_pin);
   if (ret < 0)
     {
+      i2cvdbg("I2C%d: tiva_configgpio(%08x) failed: %d\n",
+              config->scl_pin, ret);
       return ret;
     }
 
-  ret = tiva_configgpio(priv->config->sda_pin);
+  ret = tiva_configgpio(config->sda_pin);
   if (ret < 0)
     {
-      tiva_configgpio(MKI2C_INPUT(priv->config->scl_pin));
+      i2cvdbg("I2C%d: tiva_configgpio(%08x) failed: %d\n",
+              config->sda_pin, ret);
+      tiva_configgpio(MKI2C_INPUT(config->scl_pin));
       return ret;
     }
 
@@ -1388,16 +1785,17 @@ static int tiva_i2c_initialize(struct tiva_i2c_priv_s *priv)
 
   /* Configure the the initial I2C clock frequency. */
 
-  (void)tiva_i2c_setclock(priv, 100000);
+  (void)tiva_i2c_setclock(priv, frequency);
 
   /* Attach interrupt handlers and enable interrupts at the NVIC (still
    * disabled at the source).
    */
 
 #ifndef CONFIG_I2C_POLLED
-  irq_attach(priv->config->irq, priv->config->isr);
-  up_enable_irq(priv->config->irq);
+  (void)irq_attach(config->irq, config->isr);
+  up_enable_irq(config->irq);
 #endif
+
   return OK;
 }
 
@@ -1412,6 +1810,8 @@ static int tiva_i2c_initialize(struct tiva_i2c_priv_s *priv)
 static int tiva_i2c_uninitialize(struct tiva_i2c_priv_s *priv)
 {
   uint32_t regval;
+
+  i2cvdbg("I2C%d: refs=%d\n", priv->config->devno, priv->refs);
 
   /* Disable I2C */
 
@@ -1454,6 +1854,8 @@ static uint32_t tiva_i2c_setclock(struct tiva_i2c_priv_s *priv, uint32_t frequen
 {
   uint32_t regval;
   uint32_t tmp;
+
+  i2cvdbg("I2C%d: frequency: %u\n", priv->config->devno, frequency);
 
   /* Calculate the clock divider that results in the highest frequency that
    * is than or equal to the desired speed.
@@ -1498,6 +1900,8 @@ static uint32_t tiva_i2c_setfrequency(struct i2c_dev_s *dev, uint32_t frequency)
   DEBUGASSERT(inst && inst->priv);
   priv = inst->priv;
 
+  i2cvdbg("I2C%d: frequency: %u\n", inst->priv->config->devno, frequency);
+
   /* Get exclusive access to the I2C device */
 
   tiva_i2c_sem_wait(dev);
@@ -1521,6 +1925,10 @@ static uint32_t tiva_i2c_setfrequency(struct i2c_dev_s *dev, uint32_t frequency)
 static int tiva_i2c_setaddress(struct i2c_dev_s *dev, int addr, int nbits)
 {
   struct tiva_i2c_inst_s *inst = (struct tiva_i2c_inst_s *)dev;
+
+  DEBUGASSERT(inst && inst->priv && inst->priv->config);
+  i2cvdbg("I2C%d: addr: %02x nbits=%d\n", inst->priv->config->devno, addr, nbits);
+
   tiva_i2c_sem_wait(dev);
 
   inst->address = addr;
@@ -1538,30 +1946,33 @@ static int tiva_i2c_setaddress(struct i2c_dev_s *dev, int addr, int nbits)
  *
  ************************************************************************************/
 
-static int tiva_i2c_process(struct i2c_dev_s *dev, struct i2c_msg_s *msgs,
-                             int count)
+static int tiva_i2c_process(struct i2c_dev_s *dev, struct i2c_msg_s *msgv, int msgc)
 {
   struct tiva_i2c_inst_s *inst = (struct tiva_i2c_inst_s *)dev;
   struct tiva_i2c_priv_s *priv = inst->priv;
-  int errval = 0;
+  uint32_t regval;
+  int errcode = OK;
 
-  ASSERT(count);
+  ASSERT(msgc > 0);
 
-  /* Reset ptr and dcnt to ensure an unexpected data interrupt doesn't
+  i2cvdbg("I2C%d: msgc=%d\n", priv->config->devno, msgc);
+
+  /* Reset mptr and mcnt to ensure an unexpected data interrupt doesn't
    * overwrite stale data.
    */
 
-  priv->dcnt = 0;
-  priv->ptr = NULL;
+  priv->mcnt = 0;
+  priv->mptr = NULL;
 
-  priv->msgv = msgs;
-  priv->msgc = count;
+  priv->msgv = msgv;
+  priv->msgc = msgc;
 
-  priv->status = 0;
+  priv->mstatus = 0;
 
   /* Reset I2C trace logic */
 
   tiva_i2c_tracereset(priv);
+  tiva_i2c_tracenew(priv, 0);
 
   /* Set I2C clock frequency  */
 
@@ -1571,7 +1982,7 @@ static int tiva_i2c_process(struct i2c_dev_s *dev, struct i2c_msg_s *msgs,
    * interrupts will be enabled within tiva_i2c_waitdone().
    */
 
-  tiva_i2c_sendaddress(priv);
+  tiva_i2c_startxfr(priv);
 
   /* Wait for an ISR, if there was a timeout, fetch latest status to get
    * the BUSY flag.
@@ -1579,70 +1990,91 @@ static int tiva_i2c_process(struct i2c_dev_s *dev, struct i2c_msg_s *msgs,
 
   if (tiva_i2c_sem_waitdone(priv) < 0)
     {
-      i2cdbg("ERROR: Timed out\n");
-      errval = ETIMEDOUT;
+      i2cdbg("I2C%d: ERROR: Timed out\n", priv->config->devno);
+      errcode = ETIMEDOUT;
     }
-#ifdef I2CM_CS_CLKTO
-  else if ((priv->status & (I2CM_CS_ERROR | I2CM_CS_ARBLST | I2CM_CS_CLKTO)) != 0)
+#if 0 /* I2CM_CS_CLKTO */
+  else if ((priv->mstatus & (I2CM_CS_ERROR | I2CM_CS_ARBLST | I2CM_CS_CLKTO)) != 0)
 #else
-  else if ((priv->status & (I2CM_CS_ERROR | I2CM_CS_ARBLST)) != 0)
+  else if ((priv->mstatus & (I2CM_CS_ERROR | I2CM_CS_ARBLST)) != 0)
 #endif
     {
-      if ((priv->status & I2CM_CS_ARBLST) != 0)
+      i2cdbg("I2C%d: ERROR:  I2C error status: %08x\n",
+             priv->config->devno, priv->mstatus);
+
+      if ((priv->mstatus & I2CM_CS_ARBLST) != 0)
         {
           /* Arbitration Lost */
 
-          errval = EAGAIN;
+          errcode = EAGAIN;
         }
-      else if ((priv->status & (I2CM_CS_ADRACK | I2CM_CS_DATACK)) != 0)
+      else if ((priv->mstatus & (I2CM_CS_ADRACK | I2CM_CS_DATACK)) != 0)
         {
           /* Acknowledge Failure */
 
-          errval = ENXIO;
+          errcode = ENXIO;
         }
-#ifdef I2CM_CS_CLKTO
-      else if ((priv->status & I2CM_CS_CLKTO) != 0)
+#if 0 /* I2CM_CS_CLKTO */
+      else if ((priv->mstatus & I2CM_CS_CLKTO) != 0)
         {
           /* Timeout */
 
-          errval = ETIME;
+          errcode = ETIME;
         }
 #endif
       else
         {
           /* Something else? */
 
-          errval = EIO;
+          errcode = EIO;
         }
     }
 
-  /* This is not an error, but should not happen.  The BUSY signal can hang,
-   * however, if there are unhealthy devices on the bus that need to be reset.
-   * NOTE:  We will only see this busy indication if tiva_i2c_sem_waitdone()
-   * fails above;  Otherwise it is cleared.
+  /* This is not an error, but should not happen.  The I2CM_CS_BUSBSY signal
+   * can hang, however.  This normally indicates the STOP was never sent,
+   * possibly because some other error occurred.
+   *
+   * The status bits are not valid if BUSY is set.  But in this context I
+   * assume that busy bit stuck on would be a very bad situation, worthy
+   * of a reset.
    */
 
-   if ((tiva_i2c_getreg(priv, TIVA_I2CM_CS_OFFSET) & (I2CM_CS_BUSY | I2CM_CS_BUSBSY)) != 0)
+   regval = tiva_i2c_getreg(priv, TIVA_I2CM_CS_OFFSET);
+   if ((regval & (I2CM_CS_BUSY | I2CM_CS_BUSBSY)) != 0)
     {
       /* I2C Bus is for some reason busy.  If I2CM_CS_BUSY then none of the
        * other bits are valid.
        */
 
-      errval = EBUSY;
+      i2cdbg("I2C%d: ERROR:  I2C still busy: %08x\n",
+             priv->config->devno, regval);
+
+      /* Reset and reinitialize the I2C hardware */
+
+      tiva_i2c_initialize(priv, inst->frequency);
+
+      /* Is the busy condition a consequence of some other error? */
+
+      if (errcode == OK)
+        {
+          /* No... then just being busy is the cause of the error */
+
+          errcode = EBUSY;
+        }
     }
 
   /* Dump the trace result */
 
   tiva_i2c_tracedump(priv);
 
-  /* Ensure that any ISR happening after we finish can't overwrite any user data */
+  /* Ensure that no ISR happening after we finish can overwrite any user data */
 
-  priv->dcnt = 0;
-  priv->ptr = NULL;
+  priv->mcnt = 0;
+  priv->mptr = NULL;
 
   tiva_i2c_sem_post(dev);
 
-  return -errval;
+  return -errcode;
 }
 
 /************************************************************************************
@@ -1656,9 +2088,6 @@ static int tiva_i2c_process(struct i2c_dev_s *dev, struct i2c_msg_s *msgs,
 static int tiva_i2c_write(struct i2c_dev_s *dev, const uint8_t *buffer, int buflen)
 {
   struct tiva_i2c_inst_s *inst = (struct tiva_i2c_inst_s *)dev;
-
-  tiva_i2c_sem_wait(dev);   /* ensure that address or flags don't change meanwhile */
-
   struct i2c_msg_s msgv =
   {
     .addr   = inst->address,
@@ -1667,6 +2096,10 @@ static int tiva_i2c_write(struct i2c_dev_s *dev, const uint8_t *buffer, int bufl
     .length = buflen
   };
 
+  DEBUGASSERT(inst && inst->priv && inst->priv->config);
+  i2cvdbg("I2C%d: buflen=%d\n", inst->priv->config->devno, buflen);
+
+  tiva_i2c_sem_wait(dev);   /* ensure that address or flags don't change meanwhile */
   return tiva_i2c_process(dev, &msgv, 1);
 }
 
@@ -1681,9 +2114,6 @@ static int tiva_i2c_write(struct i2c_dev_s *dev, const uint8_t *buffer, int bufl
 int tiva_i2c_read(struct i2c_dev_s *dev, uint8_t *buffer, int buflen)
 {
   struct tiva_i2c_inst_s *inst = (struct tiva_i2c_inst_s *)dev;
-
-  tiva_i2c_sem_wait(dev);   /* ensure that address or flags don't change meanwhile */
-
   struct i2c_msg_s msgv =
   {
     .addr   = inst->address,
@@ -1692,6 +2122,10 @@ int tiva_i2c_read(struct i2c_dev_s *dev, uint8_t *buffer, int buflen)
     .length = buflen
   };
 
+  DEBUGASSERT(inst && inst->priv && inst->priv->config);
+  i2cvdbg("I2C%d: buflen=%d\n", inst->priv->config->devno, buflen);
+
+  tiva_i2c_sem_wait(dev);   /* ensure that address or flags don't change meanwhile */
   return tiva_i2c_process(dev, &msgv, 1);
 }
 
@@ -1709,8 +2143,6 @@ static int tiva_i2c_writeread(struct i2c_dev_s *dev,
                               uint8_t *buffer, int buflen)
 {
   struct tiva_i2c_inst_s *inst = (struct tiva_i2c_inst_s *)dev;
-  tiva_i2c_sem_wait(dev);   /* Ensure that address or flags don't change meanwhile */
-
   struct i2c_msg_s msgv[2] =
   {
     {
@@ -1721,12 +2153,16 @@ static int tiva_i2c_writeread(struct i2c_dev_s *dev,
     },
     {
       .addr   = inst->address,
-      .flags  = inst->flags | ((buflen>0) ? I2C_M_READ : I2C_M_NORESTART),
+      .flags  = inst->flags | ((buflen > 0) ? I2C_M_READ : I2C_M_NORESTART),
       .buffer = buffer,
-      .length = (buflen>0) ? buflen : -buflen
+      .length = (buflen > 0) ? buflen : -buflen
     }
   };
 
+  DEBUGASSERT(inst && inst->priv && inst->priv->config);
+  i2cvdbg("I2C%d: wbuflen=%d buflen=%d\n", inst->priv->config->devno, wbuflen, buflen);
+
+  tiva_i2c_sem_wait(dev);   /* Ensure that address or flags don't change meanwhile */
   return tiva_i2c_process(dev, msgv, 2);
 }
 #endif
@@ -1740,11 +2176,17 @@ static int tiva_i2c_writeread(struct i2c_dev_s *dev,
  ************************************************************************************/
 
 #ifdef CONFIG_I2C_TRANSFER
-static int tiva_i2c_transfer(struct i2c_dev_s *dev, struct i2c_msg_s *msgs,
-                             int count)
+static int tiva_i2c_transfer(struct i2c_dev_s *dev, struct i2c_msg_s *msgv,
+                             int msgc)
 {
+  struct tiva_i2c_inst_s *inst = (struct tiva_i2c_inst_s *)dev;
+
+  DEBUGASSERT(inst && inst->priv && inst->priv->config);
+  i2cvdbg("I2C%d: msgc=%d\n", inst->priv->config->devno, msgc);
+  UNUSED(inst);
+
   tiva_i2c_sem_wait(dev);   /* Ensure that address or flags don't change meanwhile */
-  return tiva_i2c_process(dev, msgs, count);
+  return tiva_i2c_process(dev, msgv, msgc);
 }
 #endif
 
@@ -1762,10 +2204,12 @@ static int tiva_i2c_transfer(struct i2c_dev_s *dev, struct i2c_msg_s *msgs,
 
 struct i2c_dev_s *up_i2cinitialize(int port)
 {
-  struct tiva_i2c_priv_s * priv = NULL;   /* Private data of device with multiple instances */
-  struct tiva_i2c_inst_s * inst = NULL;   /* Device, single instance */
+  struct tiva_i2c_priv_s *priv = NULL;    /* Private data of device with multiple instances */
+  struct tiva_i2c_inst_s *inst = NULL;    /* Device, single instance */
   const struct tiva_i2c_config_s *config; /* Constant configuration */
   int irqs;
+
+  i2cvdbg("I2C%d: Initialize\n", port);
 
   /* Get I2C private structure */
 
@@ -1807,7 +2251,32 @@ struct i2c_dev_s *up_i2cinitialize(int port)
       config = &tiva_i2c5_config;
       break;
 #endif
+#ifdef CONFIG_TIVA_I2C6
+    case 6:
+      priv   = &tiva_i2c6_priv;
+      config = &tiva_i2c6_config;
+      break;
+#endif
+#ifdef CONFIG_TIVA_I2C7
+    case 7:
+      priv   = &tiva_i2c7_priv;
+      config = &tiva_i2c7_config;
+      break;
+#endif
+#ifdef CONFIG_TIVA_I2C8
+    case 7:
+      priv   = &tiva_i2c8_priv;
+      config = &tiva_i2c8_config;
+      break;
+#endif
+#ifdef CONFIG_TIVA_I2C9
+    case 0:
+      priv   = &tiva_i2c9_priv;
+      config = &tiva_i2c9_config;
+      break;
+#endif
     default:
+      i2cdbg("I2C%d: ERROR: Not supported\n", port);
       return NULL;
     }
 
@@ -1817,10 +2286,6 @@ struct i2c_dev_s *up_i2cinitialize(int port)
     {
       return NULL;
     }
-
-  /* Make sure that the device structure is inialized */
-
-  priv->config    = config;
 
   /* Initialize instance */
 
@@ -1836,10 +2301,17 @@ struct i2c_dev_s *up_i2cinitialize(int port)
 
   irqs = irqsave();
 
-  if ((volatile int)priv->refs++ == 0)
+  priv->refs++;
+  if (priv->refs == 1)
     {
+      /* Initialize the device structure */
+
+      priv->config = config;
       tiva_i2c_sem_init((struct i2c_dev_s *)inst);
-      tiva_i2c_initialize(priv);
+
+      /* Initialize the I2C hardware */
+
+      tiva_i2c_initialize(priv, 100000);
     }
 
   irqrestore(irqs);
@@ -1857,37 +2329,44 @@ struct i2c_dev_s *up_i2cinitialize(int port)
 int up_i2cuninitialize(struct i2c_dev_s *dev)
 {
   struct tiva_i2c_inst_s *inst = (struct tiva_i2c_inst_s *)dev;
+  struct tiva_i2c_priv_s *priv ;
   int irqs;
 
-  ASSERT(dev);
+  DEBUGASSERT(inst && inst->priv);
+  priv = inst->priv;
+
+  DEBUGASSERT(priv->config && priv->refs > 0);
+  i2cvdbg("I2C%d: Uninitialize\n", priv->config->devno);
 
   /* Decrement reference count and check for underflow */
 
-  if (inst->priv->refs == 0)
-    {
-      return ERROR;
-    }
-
   irqs = irqsave();
 
-  if (--inst->priv->refs)
+  /* Free this instance */
+
+  kmm_free(inst);
+
+  /* Check if the reference count will decrement to zero */
+
+  if (priv->refs < 2)
     {
-      irqrestore(irqs);
-      kmm_free(dev);
-      return OK;
+      /* Yes.. Disable power and other HW resource (GPIO's) */
+
+      tiva_i2c_uninitialize(priv);
+      priv->refs = 0;
+
+      /* Release unused resources */
+
+      tiva_i2c_sem_destroy(dev);
+    }
+  else
+    {
+      /* No.. just decrement the number of references to the device */
+
+      priv->refs--;
     }
 
   irqrestore(irqs);
-
-  /* Disable power and other HW resource (GPIO's) */
-
-  tiva_i2c_uninitialize(inst->priv);
-
-  /* Release unused resources */
-
-  tiva_i2c_sem_destroy((struct i2c_dev_s *)dev);
-
-  kmm_free(dev);
   return OK;
 }
 
@@ -1910,7 +2389,8 @@ int up_i2creset(struct i2c_dev_s *dev)
   uint32_t sda_gpio;
   int ret = ERROR;
 
-  ASSERT(dev);
+  DEBUGASSERT(inst && inst->priv && inst->priv->config);
+  i2cvdbg("I2C%d:\n", inst->priv->config->devno);
 
   /* Get I2C private structure */
 
@@ -2001,7 +2481,7 @@ int up_i2creset(struct i2c_dev_s *dev)
 
   /* Re-init the port */
 
-  tiva_i2c_initialize(priv);
+  tiva_i2c_initialize(priv, inst->frequency);
   ret = OK;
 
 out:
@@ -2013,4 +2493,4 @@ out:
 }
 #endif /* CONFIG_I2C_RESET */
 
-#endif /* CONFIG_TIVA_I2C0 ... CONFIG_TIVA_I2C5 */
+#endif /* CONFIG_TIVA_I2C0 ... CONFIG_TIVA_I2C9 */

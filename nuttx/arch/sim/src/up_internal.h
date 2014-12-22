@@ -42,9 +42,14 @@
 
 #include <nuttx/config.h>
 #include <nuttx/compiler.h>
-#include <sys/types.h>
-#include <nuttx/irq.h>
-#include <arch/irq.h>
+
+#ifndef __ASSEMBLY__
+#  include <sys/types.h>
+#  include <stdbool.h>
+
+#  include <nuttx/irq.h>
+#  include <arch/irq.h>
+#endif
 
 /**************************************************************************
  * Pre-processor Definitions
@@ -56,12 +61,20 @@
 #    error "CONFIG_SIM_TOUCHSCREEN depends on CONFIG_SIM_X11FB"
 #    undef CONFIG_SIM_TOUCHSCREEN
 #  endif
+#  ifdef CONFIG_SIM_AJOYSTICK
+#    error "CONFIG_SIM_AJOYSTICK depends on CONFIG_SIM_X11FB"
+#    undef CONFIG_SIM_AJOYSTICK
+#  endif
 #endif
 
 #ifndef CONFIG_INPUT
 #  ifdef CONFIG_SIM_TOUCHSCREEN
 #    error "CONFIG_SIM_TOUCHSCREEN depends on CONFIG_INPUT"
 #    undef CONFIG_SIM_TOUCHSCREEN
+#  endif
+#  ifdef CONFIG_SIM_AJOYSTICK
+#    error "CONFIG_SIM_AJOYSTICK depends on CONFIG_INPUT"
+#    undef CONFIG_SIM_AJOYSTICK
 #  endif
 #endif
 
@@ -179,7 +192,7 @@
 
 #ifdef CONFIG_SIM_X11FB
 extern int g_x11initialized;
-#ifdef CONFIG_SIM_TOUCHSCREEN
+#if defined(CONFIG_SIM_TOUCHSCREEN) || defined(CONFIG_SIM_AJOYSTICK)
 extern volatile int g_eventloop;
 #endif
 #endif
@@ -213,6 +226,7 @@ void up_registerblockdevice(void);
 void simuart_start(void);
 int simuart_putc(int ch);
 int simuart_getc(void);
+bool simuart_checkc(void);
 
 /* up_uartwait.c **********************************************************/
 
@@ -245,14 +259,22 @@ int up_x11cmap(unsigned short first, unsigned short len,
 
 /* up_eventloop.c *********************************************************/
 
-#if defined(CONFIG_SIM_X11FB) && defined(CONFIG_SIM_TOUCHSCREEN)
+#if defined(CONFIG_SIM_X11FB) && \
+   (defined(CONFIG_SIM_TOUCHSCREEN) || defined(CONFIG_SIM_AJOYSTICK))
 void up_x11events(void);
 #endif
 
 /* up_eventloop.c *********************************************************/
 
-#if defined(CONFIG_SIM_X11FB) && defined(CONFIG_SIM_TOUCHSCREEN)
+#if defined(CONFIG_SIM_X11FB) && \
+   (defined(CONFIG_SIM_TOUCHSCREEN) || defined(CONFIG_SIM_AJOYSTICK))
 int up_buttonevent(int x, int y, int buttons);
+#endif
+
+/* up_ajoystick.c *********************************************************/
+
+#ifdef CONFIG_SIM_AJOYSTICK
+int sim_ajoy_initialize(void);
 #endif
 
 /* up_tapdev.c ************************************************************/
@@ -288,6 +310,7 @@ void netdriver_loop(void);
 #endif
 
 #ifdef CONFIG_SIM_SPIFLASH
+struct spi_dev_s;
 struct spi_dev_s *up_spiflashinitialize(void);
 #endif
 

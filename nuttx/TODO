@@ -8,7 +8,7 @@ board port.
 
 nuttx/
 
- (10)  Task/Scheduler (sched/)
+ (11)  Task/Scheduler (sched/)
   (1)  Memory Managment (mm/)
   (3)  Signals (sched/, arch/)
   (2)  pthreads (sched/)
@@ -172,6 +172,65 @@ o Task/Scheduler (sched/)
                apps/netutils/thttpd to kill CGI tasks that timeout.
   Status:      Open
   Priority:    Low and not easily removable.
+
+  Title:       RELEASE SEMAPHORES HELD BY CANCELED THREADS:
+  Description: Commit: fecb9040d0e54baf14b729e556a832febfe8229e: "In
+                case a thread is doing a blocking operation (e.g. read())
+                on a serial device, while it is being terminated by
+                pthread_cancel(), then uart_close() gets called, but
+                the semaphore (dev->recv.sem in the above example) is
+                still blocked.
+
+               "This means that once the serial device is opened next
+                time, data will arrive on the serial port (and driver
+                interrupts handled as normal), but the received characters
+                never arrive in the reader thread.
+
+                This patch addresses the problem by re-initializing the
+                semaphores on the last uart_close() on the device."
+
+               Yahoo! Groups message 7726: "I think that the system
+                should be required to handle pthread_cancel safely in
+                all cases.  In the NuttX model, a task is like a Unix
+                process and a pthread is like a Unix thread.  Cancelling
+                threads should always be safe (or at least as unsafe) as
+                under Unix because the model is complete for pthreads...
+
+               "So, in my opinion, this is a generic system issue, not
+                specific to the serial driver.  I could also implement
+                logic to release all semaphores held by a thread when
+                it exits -- but only if priority inheritance is enabled;
+                because only in that case does the code have any memory
+                of which threads actually hold the semaphore.
+
+               "The patch I just incorporated is also insufficient.  It
+                works only if the serial driver is shut down when the
+                thread is cancelled.  But what if there are other open
+                references to the driver?  Then the driver will not be
+                shut down, the semaphores will not be re-initialized, and
+                the semaphore counts will still be off by one.
+
+               "I think that the system needs to automatically release any
+                semaphores held by a thread being killed asynchronously?
+                It seems necessary to me."
+
+               UPDATE; The logic enabled when priority inheritance is
+               enabled for this purpose is insufficient.  It provides
+               hooks so that given a semaphore it can traverse all
+               holders.  What is needed would be logic so that given
+               a task, you can traverse all semaphores held by the task,
+               releasing each semaphore cound held by the exiting task.
+               Nothing like this exists now so that solution is not
+               imminent.
+
+               UPDATE: The basic fix to release the semaphore count if
+               a thread is killed via pthread_cancel() or task_delete()
+               has been implemented (2014-12-13).  See the new file:
+               sched/semaphore/sem_recover.c  However, the general
+               issue of freeing semaphores when a thread exists still
+               exists.
+  Status:      Open
+  Priority:    Medium-ish
 
 o Memory Managment (mm/)
   ^^^^^^^^^^^^^^^^^^^^^^
@@ -836,7 +895,21 @@ o Network (net/, drivers/net)
                CONFIG_NET_NOINTS).  This is really a very bad use of CPU
                resources;  All of the network stack processing should be more
                to a work queue (and, all use of CONFIG_NET_NOINTS=n should
-               be eliminated).
+               be eliminated).  This applies to almost all Ethernet drivers:
+
+               ARCHITECTURE   CONFIG_NET_NOINTS
+               C5471          NO
+               STM32          NO
+               TIVA           NO
+               eZ80           NO
+               LPC17xx        YES << Only this one supports CONFIG_NET_NOINTS
+               DMxxx NIC      NO
+               PIC32          NO
+               RGMP           NO
+               SAM3/4         NO
+               SAMA5D         NO
+               SIM            NO << Doesn't have interrupts anyway
+
   Status:      Open
   Priority:    Pretty high if you want a well behaved system.
 

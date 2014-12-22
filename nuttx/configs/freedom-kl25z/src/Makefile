@@ -54,8 +54,12 @@ ifeq ($(CONFIG_KL_TSI),y)
 CSRCS += kl_tsi.c
 endif
 
-ifeq ($(CONFIG_KL_SPI),y)
+ifeq ($(CONFIG_KL_SPI0),y)
 CSRCS += kl_spi.c
+else
+ifeq ($(CONFIG_KL_SPI1),y)
+CSRCS += kl_spi.c
+endif
 endif
 
 ifeq ($(CONFIG_HAVE_CXX),y)
@@ -71,7 +75,7 @@ CSRCS += kl_usb.c
 endif
 
 ifeq ($(CONFIG_PWM),y)
-CSRCS += up_pwm.c
+CSRCS += kl_pwm.c
 endif
 
 ifeq ($(CONFIG_QENCODER),y)
@@ -84,6 +88,10 @@ endif
 
 ifeq ($(CONFIG_NSH_LIBRARY),y)
 CSRCS += kl_nsh.c
+endif
+
+ifeq ($(CONFIG_SENSORS_ADXL345),y)
+CSRCS += kl_adxl345.c
 endif
 
 COBJS = $(CSRCS:.c=$(OBJEXT))
