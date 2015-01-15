@@ -261,7 +261,7 @@ int ftl_initialize(int minor, FAR struct mtd_dev_s *mtd);
  * Name: flash_eraseall
  *
  * Description:
- *   Call a block driver with the MDIOC_BULKERASE ioctl command.  This will
+ *   Call a block driver with the MTDIOC_BULKERASE ioctl command.  This will
  *   cause the MTD driver to erase all of the flash.
  *
  ****************************************************************************/
@@ -332,6 +332,7 @@ FAR struct mtd_dev_s *at45db_initialize(FAR struct spi_dev_s *dev);
  *
  ****************************************************************************/
 
+struct i2c_dev_s; /* Forward reference */
 FAR struct mtd_dev_s *at24c_initialize(FAR struct i2c_dev_s *dev);
 
 /****************************************************************************
@@ -368,6 +369,20 @@ FAR struct mtd_dev_s *m25p_initialize(FAR struct spi_dev_s *dev);
  ****************************************************************************/
 
 FAR struct mtd_dev_s *rammtd_initialize(FAR uint8_t *start, size_t size);
+
+/****************************************************************************
+ * Name: ramtron_initialize
+ *
+ * Description:
+ *   Create and initialize a Ramtron MTD device instance.
+ *
+ * Input Parameters:
+ *   start - Address of the beginning of the allocated RAM regions.
+ *   size  - The size in bytes of the allocated RAM region.
+ *
+ ****************************************************************************/
+
+FAR struct mtd_dev_s *ramtron_initialize(FAR struct spi_dev_s *dev);
 
 /****************************************************************************
  * Name: sst25_initialize

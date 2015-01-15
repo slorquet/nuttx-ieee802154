@@ -1,5 +1,5 @@
 /****************************************************************************
- * arch/arm/src/tiva/tiva_ethernet.c
+ * arch/arm/src/tiva/lm3s_ethernet.c
  *
  *   Copyright (C) 2009-2010, 2014 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -66,6 +66,11 @@
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
+/* Configuration ************************************************************/
+
+#ifdef CONFIG_NET_MULTIBUFFER
+#  error CONFIG_NET_MULTIBUFFER should not be selected
+#endif
 
 /* Half duplex can be forced if CONFIG_TIVA_ETHHDUPLEX is defined. */
 
@@ -1405,7 +1410,7 @@ static inline int tiva_ethinitialize(int intf)
 #endif
   priv->ld_dev.d_private = (void*)priv; /* Used to recover private state from dev */
 
-  /* Create a watchdog for timing polling for and timing of transmisstions */
+  /* Create a watchdog for timing polling for and timing of transmissions */
 
 #if TIVA_NETHCONTROLLERS > 1
 # error "A mechanism to associate base address an IRQ with an interface is needed"
@@ -1417,7 +1422,7 @@ static inline int tiva_ethinitialize(int intf)
 
   /* If the board can provide us with a MAC address, get the address
    * from the board now.  The MAC will not be applied until tiva_ifup()
-   * is caleld (and the MAC can be overwritten with a netdev ioctl call).
+   * is called (and the MAC can be overwritten with a netdev ioctl call).
    */
 
 #ifdef CONFIG_TIVA_BOARDMAC

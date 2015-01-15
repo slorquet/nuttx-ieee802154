@@ -47,7 +47,7 @@
  ****************************************************************************/
 /* General ioctl definitions ************************************************/
 /* Each NuttX ioctl commands are uint16_t's consisting of an 8-bit type
- * identifier and an 8-bit command number.  All comman type identifiers are
+ * identifier and an 8-bit command number.  All command type identifiers are
  * defined below:
  */
 
@@ -103,7 +103,7 @@
 #define _FIOC(nr)       _IOC(_FIOCBASE,nr)
 
 #define FIOC_MMAP       _FIOC(0x0001)     /* IN:  Location to return address (void **)
-                                           * OUT: If media is directly acccesible,
+                                           * OUT: If media is directly accessible,
                                            *      return (void*) base address
                                            *      of file
                                            */
@@ -153,7 +153,7 @@
 #define BIOC_XIPBASE    _BIOC(0x0001)     /* Perform mapping to random access memory.
                                            * IN:  Pointer to pointer to void in
                                            *      which to received the XIP base.
-                                           * OUT: If media is directly acccesible,
+                                           * OUT: If media is directly accessible,
                                            *      return (void*) base address
                                            *      of device memory */
 #define BIOC_PROBE      _BIOC(0x0002)     /* Re-probe and interface; check for media
@@ -190,7 +190,7 @@
                                            * OUT: Number of bytes read or error */
 #define BIOC_WRITESECT  _BIOC(0x0009)     /* Write to data to a logical sector
                                            * IN:  Pointer to sector write data (the
-                                           *      logical secor number and write
+                                           *      logical sector number and write
                                            *      buffer address
                                            * OUT: None (ioctl return value provides
                                            *      success/failure indication). */
@@ -220,10 +220,12 @@
                                            *      with data for the MTD */
 #define MTDIOC_XIPBASE    _MTDIOC(0x0002) /* IN:  Pointer to pointer to void in
                                            *      which to received the XIP base.
-                                           * OUT: If media is directly acccesible,
+                                           * OUT: If media is directly accessible,
                                            *      return (void*) base address
                                            *      of device memory */
 #define MTDIOC_BULKERASE  _MTDIOC(0x0003) /* IN:  None
+                                           * OUT: None */
+#define MTDIOC_SETSPEED   _MTDIOC(0x0004) /* IN:  New bus speed in Hz
                                            * OUT: None */
 
 /* NuttX ARP driver ioctl definitions (see netinet/arp.h) *******************/

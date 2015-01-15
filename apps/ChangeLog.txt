@@ -1158,4 +1158,17 @@
 	  text based serial communications attached to their Nuttx systems. From
 	  Harald Welte (2014-12-13).
 	* apps/examples/ltdc and build-related file: Add ltdc test example. From
-	  Marco Krahl (2014-14-19).
+	  Marco Krahl (2014-12-19).
+	* apps/system/cdcacm, composite and usbmsc:  Fix some strangely placed
+	  conditional compilation.  Looks like an automated update gone awry
+	  (2014-12-28).
+	* apps/examples/ltdc/ltdc_main.c:  Clean up documentation, some formatting
+	  improvements.  From Marco Krahl (2014-12-29).
+	* apps/system/lm75 and build-related files:  Add a tiny application to
+	  read the temperature from an LM-75 (or compatible) temperature sensor
+	  (2015-01-06).
+	* apps/interpreters/micropython:  A port of Micro Python to NuttX.
+	  Contributed by Dave Marples (2015-01-11).
+	* apps/examples/timer:  Add a trivial test of the timer driver
+	  (2015-01-13).
+

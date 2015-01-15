@@ -922,11 +922,10 @@ static void stm32_ltdc_gpioconfig(void)
 
 static void stm32_ltdc_periphconfig(void)
 {
-  uint32_t    regval;
+  uint32_t regval;
 
-  /* Configure GPIO's external */
+  /* Configure GPIO's */
 
-  gvdbg("Configure lcd pins\n");
   stm32_ltdc_gpioconfig();
 
   /* Configure APB2 LTDC clock external */
@@ -1092,7 +1091,7 @@ static void stm32_ltdc_reload(uint8_t value)
     {
     }
 
-  /* Reload shadow register after vertical blank */
+  /* Reload shadow register */
 
   regvdbg("set LTDC_SRCR=%08x\n", value & ~LTDC_SRCR_WAIT);
   putreg32(value & ~LTDC_SRCR_WAIT, STM32_LTDC_SRCR);
@@ -1102,7 +1101,7 @@ static void stm32_ltdc_reload(uint8_t value)
 
   if (value & LTDC_SRCR_WAIT)
     {
-      while ((getreg32(STM32_LTDC_SRCR) & (value & ~LTDC_SRCR_WAIT)) == value)
+      while ((getreg32(STM32_LTDC_SRCR) & (value & ~LTDC_SRCR_WAIT)) != 0)
         {
         }
     }
@@ -1153,8 +1152,6 @@ static void stm32_global_configure(void)
   /* Configure background color of the controller */
 
   stm32_ltdc_bgcolor(STM32_LTDC_BACKCOLOR);
-
-  /* Enable lcd interrupts only if neccessary */
 
   /* Enable line interrupt */
 
@@ -1536,7 +1533,9 @@ static inline void stm32_ltdc_lframebuffer(FAR struct stm32_layer_s *layer)
   regvdbg("set LTDC_L%dCFBAR=%08x\n", priv->lid + 1, pinfo->fbmem + offset);
   putreg32(pinfo->fbmem + offset, stm32_cfbar_layer_t[priv->lid]);
 
-  /* Change line length */
+  /* Configure LxCFBLR register */
+
+  /* Calculate line length */
 
   cfblr = LTDC_LxCFBLR_CFBP(pinfo->stride) |
           LTDC_LxCFBLR_CFBLL(area->xres * STM32_LTDC_Lx_BYPP(pinfo->bpp) + 3);
@@ -1696,8 +1695,7 @@ static void stm32_ltdc_lclut(FAR struct stm32_layer_s *layer)
 
   stm32_ltdc_lclutenable(layer, false);
 
-  /*
-   * Reload shadow control register
+  /* Reload shadow control register.
    * This never changed any layer setting as long the layer register not up to
    * date. This is what stm32_update does.
    */
@@ -1966,6 +1964,7 @@ static void stm32_ltdc_linit(int lid)
 
 #ifdef STM32_LAYER_CLUT_SIZE
   /* Disable clut by default */
+
   if (layer->state.vinfo.fmt == FB_FMT_RGB8)
     {
       stm32_ltdc_lclutenable(layer, false);
@@ -2247,7 +2246,7 @@ static int stm32_setclut(struct ltdc_layer_s *layer,
         }
       else
         {
-          /* Copy to the layer clut */
+          /* Copy to the layer cmap */
 
           stm32_ltdc_cmapcpy(priv->state.cmap, cmap);
 
@@ -2693,7 +2692,7 @@ static int stm32_setblendmode(FAR struct ltdc_layer_s *layer, uint32_t mode)
           /* Enable blending, restore the alpha value */
 
           stm32_ltdc_lunsetopac(priv);
-          mode       &= ~LTDC_BLEND_ALPHA;
+          mode &= ~LTDC_BLEND_ALPHA;
         }
 
       if (mode & LTDC_BLEND_COLORKEY)
@@ -2712,10 +2711,10 @@ static int stm32_setblendmode(FAR struct ltdc_layer_s *layer, uint32_t mode)
 
       if (ret == OK)
         {
-          priv->state.blendmode  = mode;
-          priv->operation       |= (LTDC_LAYER_SETBLENDMODE|
-                                    LTDC_LAYER_SETALPHAVALUE|
-                                    LTDC_LAYER_SETCOLORKEY);
+          priv->state.blendmode = mode;
+          priv->operation      |= (LTDC_LAYER_SETBLENDMODE|
+                                   LTDC_LAYER_SETALPHAVALUE|
+                                   LTDC_LAYER_SETCOLORKEY);
         }
 
       sem_post(priv->state.lock);
@@ -2906,14 +2905,17 @@ static int stm32_getarea(FAR struct ltdc_layer_s *layer,
 static int stm32_update(FAR struct ltdc_layer_s *layer, uint32_t mode)
 {
   FAR struct stm32_layer_s *priv = (FAR struct stm32_layer_s *)layer;
+#ifdef CONFIG_STM32_LTDC_L2
   FAR struct stm32_layer_s *active = &LAYER(g_lactive);
   FAR struct stm32_layer_s *inactive = &LAYER(!g_lactive);
+#endif
 
   gvdbg("layer = %p, mode = %08x\n", layer, mode);
 
   if (stm32_ltdc_lvalidate(priv))
     {
       /* Reload immediately by default */
+
       uint8_t reload = LTDC_SRCR_IMR;
 
       sem_wait(priv->state.lock);
@@ -2932,6 +2934,11 @@ static int stm32_update(FAR struct ltdc_layer_s *layer, uint32_t mode)
 
       stm32_ltdc_lupdate(priv);
 
+#ifdef CONFIG_STM32_LTDC_L2
+      /* The following operation only useful if layer 2 is supported.
+       * Otherwise ignore it.
+       */
+
       if (mode & LTDC_UPDATE_SIM)
         {
           /* Also update the flip layer */
@@ -2941,11 +2948,11 @@ static int stm32_update(FAR struct ltdc_layer_s *layer, uint32_t mode)
 
       if (mode & LTDC_UPDATE_ACTIVATE)
         {
-          /* Set the given layer to the active layer */
+          /* Set the given layer to the next active layer */
 
           g_lactive = priv->state.lid;
 
-          /* Also change this for flip operation */
+          /* Also change the current active layer for flip operation */
 
           active = &LAYER(!g_lactive);
         }
@@ -2989,6 +2996,7 @@ static int stm32_update(FAR struct ltdc_layer_s *layer, uint32_t mode)
 
           g_lactive = inactive->state.lid;
         }
+#endif
 
       /* Make the changes visible */
 
@@ -3155,7 +3163,7 @@ FAR struct ltdc_layer_s *stm32_ltdcgetlayer(int lid)
 
 int stm32_ltdcinitialize(void)
 {
-  gvdbg("Entry\n");
+  gvdbg("Initialize LTDC driver\n");
 
   /* Disable the LCD */
 
@@ -3230,7 +3238,7 @@ struct fb_vtable_s *stm32_ltdcgetvplane(int vplane)
       return (struct fb_vtable_s *)&g_vtable;
     }
 
-    return NULL;
+  return NULL;
 }
 
 /****************************************************************************
@@ -3286,6 +3294,7 @@ void stm32_lcdclear(nxgl_mxpixel_t color)
 void stm32_backlight(bool blon)
 {
   /* Set default backlight level CONFIG_STM32_LTDC_DEFBACKLIGHT */
+
   gdbg("Not supported\n");
 }
 #endif

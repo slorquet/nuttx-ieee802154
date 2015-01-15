@@ -1,7 +1,7 @@
 /****************************************************************************
  * net/utils/net_chksum.c
  *
- *   Copyright (C) 2007-2010, 2012, 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2007-2010, 2012, 2014-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -54,8 +54,9 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
-#define BUF ((struct net_iphdr_s *)&dev->d_buf[NET_LL_HDRLEN(dev)])
-#define ICMPBUF ((struct icmp_iphdr_s *)&dev->d_buf[NET_LL_HDRLEN(dev)])
+#define BUF       ((struct net_iphdr_s *)&dev->d_buf[NET_LL_HDRLEN(dev)])
+#define ICMPBUF   ((struct icmp_iphdr_s *)&dev->d_buf[NET_LL_HDRLEN(dev)])
+#define ICMPv6BUF ((struct icmp_ipv6hdr_s *)&dev->d_buf[NET_LL_HDRLEN(dev)])
 
 /****************************************************************************
  * Private Data
@@ -114,7 +115,8 @@ static uint16_t chksum(uint16_t sum, FAR const uint8_t *data, uint16_t len)
  ****************************************************************************/
 
 #if !CONFIG_NET_ARCH_CHKSUM
-static uint16_t upper_layer_chksum(FAR struct net_driver_s *dev, uint8_t proto)
+static uint16_t upper_layer_chksum(FAR struct net_driver_s *dev,
+                                   uint8_t proto)
 {
   FAR struct net_iphdr_s *pbuf = BUF;
   uint16_t upper_layer_len;
@@ -123,7 +125,7 @@ static uint16_t upper_layer_chksum(FAR struct net_driver_s *dev, uint8_t proto)
 #ifdef CONFIG_NET_IPv6
   upper_layer_len = (((uint16_t)(pbuf->len[0]) << 8) + pbuf->len[1]);
 #else /* CONFIG_NET_IPv6 */
-  upper_layer_len = (((uint16_t)(pbuf->len[0]) << 8) + pbuf->len[1]) - IP_HDRLEN;
+  upper_layer_len = (((uint16_t)(pbuf->len[0]) << 8) + pbuf->len[1]) - IPv4_HDRLEN;
 #endif /* CONFIG_NET_IPv6 */
 
   /* Verify some minimal assumptions */
@@ -145,23 +147,10 @@ static uint16_t upper_layer_chksum(FAR struct net_driver_s *dev, uint8_t proto)
 
   /* Sum TCP header and data. */
 
-  sum = chksum(sum, &dev->d_buf[IP_HDRLEN + NET_LL_HDRLEN(dev)], upper_layer_len);
+  sum = chksum(sum, &dev->d_buf[IPv4_HDRLEN + NET_LL_HDRLEN(dev)], upper_layer_len);
 
   return (sum == 0) ? 0xffff : htons(sum);
 }
-#endif /* CONFIG_NET_ARCH_CHKSUM */
-
-/****************************************************************************
- * Name: icmp_6chksum
- ****************************************************************************/
-
-#if !CONFIG_NET_ARCH_CHKSUM
-#ifdef CONFIG_NET_IPv6
-static uint16_t icmp_6chksum(FAR struct net_driver_s *dev)
-{
-  return upper_layer_chksum(dev, IP_PROTO_ICMP6);
-}
-#endif /* CONFIG_NET_IPv6 */
 #endif /* CONFIG_NET_ARCH_CHKSUM */
 
 /****************************************************************************
@@ -264,28 +253,55 @@ uint16_t net_chksum(FAR uint16_t *data, uint16_t len)
 #endif /* CONFIG_NET_ARCH_CHKSUM */
 
 /****************************************************************************
- * Name: ip_chksum
+ * Name: ipv4_chksum
  *
  * Description:
- *   Calculate the IP header checksum of the packet header in d_buf.
+ *   Calculate the IPv4 header checksum of the packet header in d_buf.
  *
- *   The IP header checksum is the Internet checksum of the 20 bytes of
- *   the IP header.
+ *   The IPv4 header checksum is the Internet checksum of the 20 bytes of
+ *   the IPv4 header.
  *
  *   If CONFIG_NET_ARCH_CHKSUM is defined, then this function must be
  *   provided by architecture-specific logic.
  *
  * Returned Value:
- *   The IP header checksum of the IP header in the d_buf buffer.
+ *   The IPv4 header checksum of the IPv4 header in the d_buf buffer.
  *
  ****************************************************************************/
 
-#if !CONFIG_NET_ARCH_CHKSUM
-uint16_t ip_chksum(FAR struct net_driver_s *dev)
+#if defined(CONFIG_NET_IPv4) && !defined(CONFIG_NET_ARCH_CHKSUM)
+uint16_t ipv4_chksum(FAR struct net_driver_s *dev)
 {
   uint16_t sum;
 
-  sum = chksum(0, &dev->d_buf[NET_LL_HDRLEN(dev)], IP_HDRLEN);
+  sum = chksum(0, &dev->d_buf[NET_LL_HDRLEN(dev)], IPv4_HDRLEN);
+  return (sum == 0) ? 0xffff : htons(sum);
+}
+#endif /* CONFIG_NET_ARCH_CHKSUM */
+
+/****************************************************************************
+ * Name: ipv6_chksum
+ *
+ * Description:
+ *   Calculate the IPv6 header checksum of the packet header in d_buf.
+ *
+ *   The IPv6 header checksum is the Internet checksum of the 40 bytes of
+ *   the IPv6 header.
+ *
+ *   If CONFIG_NET_ARCH_CHKSUM is defined, then this function must be
+ *   provided by architecture-specific logic.
+ *
+ * Returned Value:
+ *   The IPv6 header checksum of the IPv6 header in the d_buf buffer.
+ *
+ ****************************************************************************/
+
+#if defined(CONFIG_NET_IPv6) && !defined(CONFIG_NET_ARCH_CHKSUM)
+uint16_t ipv6_chksum(FAR struct net_driver_s *dev)
+{
+  uint16_t sum;
+
+  sum = chksum(0, &dev->d_buf[NET_LL_HDRLEN(dev)], IPv6_HDRLEN);
   return (sum == 0) ? 0xffff : htons(sum);
 }
 #endif /* CONFIG_NET_ARCH_CHKSUM */
@@ -342,9 +358,24 @@ uint16_t udp_chksum(FAR struct net_driver_s *dev)
 #if defined(CONFIG_NET_ICMP) && defined(CONFIG_NET_ICMP_PING)
 uint16_t icmp_chksum(FAR struct net_driver_s *dev, int len)
 {
-  FAR struct icmp_iphdr_s *picmp = ICMPBUF;
-  return net_chksum((uint16_t*)&picmp->type, len);
+  FAR struct icmp_iphdr_s *icmp = ICMPBUF;
+  return net_chksum((uint16_t*)&icmp->type, len);
 }
 #endif /* CONFIG_NET_ICMP && CONFIG_NET_ICMP_PING */
+
+/****************************************************************************
+ * Name: icmpv6_chksum
+ *
+ * Description:
+ *   Calculate the checksum of the ICMPv6 message
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_ICMPv6
+uint16_t icmpv6_chksum(FAR struct net_driver_s *dev)
+{
+  return upper_layer_chksum(dev, IP_PROTO_ICMP6);
+}
+#endif
 
 #endif /* CONFIG_NET */

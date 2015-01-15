@@ -515,7 +515,7 @@ static const struct tiva_i2c_config_s tiva_i2c6_config =
   .devno      = 6,
 };
 
-static struct tiva_i2c_priv_s tiva_i2c7_priv;
+static struct tiva_i2c_priv_s tiva_i2c6_priv;
 #endif
 
 #ifdef CONFIG_TIVA_I2C7
@@ -537,7 +537,7 @@ static const struct tiva_i2c_config_s tiva_i2c7_config =
   .devno      = 7,
 };
 
-static struct tiva_i2c_priv_s tiva_i2c8_priv;
+static struct tiva_i2c_priv_s tiva_i2c7_priv;
 #endif
 
 #ifdef CONFIG_TIVA_I2C8
@@ -559,7 +559,7 @@ static const struct tiva_i2c_config_s tiva_i2c8_config =
   .devno      = 8,
 };
 
-static struct tiva_i2c_priv_s tiva_i2c9_priv;
+static struct tiva_i2c_priv_s tiva_i2c8_priv;
 #endif
 
 #ifdef CONFIG_TIVA_I2C9
@@ -581,7 +581,7 @@ static const struct tiva_i2c_config_s tiva_i2c9_config =
   .devno      = 9,
 };
 
-static struct tiva_i2c_priv_s tiva_i2c0_priv;
+static struct tiva_i2c_priv_s tiva_i2c9_priv;
 #endif
 
 /* Device Structures, Instantiation */
@@ -1783,6 +1783,18 @@ static int tiva_i2c_initialize(struct tiva_i2c_priv_s *priv, uint32_t frequency)
   regval |= I2CM_CR_MFE;
   tiva_i2c_putreg(priv, TIVA_I2CM_CR_OFFSET, regval);
 
+#ifdef TIVA_I2CSC_PC_OFFSET
+#ifdef CONFIG_TIVA_I2C_HIGHSPEED
+  /* Enable high-speed mode */
+
+  tiva_i2c_putreg(priv, TIVA_I2CSC_PC_OFFSET, I2CSC_PC_HS);
+#else
+  /* Disable high-speed mode */
+
+  tiva_i2c_putreg(priv, TIVA_I2CSC_PC_OFFSET, 0);
+#endif
+#endif
+
   /* Configure the the initial I2C clock frequency. */
 
   (void)tiva_i2c_setclock(priv, frequency);
@@ -1867,15 +1879,15 @@ static uint32_t tiva_i2c_setclock(struct tiva_i2c_priv_s *priv, uint32_t frequen
   DEBUGASSERT((regval & I2CM_TPR_MASK) == regval);
   tiva_i2c_putreg(priv, TIVA_I2CM_TPR_OFFSET, regval);
 
-#ifdef TIVA_I2CSC_PP_OFFSET
+#if defined(CONFIG_TIVA_I2C_HIGHSPEED) && defined(TIVA_I2CSC_PC_OFFSET)
   /* If the I2C peripheral is High-Speed enabled then choose the highest
    * speed that is less than or equal to 3.4 Mbps.
    */
 
-  regval = tiva_i2c_putreg(priv, TIVA_I2CSC_PP_OFFSET);
-  if ((regval & I2CSC_PP_HS) != 0)
+  regval = tiva_i2c_getreg(priv, TIVA_I2CSC_PC_OFFSET);
+  if ((regval & I2CSC_PC_HS) != 0)
     {
-      tmp    = (2 * 3 * 3400000)
+      tmp    = (2 * 3 * 3400000);
       regval = (((SYSCLK_FREQUENCY + tmp - 1) / tmp) - 1) << I2CM_TPR_SHIFT;
 
       tiva_i2c_putreg(priv, TIVA_I2CM_TPR_OFFSET,  I2CM_TPR_HS | regval);
@@ -2264,13 +2276,13 @@ struct i2c_dev_s *up_i2cinitialize(int port)
       break;
 #endif
 #ifdef CONFIG_TIVA_I2C8
-    case 7:
+    case 8:
       priv   = &tiva_i2c8_priv;
       config = &tiva_i2c8_config;
       break;
 #endif
 #ifdef CONFIG_TIVA_I2C9
-    case 0:
+    case 9:
       priv   = &tiva_i2c9_priv;
       config = &tiva_i2c9_config;
       break;

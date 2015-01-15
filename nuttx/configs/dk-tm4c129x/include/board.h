@@ -50,69 +50,70 @@
 
 /* Clocking *************************************************************************/
 
-/* RCC settings.  Crystals on-board the TMC4C123G LaunchPad include:
+/* Crystals on-board the DK-TM4C129X include:
  *
- *   16MHz connected to OSC0/1 (pins 40/41)
- *   32.768kHz connected to XOSC0/1 (pins 34/36)
+ * 1. 25.0MHz (Y2) is connected to OSC0/1 pins and is used as the run mode input to
+ *    the PLL.
+ * 2. 32.768kHz (Y3) connected to XOSC0/1 and clocks the hibernation module.
  */
 
-#define SYSCON_RCC_XTAL      SYSCON_RCC_XTAL16000KHZ /* On-board crystal is 16 MHz */
-#define XTAL_FREQUENCY       16000000
+#define SYSCON_RCC_XTAL      SYSCON_RCC_XTAL16000KHZ /* On-board crystal is 25 MHz */
+#define XTAL_FREQUENCY       25000000
 
-/* Oscillator source is the main oscillator */
+/* Frequencies of other clock sources */
 
-#define SYSCON_RCC_OSCSRC    SYSCON_RCC_OSCSRC_MOSC
-#define SYSCON_RCC2_OSCSRC   SYSCON_RCC2_OSCSRC2_MOSC
-#define OSCSRC_FREQUENCY     XTAL_FREQUENCY
+#define PIOSC_FREQUENCY      16000000 /* Precision internal oscillator */
+#define RTCOSC_FREQUENCY     32768    /* Hibernation Module RTC Oscillator */
+#define LFIOSC_FREQUENCY     33000    /* Low frequency internal oscillator */
 
-/* Use system divider = 4; this corresponds to a system clock frequency
- * of (400 / 1) / 5 = 80MHz (Using RCC2 and DIV400).
+/* The PLL generates Fvco according to the following formulae.  The input clock to
+ * the PLL may be either the external crystal (Fxtal) or PIOSC (Fpiosc).  This
+ * logic supports only the external crystal as the PLL source clock.
+ *
+ *   Fin  = Fxtal / (Q + 1 )(N + 1) -OR- Fpiosc / (Q + 1)(N + 1)
+ *   Mdiv = Mint + (MFrac / 1024)
+ *   Fvco = Fin * Mdiv
+ *
+ * Where the register fields Q and N actually hold (Q-1) and (N-1).   The following
+ * setup then generates Fvco = 480MHz:
+ *
+ *   Fin  = 25 MHz / 1 / 5 = 5 MHz
+ *   Mdiv = 96
+ *   Fvco = 480
  */
 
-#define TIVA_SYSDIV          5
-#define SYSCLK_FREQUENCY     80000000  /* 80MHz */
+#define BOARD_PLL_MINT       96        /* Integer part of PLL M value */
+#define BOARD_PLL_MFRAC      0         /* Fractional part of PLL M value */
+#define BOARD_PLL_N          5         /* PLL N value */
+#define BOARD_PLL_Q          1         /* PLL Q value */
 
-/* Other RCC settings:
+#define BOARD_FVCO_FREQUENCY 480000000 /* Resulting Fvco */
+
+/* When the PLL is active, the system clock frequency (SysClk) is calculated using
+ * the following equation:
  *
- * - Main and internal oscillators enabled.
- * - PLL and sys dividers not bypassed
- * - PLL not powered down
- * - No auto-clock gating reset
+ *   SysClk = Fvco/ (sysdiv + 1)
+ *
+ * The following setup generates Sysclk = 120MHz:
  */
 
-#define TIVA_RCC_VALUE (SYSCON_RCC_OSCSRC | SYSCON_RCC_XTAL | \
-                      SYSCON_RCC_USESYSDIV | SYSCON_RCC_SYSDIV(TIVA_SYSDIV))
+#define BOARD_PLL_SYSDIV     4         /* Sysclk = Fvco / 4 = 120MHz */
+#define SYSCLK_FREQUENCY     120000000 /* Resulting SysClk frequency */
 
-/* RCC2 settings
+/* Alternate Clock (ALTCLK)
  *
- * - PLL and sys dividers not bypassed.
- * - PLL not powered down
- * - Not using RCC2
- *
- * When SYSCON_RCC2_DIV400 is not selected, SYSDIV2 is the divisor-1.
- * When SYSCON_RCC2_DIV400 is selected, SYSDIV2 is the divisor-1)/2, plus
- * the LSB:
- *
- * SYSDIV2 SYSDIV2LSB DIVISOR
- *   0       N/A         2
- *   1       0           3
- *   "       1           4
- *   2       0           5
- *   "       1           6
- *   etc.
+ * The ALTCLK provides a clock source of numerous frequencies to the general-purpose
+ * timer, SSI, and UART modules.  The default source for the ALTCLK is the Precision
+ * Internal Oscillator (PIOSC).  The Hibernation Real-time Clock (RTCOSC) and Low
+ * Frequency Internal Oscillator (LFIOSC) are alternatives.  If the RTCOSC Output is
+ * selected, the clock source must also be enabled in the Hibernation module.
  */
 
-#if (TIVA_SYSDIV & 1) == 0
-#  define TIVA_RCC2_VALUE (SYSCON_RCC2_OSCSRC | SYSCON_RCC2_SYSDIV2LSB | \
-                           SYSCON_RCC2_SYSDIV_DIV400(TIVA_SYSDIV) | \
-                           SYSCON_RCC2_DIV400 | SYSCON_RCC2_USERCC2)
-#else
-#  define TIVA_RCC2_VALUE (SYSCON_RCC2_OSCSRC | SYSCON_RCC2_SYSDIV_DIV400(TIVA_SYSDIV) | \
-                           SYSCON_RCC2_DIV400 | SYSCON_RCC2_USERCC2)
-#endif
+#define BOARD_ALTCLKCFG      SYSCON_ALTCLKCFG_ALTCLK_PIOSC
+#define ALTCLK_FREQUENCY     PIOSC_FREQUENCY
 
 /* LED definitions ******************************************************************/
-/* The TMC4C123G LaunchPad has a single RGB LED.  There is only one visible LED which
+/* The DK-TM4C129X has a single RGB LED.  There is only one visible LED which
  * will vary in color.  But, from the standpoint of the firmware, this appears as
  * three LEDs:
  *
@@ -125,14 +126,14 @@
  *   --- ------------ -----------------
  */
 
-/* LED index values for use with tm4c_setled() */
+/* LED index values for use with tiva_setled() */
 
 #define BOARD_LED_R               0
 #define BOARD_LED_G               1
 #define BOARD_LED_B               2
 #define BOARD_NLEDS               3
 
-/* LED bits for use with tm4c_setleds() */
+/* LED bits for use with tiva_setleds() */
 
 #define BOARD_LED_R_BIT           (1 << BOARD_LED_R)
 #define BOARD_LED_G_BIT           (1 << BOARD_LED_G)
@@ -173,11 +174,74 @@
 #define BUTTON_SW4_BIT    (1 << BUTTON_SW4)
 
 /* Pin Multiplexing Disambiguation **************************************************/
+/* UARTs
+ *
+ *   UART0: PA0-1 (fixed configuration)
+ *   UART3: PJ0-1 to EM_TX/EM_RX or BOOSTER_PACK2_RX/BOOSTER_PACK2_TX(Depending
+ *          on J12/J13)
+ *   UART5: PH6-7 to BOOSTER_PACK1_RX/BOOSTER_PACK1_TX
+ */
 
-#define GPIO_UART1_CTS    GPIO_UART1_CTS_1
-#define GPIO_UART1_RTS    GPIO_UART1_RTS_1
-#define GPIO_UART1_RX     GPIO_UART1_RX_1
-#define GPIO_UART1_TX     GPIO_UART1_TX_1
+#define GPIO_UART3_RX     GPIO_UART3_RX_2
+#define GPIO_UART3_TX     GPIO_UART3_TX_2
+
+#define GPIO_UART5_RX     GPIO_UART5_RX_2
+#define GPIO_UART5_TX     GPIO_UART5_TX_2
+
+/* SSI:
+ *
+ *   SSI0: PA2-5 are used for SSI0 to the second booster pack (fixed configuration)
+ *   SSI3: PF0/PF4-5/PH4/PQ0-2 are used for the SPI flash (on-board and SD card).
+ *         PH4 selects the SD card and PQ1 selects the on-board SPI flash.
+ */
+
+#define GPIO_SSI3_CLK     GPIO_SSI3_CLK_2
+#define GPIO_SSI3_FSS     GPIO_SSI3_FSS_2
+#define GPIO_SSI3_XDAT0   GPIO_SSI3_XDAT0_2
+#define GPIO_SSI3_XDAT1   GPIO_SSI3_XDAT1_1
+#define GPIO_SSI3_XDAT2   GPIO_SSI3_XDAT2_1
+#define GPIO_SSI3_XDAT3   GPIO_SSI3_XDAT3_1
+
+/* I2C:
+ *
+ *   I2C3: PG4-5 are provide to the BoostPack 1 interface
+ *   I2C7: PA4-5 are provide to the BoostPack 2 interface
+ *   I2C6: PB6-7 are used for I2C to the TMP100 and the EM connector.
+ *         J18 and J20 must be closed to connect the TMP100.
+ *         I2C address is 0x4A
+ */
+
+#define GPIO_I2C3_SCL     GPIO_I2C3_SCL_1
+#define GPIO_I2C3_SDA     GPIO_I2C3_SDA_1
+#define GPIO_I2C7_SCL     GPIO_I2C7_SCL_1
+#define GPIO_I2C7_SDA     GPIO_I2C7_SDA_1
+#define GPIO_I2C6_SCL     GPIO_I2C6_SCL_2
+#define GPIO_I2C6_SDA     GPIO_I2C6_SDA_2
+
+/* USB:
+ *
+ *   PB0-1/PD6-7/PL6-7 are used for USB (Only PD6-7 are not fixed configuration)
+ */
+
+#define GPIO_USB0_EPEN   GPIO_USB0_EPEN_3
+#define GPIO_USB0_PFLT   GPIO_USB0_PFLT_2
+
+/* Ethernet LEDs
+ *
+ *    PF1/PK4/PK6 are used for Ethernet LEDs.
+ *      PK4/EN0RXD3/LED0
+ *      PK6/EN0TXD2/LED1
+ *      PF1/LED2
+ */
+
+#  define GPIO_EN0_LED0   GPIO_EN0_LED0_2
+#  define GPIO_EN0_LED1   GPIO_EN0_LED1_2
+#  define GPIO_EN0_LED2   GPIO_EN0_LED2_1
+
+/* LCD
+ *
+ *   PF6-7/PJ6/PS4-5/PR0-7 are used for the LCD (fixed configuration).
+ */
 
 /************************************************************************************
  * Public Function Prototypes
@@ -198,7 +262,7 @@
 void tiva_boardinitialize(void);
 
 /************************************************************************************
- * Name:  tm4c_ledinit, tm4c_setled, and tm4c_setleds
+ * Name:  tiva_ledinit, tiva_setled, and tiva_setleds
  *
  * Description:
  *   If CONFIG_ARCH_LEDS is defined, then NuttX will control the on-board LED.  If
@@ -208,9 +272,27 @@ void tiva_boardinitialize(void);
  ************************************************************************************/
 
 #ifndef CONFIG_ARCH_LEDS
-void tm4c_ledinit(void);
-void tm4c_setled(int led, bool ledon);
-void tm4c_setleds(uint8_t ledset);
+void tiva_ledinit(void);
+void tiva_setled(int led, bool ledon);
+void tiva_setleds(uint8_t ledset);
+#endif
+
+/************************************************************************************
+ * Name: tiva_tmp100_initialize
+ *
+ * Description:
+ *   Initialize and register the TMP-100 Temperature Sensor driver.
+ *
+ * Input parameters:
+ *   devpath - The full path to the driver to register. E.g., "/dev/temp0"
+ *
+ * Returned Value:
+ *   Zero (OK) on success; a negated errno value on failure.
+ *
+ ************************************************************************************/
+
+#if defined(CONFIG_I2C) && defined(CONFIG_I2C_LM75) && defined(CONFIG_TIVA_I2C6)
+int tiva_tmp100_initialize(FAR const char *devpath);
 #endif
 
 #endif /* __ASSEMBLY__ */

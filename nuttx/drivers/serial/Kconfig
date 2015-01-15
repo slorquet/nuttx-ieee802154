@@ -523,6 +523,49 @@ config SERIAL_NPOLLWAITERS
 		Maximum number of threads than can be waiting for POLL events.
 		Default: 2
 
+config SERIAL_IFLOWCONTROL
+	bool
+	default n
+
+config SERIAL_OFLOWCONTROL
+	bool
+	default n
+
+config SERIAL_IFLOWCONTROL_WATERMARKS
+	bool "RX flow control watermarks"
+	default n
+	depends on SERIAL_IFLOWCONTROL
+	---help---
+		Call the "lower half" rxflowcontrol method whenever the number of
+		characters in the serial RX buffer falls above an upper water mark
+		level or below a lower watermark level.  The default behavior is to
+		call the rxflowcontrol method only when the RX buffer is empty or
+		full.
+
+if SERIAL_IFLOWCONTROL_WATERMARKS
+
+config SERIAL_IFLOWCONTROL_LOWER_WATERMARK
+	int "RX lower Watermark (percent)"
+	default 10
+	range 0 100
+	---help---
+		Call the rxflowcontrol method then there are this amount (or or less)
+		data buffered in the serial drivers RX buffer.  This is expressed
+		as a percentage of the total size of the RX buffer which may vary
+		from instance-to-instance.
+
+config SERIAL_IFLOWCONTROL_UPPER_WATERMARK
+	int "RX upper Watermark (percent)"
+	default 90
+	range 0 100
+	---help---
+		Call the rxflowcontrol method then there are this amount (or more)
+		data buffered in the serial drivers RX buffer.  This is expressed
+		as a percentage of the total size of the RX buffer which may vary
+		from instance-to-instance.
+
+endif # SERIAL_IFLOWCONTROL_WATERMARKS
+
 config SERIAL_TIOCSERGSTRUCT
 	bool "Support TIOCSERGSTRUCT"
 	default n
@@ -556,7 +599,7 @@ choice
 	default NO_SERIAL_CONSOLE if !ARCH_HAVE_OTHER_UART
 	default OTHER_SERIAL_CONSOLE if ARCH_HAVE_OTHER_UART
 	depends on MCU_SERIAL
-	depends on DEV_CONSOLE
+	#depends on DEV_CONSOLE - We may have serial console with no file system at all
 
 config UART_SERIAL_CONSOLE
 	bool "UART"
@@ -1843,11 +1886,3 @@ config SCI1_2STOP
 		1=Two stop bits
 
 endmenu # SCI1 Configuration
-
-config SERIAL_IFLOWCONTROL
-	bool
-	default n
-
-config SERIAL_OFLOWCONTROL
-	bool
-	default n

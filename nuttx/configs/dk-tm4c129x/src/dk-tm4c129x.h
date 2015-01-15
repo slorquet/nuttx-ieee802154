@@ -47,7 +47,7 @@
 #include "tiva_gpio.h"
 
 /************************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ************************************************************************************/
 /* Configuration ********************************************************************/
 
@@ -72,11 +72,13 @@
  *   PQ4 Blue LED     J36 pins 3 and 4
  *   PQ7 Green LED    J36 pins 5 and 6
  *   --- ------------ -----------------
+ *
+ * A high output illuminates the LED.
  */
 
-#define GPIO_LED_R   (GPIO_FUNC_OUTPUT | GPIO_VALUE_ONE | GPIO_PORTN | GPIO_PIN_5)
-#define GPIO_LED_G   (GPIO_FUNC_OUTPUT | GPIO_VALUE_ONE | GPIO_PORTQ | GPIO_PIN_4)
-#define GPIO_LED_B   (GPIO_FUNC_OUTPUT | GPIO_VALUE_ONE | GPIO_PORTQ | GPIO_PIN_7)
+#define GPIO_LED_R   (GPIO_FUNC_OUTPUT | GPIO_VALUE_ZERO | GPIO_PORTN | GPIO_PIN_5)
+#define GPIO_LED_G   (GPIO_FUNC_OUTPUT | GPIO_VALUE_ZERO | GPIO_PORTQ | GPIO_PIN_7)
+#define GPIO_LED_B   (GPIO_FUNC_OUTPUT | GPIO_VALUE_ZERO | GPIO_PORTQ | GPIO_PIN_4)
 
 /* Button definitions ***************************************************************/
 /* There are three push buttons on the board.
@@ -98,6 +100,37 @@
 
 #define IRQ_SW4    TIVA_IRQ_GPIOP_1
 
+/* SPI Chip selects ****************************************************************/
+/*   SSI0: PA3 is used for SSI0 chip select to the second booster pack (No pull-
+*          ups)
+ *   SSI3: PH4 selects the SD card and PQ1 selects the on-board SPI flash.  Both
+ *         pulled up on board.
+ */
+
+#define GPIO_BSTR2_CS (GPIO_FUNC_OUTPUT | GPIO_PADTYPE_STDWPU | GPIO_STRENGTH_4MA | \
+                       GPIO_VALUE_ONE | GPIO_PORTA | GPIO_PIN_3)
+#define GPIO_FLASH_CS (GPIO_FUNC_OUTPUT | GPIO_PADTYPE_STD | GPIO_STRENGTH_4MA | \
+                       GPIO_VALUE_ONE | GPIO_PORTH | GPIO_PIN_4)
+#define GPIO_SD_CS    (GPIO_FUNC_OUTPUT | GPIO_PADTYPE_STD | GPIO_STRENGTH_4MA | \
+                       GPIO_VALUE_ONE | GPIO_PORTH | GPIO_PIN_4)
+
+/* I2C *****************************************************************************/
+/*   I2C3: PG4-5 are provide to the BoostPack 1 interface
+ *   I2C7: PA4-5 are provide to the BoostPack 2 interface
+ *   I2C6: PB6-7 are used for I2C to the TMP100 and the EM connector.
+ *         J18 and J20 must be closed to connect the TMP100.
+ *         I2C address is 0x4A
+ */
+
+#define TMP100_I2CBUS  6
+#define TMP100_I2CADDR 0x4a
+
+/* Speaker outputs *****************************************************************/
+/* PB2/PD4 are used for the speaker output */
+
+/* Touchscreen *********************************************************************/
+/* PE7/PP7/PT2-3 are used for the touch screen */
+
 /************************************************************************************
  * Public Functions
  ************************************************************************************/
@@ -108,7 +141,7 @@
  * Name: tm4c_ssiinitialize
  *
  * Description:
- *   Called to configure SPI chip select GPIO pins for the DK-TM4C129x.
+ *   Called to configure SPI chip select GPIO pins for the DK-TM4C129X.
  *
  ************************************************************************************/
 
@@ -135,6 +168,18 @@ void tm4c_ledinit(void);
  ****************************************************************************/
 
 int tm4c_bringup(void);
+
+/****************************************************************************
+ * Name: tiva_timer_initialize
+ *
+ * Description:
+ *   Configure the timer driver
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_DK_TM4C129X_TIMER
+int tiva_timer_initialize(void);
+#endif
 
 #endif /* __ASSEMBLY__ */
 #endif /* __CONFIGS_DK_TM4C129X_DK_TM4C129X_H */

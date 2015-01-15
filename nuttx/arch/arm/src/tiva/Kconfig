@@ -17,6 +17,8 @@ config ARCH_CHIP_LM3S6918
 	select ARCH_CHIP_LM3S
 	select TIVA_HAVE_I2C1
 	select TIVA_HAVE_SSI1
+	select TIVA_HAVE_TIMER3
+	select TIVA_HAVE_ETHERNET
 
 config ARCH_CHIP_LM3S9B96
 	bool "LM3S9B96"
@@ -26,6 +28,8 @@ config ARCH_CHIP_LM3S9B96
 	select TIVA_HAVE_UART3
 	select TIVA_HAVE_I2C1
 	select TIVA_HAVE_SSI1
+	select TIVA_HAVE_TIMER3
+	select TIVA_HAVE_ETHERNET
 	select TIVA_HAVE_GPIOH_IRQS
 
 config ARCH_CHIP_LM3S6432
@@ -33,6 +37,7 @@ config ARCH_CHIP_LM3S6432
 	depends on ARCH_CHIP_LM
 	select ARCH_CORTEXM3
 	select ARCH_CHIP_LM3S
+	select TIVA_HAVE_ETHERNET
 
 config ARCH_CHIP_LM3S6965
 	bool "LM3S6965"
@@ -41,6 +46,8 @@ config ARCH_CHIP_LM3S6965
 	select ARCH_CHIP_LM3S
 	select TIVA_HAVE_UART3
 	select TIVA_HAVE_I2C1
+	select TIVA_HAVE_TIMER3
+	select TIVA_HAVE_ETHERNET
 	select TIVA_HAVE_GPIOH_IRQS
 
 config ARCH_CHIP_LM3S8962
@@ -50,6 +57,10 @@ config ARCH_CHIP_LM3S8962
 	select ARCH_CHIP_LM3S
 	select TIVA_HAVE_UART3
 	select TIVA_HAVE_I2C1
+	select TIVA_HAVE_TIMER3
+	select TIVA_HAVE_TIMER4
+	select TIVA_HAVE_TIMER5
+	select TIVA_HAVE_ETHERNET
 	select TIVA_HAVE_GPIOH_IRQS
 
 config ARCH_CHIP_LM4F120
@@ -64,6 +75,7 @@ config ARCH_CHIP_TM4C123GH6ZRB
 	depends on ARCH_CHIP_TIVA
 	select ARCH_CHIP_TM4C
 	select ARCH_CHIP_TM4C123
+	select TIVA_HAVE_GPIOP_IRQS
 	select TIVA_HAVE_GPIOQ_IRQS
 	select TIVA_HAVE_I2C4
 	select TIVA_HAVE_I2C5
@@ -73,18 +85,26 @@ config ARCH_CHIP_TM4C123GH6PMI
 	depends on ARCH_CHIP_TIVA
 	select ARCH_CHIP_TM4C
 	select ARCH_CHIP_TM4C123
+	select TIVA_HAVE_GPIOA_IRQS
+	select TIVA_HAVE_GPIOB_IRQS
+	select TIVA_HAVE_GPIOC_IRQS
+	select TIVA_HAVE_GPIOD_IRQS
+	select TIVA_HAVE_GPIOE_IRQS
+	select TIVA_HAVE_GPIOF_IRQS
 
 config ARCH_CHIP_TM4C1294NC
 	bool "TM4C1294NC"
 	depends on ARCH_CHIP_TIVA
 	select ARCH_CHIP_TM4C
 	select ARCH_CHIP_TM4C129
+	select TIVA_HAVE_ETHERNET
 
 config ARCH_CHIP_TM4C129XNC
 	bool "TM4C129XNC"
 	depends on ARCH_CHIP_TIVA
 	select ARCH_CHIP_TM4C
 	select ARCH_CHIP_TM4C129
+	select TIVA_HAVE_ETHERNET
 
 config ARCH_CHIP_CC3200
 	bool "CC3200"
@@ -129,12 +149,16 @@ config ARCH_CHIP_LM4F
 	select TIVA_HAVE_SSI1
 	select TIVA_HAVE_SSI2
 	select TIVA_HAVE_SSI3
+	select TIVA_HAVE_TIMER3
+	select TIVA_HAVE_TIMER4
+	select TIVA_HAVE_TIMER5
 
 config ARCH_CHIP_TM4C123
 	bool
 
 config ARCH_CHIP_TM4C129
 	bool
+	select TIVA_HAVE_GPIOP_IRQS
 	select TIVA_HAVE_GPIOQ_IRQS
 	select TIVA_HAVE_I2C4
 	select TIVA_HAVE_I2C5
@@ -142,12 +166,13 @@ config ARCH_CHIP_TM4C129
 	select TIVA_HAVE_I2C7
 	select TIVA_HAVE_I2C8
 	select TIVA_HAVE_I2C9
+	select TIVA_HAVE_TIMER6
+	select TIVA_HAVE_TIMER7
 
 config ARCH_CHIP_TM4C
 	bool
 	select ARCH_CORTEXM4
 	select ARCH_HAVE_FPU
-	select TIVA_HAVE_GPIOP_IRQS
 	select TIVA_HAVE_I2C1
 	select TIVA_HAVE_I2C2
 	select TIVA_HAVE_I2C3
@@ -160,6 +185,9 @@ config ARCH_CHIP_TM4C
 	select TIVA_HAVE_SSI1
 	select TIVA_HAVE_SSI2
 	select TIVA_HAVE_SSI3
+	select TIVA_HAVE_TIMER3
+	select TIVA_HAVE_TIMER4
+	select TIVA_HAVE_TIMER5
 
 config LM_REVA2
 	bool "Rev A2"
@@ -251,7 +279,35 @@ config TIVA_HAVE_SSI3
 	bool
 	default n
 
+config TIVA_HAVE_ETHERNET
+	bool
+	default n
+
 config TIVA_SSI
+	bool
+	default n
+
+config TIVA_TIMER
+	bool
+	default n
+
+config TIVA_HAVE_TIMER3
+	bool
+	default n
+
+config TIVA_HAVE_TIMER4
+	bool
+	default n
+
+config TIVA_HAVE_TIMER5
+	bool
+	default n
+
+config TIVA_HAVE_TIMER6
+	bool
+	default n
+
+config TIVA_HAVE_TIMER7
 	bool
 	default n
 
@@ -360,27 +416,72 @@ config TIVA_UART7
 
 config TIVA_SSI0
 	bool "SSI0"
-	default y
+	default n
 	depends on TIVA_HAVE_SSI0
 	select TIVA_SSI
 
 config TIVA_SSI1
 	bool "SSI1"
-	default y
+	default n
 	depends on TIVA_HAVE_SSI1
 	select TIVA_SSI
 
 config TIVA_SSI2
 	bool "SSI2"
-	default y
+	default n
 	depends on TIVA_HAVE_SSI2
 	select TIVA_SSI
 
 config TIVA_SSI3
 	bool "SSI3"
-	default y
+	default n
 	depends on TIVA_HAVE_SSI3
 	select TIVA_SSI
+
+config TIVA_TIMER0
+	bool "16-/32-bit Timer 0"
+	default n
+	select TIVA_TIMER
+
+config TIVA_TIMER1
+	bool "16-/32-bit Timer 1"
+	default n
+	select TIVA_TIMER
+
+config TIVA_TIMER2
+	bool "16-/32-bit Timer 2"
+	default n
+	select TIVA_TIMER
+
+config TIVA_TIMER3
+	bool "16-/32-bit Timer 3"
+	default n
+	depends on TIVA_HAVE_TIMER3
+	select TIVA_TIMER
+
+config TIVA_TIMER4
+	bool "16-/32-bit Timer 4"
+	default n
+	depends on TIVA_HAVE_TIMER4
+	select TIVA_TIMER
+
+config TIVA_TIMER5
+	bool "16-/32-bit Timer 5"
+	default n
+	depends on TIVA_HAVE_TIMER5
+	select TIVA_TIMER
+
+config TIVA_TIMER6
+	bool "16-/32-bit Timer 6"
+	default n
+	depends on TIVA_HAVE_TIMER6
+	select TIVA_TIMER
+
+config TIVA_TIMER7
+	bool "16-/32-bit Timer 7"
+	default n
+	depends on TIVA_HAVE_TIMER7
+	select TIVA_TIMER
 
 config TIVA_ETHERNET
 	bool "Ethernet"
@@ -623,6 +724,14 @@ config TIVA_I2C_TIMEOTICKS
 
 endif # !TIVA_I2C_DYNTIMEO
 
+config TIVA_I2C_HIGHSPEED
+	bool "High speed support"
+	default n
+	depends on ARCH_CHIP_TM4C && EXPERIMENTAL
+	---help---
+		Enable support for high speed I2C transfers.
+		Only partially implemented and completely untested.
+
 config TIVA_I2C_REGDEBUG
 	bool "Register level debug"
 	default n
@@ -633,21 +742,73 @@ config TIVA_I2C_REGDEBUG
 endmenu # I2C Configuration
 endif # TIVA_I2C
 
+if TIVA_TIMER
+
+menu "Tiva Timer Configuration"
+
+config TIVA_TIMER_32BIT
+	bool "32-bit timer support"
+	default n
+
+if TIVA_TIMER_32BIT
+
+config TIVA_TIMER32_PERIODIC
+	bool "32-bit one-shot/periodic timer support"
+	default n
+
+config TIVA_TIMER32_RTC
+	bool "32-bit RTC (needs 32.768-KHz input)"
+	default n
+
+endif # TIVA_TIMER_32BIT
+
+config TIVA_TIMER_16BIT
+	bool "16-bit Timers"
+	default n
+
+if TIVA_TIMER_16BIT
+
+config TIVA_TIMER16_PERIODIC
+	bool "16-bit one-shot/periodic timer support"
+	default n
+
+config TIVA_TIMER32_EDGECOUNT
+	bool "16-bit input edge-count capture support"
+	default n
+	depends on EXPERIMENTAL
+
+config TIVA_TIMER32_TIMECAP
+	bool "16-bit input time capture support"
+	default n
+	depends on EXPERIMENTAL
+
+config TIVA_TIMER32_PWM
+	bool "16-bit PWM output support"
+	default n
+	depends on EXPERIMENTAL
+
+endif # TIVA_TIMER_16BIT
+
+config TIVA_TIMER_REGDEBUG
+	bool "Register level debug"
+	default n
+	depends on DEBUG
+	---help---
+		Enables extremely detailed register access debug output.
+
+endmenu # Tiva Timer Configuration
+endif # TIVA_TIMER
+
 if TIVA_ETHERNET
-menu "Tiva/Stellaris Ethernet Configuration"
+
+menu "Stellaris Ethernet Configuration"
+	depends on ARCH_CHIP_LM3S
 
 config TIVA_ETHLEDS
 	bool "Ethernet LEDs"
 	default n
 	---help---
 	Enable to use Ethernet LEDs on the board.
-
-config TIVA_BOARDMAC
-	bool "Board MAC"
-	default n
-	---help---
-		If the board-specific logic can provide a MAC address (via
-		tiva_ethernetmac()), then this should be selected.
 
 config TIVA_ETHHDUPLEX
 	bool "Force Half Duplex"
@@ -689,14 +850,212 @@ config TIVA_BADCRC
 	---help---
 		Set to enable bad CRC rejection.
 
-config M3S_DUMPPACKET
+config TIVA_DUMPPACKET
 	bool "Dump Packets"
 	default n
 	---help---
 		Dump each packet received/sent to the console.
 
-endmenu
-endif
+endmenu # Stellaris Ethernet Configuration
+
+menu "Tiva Ethernet Configuration"
+	depends on ARCH_CHIP_TM4C
+
+choice
+	prompt "PHY selection"
+	default TIVA_PHY_INTERNAL
+
+config TIVA_PHY_INTERNAL
+	bool "Internal PHY"
+	---help---
+		Use the built-in, internal Tiva PHY
+
+config TIVA_PHY_MII
+	bool "External MII interface"
+	depends on EXPERIMENTAL
+	---help---
+		Support external PHY MII interface.
+
+config TIVA_PHY_RMII
+	bool "External RMII interface"
+	depends on EXPERIMENTAL
+	---help---
+		Support external PHY RMII interface.
+
+endchoice # PHY selection
+
+config TIVA_AUTONEG
+	bool "Use autonegotiation"
+	default y
+	---help---
+		Use PHY autonegotiation to determine speed and mode
+
+if !TIVA_PHY_INTERNAL
+
+config TIVA_PHYADDR
+	int "PHY address"
+	default 1
+	---help---
+		The 5-bit address of the PHY on the board.  Default: 1
+
+if !TIVA_AUTONEG
+config TIVA_ETHFD
+	bool "Full duplex"
+	default n
+	---help---
+		If TIVA_AUTONEG is not defined, then this may be defined to select full duplex
+		mode. Default: half-duplex
+
+config TIVA_ETH100MBPS
+	bool "100 Mbps"
+	default n
+	---help---
+		If TIVA_AUTONEG is not defined, then this may be defined to select 100 MBps
+		speed.  Default: 10 Mbps
+
+endif # !TIVA_AUTONEG
+if TIVA_AUTONEG
+
+config TIVA_PHYSR
+	int "PHY Status Register Address (decimal)"
+	---help---
+		This must be provided if TIVA_AUTONEG is defined.  The PHY status register
+		address may diff from PHY to PHY.  This configuration sets the address of
+		the PHY status register.
+
+config TIVA_PHYSR_ALTCONFIG
+	bool "PHY Status Alternate Bit Layout"
+	default n
+	---help---
+		Different PHYs present speed and mode information in different ways.  Some
+		will present separate information for speed and mode (this is the default).
+		Those PHYs, for example, may provide a 10/100 Mbps indication and a separate
+		full/half duplex indication. This options selects an alternative representation
+		where speed and mode information are combined.  This might mean, for example,
+		separate bits for 10HD, 100HD, 10FD and 100FD.
+
+if !TIVA_PHYSR_ALTCONFIG
+
+config TIVA_PHYSR_SPEED
+	hex "PHY Speed Mask"
+	---help---
+		This must be provided if TIVA_AUTONEG is defined.  This provides bit mask
+		for isolating the 10 or 100MBps speed indication.
+
+config TIVA_PHYSR_100MBPS
+	hex "PHY 100Mbps Speed Value"
+	---help---
+		This must be provided if TIVA_AUTONEG is defined.  This provides the value
+		of the speed bit(s) indicating 100MBps speed.
+
+config TIVA_PHYSR_MODE
+	hex "PHY Mode Mask"
+	---help---
+		This must be provided if TIVA_AUTONEG is defined.  This provide bit mask
+		for isolating the full or half duplex mode bits.
+
+config TIVA_PHYSR_FULLDUPLEX
+	hex "PHY Full Duplex Mode Value"
+	---help---
+		This must be provided if TIVA_AUTONEG is defined.  This provides the
+		value of the mode bits indicating full duplex mode.
+
+endif # !TIVA_PHYSR_ALTCONFIG
+if TIVA_PHYSR_ALTCONFIG
+
+config TIVA_PHYSR_ALTMODE
+	hex "PHY Mode Mask"
+	---help---
+		This must be provided if TIVA_AUTONEG is defined.  This provide bit mask
+		for isolating the speed and full/half duplex mode bits.
+
+config TIVA_PHYSR_10HD
+	hex "10MBase-T Half Duplex Value"
+	---help---
+		This must be provided if TIVA_AUTONEG is defined.  This is the value
+		under the bit mask that represents the 10Mbps, half duplex setting.
+
+config TIVA_PHYSR_100HD
+	hex "100Base-T Half Duplex Value"
+	---help---
+		This must be provided if TIVA_AUTONEG is defined.  This is the value
+		under the bit mask that represents the 100Mbps, half duplex setting.
+
+config TIVA_PHYSR_10FD
+	hex "10Base-T Full Duplex Value"
+	---help---
+		This must be provided if TIVA_AUTONEG is defined.  This is the value
+		under the bit mask that represents the 10Mbps, full duplex setting.
+
+config TIVA_PHYSR_100FD
+	hex "100Base-T Full Duplex Value"
+	---help---
+		This must be provided if TIVA_AUTONEG is defined.  This is the value
+		under the bit mask that represents the 100Mbps, full duplex setting.
+
+endif # TIVA_PHYSR_ALTCONFIG
+endif # TIVA_AUTONEG
+endif # !TIVA_PHY_INTERNAL
+
+config TIVA_PHY_INTERRUPTS
+	bool "PHY interrupt support"
+	select ARCH_PHY_INTERRUPT
+	select NETDEV_PHY_IOCTL
+	default n
+	---help---
+		Enable logic to signal user tasks when a PHY interrupt occurs.  The
+		PHY interrupt may indicate a change in the link status such as, for
+		example, when a cable is plugged in or unplugged.
+
+config TIVA_EMAC_NRXDESC
+	int "Number of RX descriptors"
+	default 8
+	---help---
+		Number of RX DMA descriptors to use.
+
+config TIVA_EMAC_NTXDESC
+	int "Number of TX descriptors"
+	default 4
+	---help---
+		Number of TX DMA descriptors to use.
+
+config TIVA_EMAC_ENHANCEDDESC
+	bool
+	default n
+
+config TIVA_EMAC_PTP
+	bool "Precision Time Protocol (PTP)"
+	default n
+	depends on EXPERIMENTAL
+	select TIVA_EMAC_ENHANCEDDESC
+	---help---
+		Precision Time Protocol (PTP).  Not supported but some hooks are indicated
+		with this condition.
+
+config TIVA_EMAC_HWCHECKSUM
+	bool "Use hardware checksums"
+	default n
+	depends on EXPERIMENTAL
+	---help---
+		Use the hardware checksum capabilities of the Tiva chip
+
+config TIVA_ETHERNET_REGDEBUG
+	bool "Register-Level Debug"
+	default n
+	depends on DEBUG
+	---help---
+		Enable very low-level register access debug.  Depends on DEBUG.
+
+endmenu # Tiva Ethernet Configuration
+
+config TIVA_BOARDMAC
+	bool "Board MAC"
+	default n
+	---help---
+		If the board-specific logic can provide a MAC address (via
+		tiva_ethernetmac()), then this should be selected.
+
+endif # TIVA_ETHERNET
 
 if TIVA_SSI
 menu "Tiva/Stellaris SSI Configuration"

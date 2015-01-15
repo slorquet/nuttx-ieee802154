@@ -421,18 +421,18 @@ static ssize_t uart_write(FAR struct file *filep, FAR const char *buffer,
 #ifdef CONFIG_SERIAL_TERMIOS
       /* Do output post-processing */
 
-      if (dev->tc_oflag & OPOST)
+      if ((dev->tc_oflag & OPOST) != 0)
         {
           /* Mapping CR to NL? */
 
-          if ((ch == '\r') && (dev->tc_oflag & OCRNL))
+          if ((ch == '\r') && (dev->tc_oflag & OCRNL) != 0)
             {
               ch = '\n';
             }
 
           /* Are we interested in newline processing? */
 
-          if ((ch == '\n') && (dev->tc_oflag & (ONLCR | ONLRET)))
+          if ((ch == '\n') && (dev->tc_oflag & (ONLCR | ONLRET)) != 0)
             {
               ret = uart_putxmitchar(dev, '\r', oktoblock);
               if (ret < 0)
@@ -521,16 +521,21 @@ static ssize_t uart_write(FAR struct file *filep, FAR const char *buffer,
 static ssize_t uart_read(FAR struct file *filep, FAR char *buffer, size_t buflen)
 {
   FAR struct inode *inode = filep->f_inode;
-  FAR uart_dev_t   *dev   = inode->i_private;
-  irqstate_t        flags;
-  ssize_t           recvd = 0;
-  int16_t           tail;
-  int               ret;
-  char              ch;
+  FAR uart_dev_t *dev = inode->i_private;
+  FAR struct uart_buffer_s *rxbuf = &dev->recv;
+#ifdef CONFIG_SERIAL_IFLOWCONTROL_WATERMARKS
+  unsigned int nbuffered;
+  unsigned int watermark;
+#endif
+  irqstate_t flags;
+  ssize_t recvd = 0;
+  int16_t tail;
+  char ch;
+  int ret;
 
-  /* Only one user can access dev->recv.tail at a time */
+  /* Only one user can access rxbuf->tail at a time */
 
-  ret = uart_takesem(&dev->recv.sem, true);
+  ret = uart_takesem(&rxbuf->sem, true);
   if (ret < 0)
     {
       /* A signal received while waiting for access to the recv.tail will avort
@@ -565,7 +570,7 @@ static ssize_t uart_read(FAR struct file *filep, FAR char *buffer, size_t buflen
 #endif
 
       /* Check if there is more data to return in the circular buffer.
-       * NOTE: Rx interrupt handling logic may aynchronously increment
+       * NOTE: Rx interrupt handling logic may asynchronously increment
        * the head index but must not modify the tail index.  The tail
        * index is only modified in this function.  Therefore, no
        * special handshaking is required here.
@@ -575,24 +580,24 @@ static ssize_t uart_read(FAR struct file *filep, FAR char *buffer, size_t buflen
        * 8-bit accesses to obtain the 16-bit head index.
        */
 
-      tail = dev->recv.tail;
-      if (dev->recv.head != tail)
+      tail = rxbuf->tail;
+      if (rxbuf->head != tail)
         {
           /* Take the next character from the tail of the buffer */
 
-          ch = dev->recv.buffer[tail];
+          ch = rxbuf->buffer[tail];
 
           /* Increment the tail index.  Most operations are done using the
-           * local variable 'tail' so that the final dev->recv.tail update
+           * local variable 'tail' so that the final rxbuf->tail update
            * is atomic.
            */
 
-          if (++tail >= dev->recv.size)
+          if (++tail >= rxbuf->size)
             {
               tail = 0;
             }
 
-          dev->recv.tail = tail;
+          rxbuf->tail = tail;
 
 #ifdef CONFIG_SERIAL_TERMIOS
           /* Do input processing if any is enabled */
@@ -693,7 +698,7 @@ static ssize_t uart_read(FAR struct file *filep, FAR char *buffer, size_t buflen
            * interrupts.
            */
 
-          if (dev->recv.head == dev->recv.tail)
+          if (rxbuf->head == rxbuf->tail)
             {
               /* Yes.. the buffer is still empty.  Wait for some characters
                * to be received into the buffer with the RX interrupt re-
@@ -774,14 +779,40 @@ static ssize_t uart_read(FAR struct file *filep, FAR char *buffer, size_t buflen
     }
 
 #ifdef CONFIG_SERIAL_IFLOWCONTROL
-  if (dev->recv.head == dev->recv.tail)
+#ifdef CONFIG_SERIAL_IFLOWCONTROL_WATERMARKS
+  /* How many bytes are now buffered */
+
+  rxbuf = &dev->recv;
+  if (rxbuf->head >= rxbuf->tail)
     {
-      /* We might leave Rx interrupt disabled if full recv buffer was read
-       * empty. Enable Rx interrupt to make sure that more input is received.
+      nbuffered = rxbuf->head - rxbuf->tail;
+    }
+  else
+    {
+      nbuffered = rxbuf->size - rxbuf->tail + rxbuf->head;
+    }
+
+ /* Is the level now below the watermark level that we need to report? */
+
+  watermark = (CONFIG_SERIAL_IFLOWCONTROL_LOWER_WATERMARK * rxbuf->size) / 100;
+  if (nbuffered <= watermark)
+    {
+      /* Let the lower level driver know that the watermark level has been
+       * crossed.  It will probably deactivate RX flow control.
        */
 
-      uart_enablerxint(dev);
+      (void)uart_rxflowcontrol(dev, nbuffered, false);
     }
+#else
+  /* If the RX  buffer empty */
+
+  if (rxbuf->head == rxbuf->tail)
+    {
+      /* Deactivate RX flow control. */
+
+      (void)uart_rxflowcontrol(dev, 0, false);
+    }
+#endif
 #endif
 
   uart_givesem(&dev->recv.sem);
@@ -867,7 +898,7 @@ static int uart_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
         {
           case TCGETS:
             {
-              struct termios *termiosp = (struct termios*)arg;
+              FAR struct termios *termiosp = (struct termios*)arg;
 
               if (!termiosp)
                 {
@@ -885,7 +916,7 @@ static int uart_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
 
           case TCSETS:
             {
-              struct termios *termiosp = (struct termios*)arg;
+              FAR struct termios *termiosp = (struct termios*)arg;
 
               if (!termiosp)
                 {
@@ -1238,7 +1269,7 @@ static int uart_open(FAR struct file *filep)
 
 #ifdef CONFIG_SERIAL_TERMIOS
       dev->tc_iflag = 0;
-      if (dev->isconsole == true)
+      if (dev->isconsole)
         {
           /* Enable \n -> \r\n translation for the console */
 

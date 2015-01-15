@@ -57,9 +57,9 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
-/* ICMP/ICMP6 definitions */
+/* ICMP definitions */
 
-/* ICMP/ICMP6 Message Types */
+/* ICMP Message Types */
 
 #define ICMP_ECHO_REPLY              0    /* RFC 792 */
 #define ICMP_DEST_UNREACHABLE        3    /* RFC 792 */
@@ -90,22 +90,10 @@
 #define ICMP_PHOTURIS_SECURITY_FAIL  40
 #define ICMP_EXP_MOBILE_PROTO        41   /* RFC 4065 */
 
-/* ICMP6 Message Types */
-
-#define ICMP6_ECHO_REPLY             129
-#define ICMP6_ECHO_REQUEST           128
-#define ICMP6_NEIGHBOR_SOLICITATION  135
-#define ICMP6_NEIGHBOR_ADVERTISEMENT 136
-
-#define ICMP6_FLAG_S (1 << 6)
-
-#define ICMP6_OPTION_SOURCE_LINK_ADDRESS 1
-#define ICMP6_OPTION_TARGET_LINK_ADDRESS 2
-
 /* Header sizes */
 
-#define ICMP_HDRLEN    4                         /* Size of ICMP header */
-#define IPICMP_HDRLEN  (ICMP_HDRLEN + IP_HDRLEN) /* Size of IP + ICMP header */
+#define ICMP_HDRLEN    4                           /* Size of ICMP header */
+#define IPICMP_HDRLEN  (ICMP_HDRLEN + IPv4_HDRLEN) /* Size of IP + ICMP header */
 
 /****************************************************************************
  * Public Type Definitions
@@ -115,21 +103,6 @@
 
 struct icmp_iphdr_s
 {
-#ifdef CONFIG_NET_IPv6
-
-  /* IPv6 Ip header */
-
-  uint8_t  vtc;             /* Bits 0-3: version, bits 4-7: traffic class (MS) */
-  uint8_t  tcf;             /* Bits 0-3: traffic class (LS), bits 4-7: flow label (MS) */
-  uint16_t flow;            /* 16-bit flow label (LS) */
-  uint8_t  len[2];          /* 16-bit Payload length */
-  uint8_t  proto;           /*  8-bit Next header (same as IPv4 protocol field) */
-  uint8_t  ttl;             /*  8-bit Hop limit (like IPv4 TTL field) */
-  net_ip6addr_t srcipaddr;  /* 128-bit Source address */
-  net_ip6addr_t destipaddr; /* 128-bit Destination address */
-
-#else /* CONFIG_NET_IPv6 */
-
   /* IPv4 IP header */
 
   uint8_t  vhl;             /*  8-bit Version (4) and header length (5 or 6) */
@@ -143,8 +116,6 @@ struct icmp_iphdr_s
   uint16_t srcipaddr[2];    /* 32-bit Source IP address */
   uint16_t destipaddr[2];   /* 32-bit Destination IP address */
 
-#endif /* CONFIG_NET_IPv6 */
-
   /* ICMP header */
 
   uint8_t  type;            /* Defines the format of the ICMP message */
@@ -155,25 +126,10 @@ struct icmp_iphdr_s
    * message type indicated by the Type and Code fields.
    */
 
-#ifndef CONFIG_NET_IPv6
-
   /* ICMP_ECHO_REQUEST and ICMP_ECHO_REPLY data */
 
   uint16_t id;               /* Used to match requests with replies */
   uint16_t seqno;            /* "  " "" "   " "      " "  " "     " */
-
-#else /* !CONFIG_NET_IPv6 */
-
-  /* ICMP6_ECHO_REQUEST and ICMP6_ECHO_REPLY data */
-
-  uint8_t flags;
-  uint8_t reserved1;
-  uint8_t reserved2;
-  uint8_t reserved3;
-  uint8_t icmp6data[16];
-  uint8_t options[1];
-
-#endif /* !CONFIG_NET_IPv6 */
 };
 
 /* The structure holding the ICMP statistics that are gathered if

@@ -685,7 +685,7 @@ static inline void up_restoreuartint(struct up_dev_s *priv, uint32_t im)
 #ifdef HAVE_SERIAL_CONSOLE
 static inline void up_waittxnotfull(struct up_dev_s *priv)
 {
-  int tmp;
+  volatile int tmp;
 
   /* Limit how long we will wait for the TX available condition */
 
@@ -1289,7 +1289,7 @@ void up_earlyserialinit(void)
   up_disableuartint(TTYS7_DEV.priv, NULL);
 #endif
 
-  /* Configuration whichever one is the console */
+  /* Configure whichever one is the console */
 
 #ifdef HAVE_SERIAL_CONSOLE
   CONSOLE_DEV.isconsole = true;
@@ -1355,8 +1355,6 @@ int up_putc(int ch)
   uint32_t im;
 
   up_disableuartint(priv, &im);
-  up_waittxnotfull(priv);
-  up_serialout(priv, TIVA_UART_DR_OFFSET, (uint32_t)ch);
 
   /* Check for LF */
 
@@ -1367,6 +1365,9 @@ int up_putc(int ch)
       up_waittxnotfull(priv);
       up_serialout(priv, TIVA_UART_DR_OFFSET, (uint32_t)'\r');
     }
+
+  up_waittxnotfull(priv);
+  up_serialout(priv, TIVA_UART_DR_OFFSET, (uint32_t)ch);
 
   up_waittxnotfull(priv);
   up_restoreuartint(priv, im);

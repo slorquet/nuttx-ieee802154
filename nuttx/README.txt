@@ -12,6 +12,8 @@ README
     - Instantiating "Canned" Configurations
     - Refreshing Configurations
     - NuttX Configuration Tool
+    - Finding Selections in the Configuration Menus
+    - Comparing Two Configurations
     - Incompatibilities with Older Configurations
     - NuttX Configuration Tool under DOS
   o Toolchains
@@ -103,7 +105,7 @@ Semi-Optional apps/ Package
   It is call "Semi-optional" because if you don't have some apps/
   directory, NuttX will *fail* to build!
 
-  Download the unpack the apps tarball in the same directly where you
+  Download then unpack the apps tarball in the same directory where you
   unpacked the NuttX tarball.  After you unpack the apps tarball, you
   will have a new directory called apps-version (where the version
   should exactly match the version of the NuttX tarball).  Again, you
@@ -181,13 +183,37 @@ Notes about Header Files
 
   Other C-Library Header Files.
 
-    Some toolchains are built with header files extracted from a C-library
-    distribution (such as newlib).  These header files must *not* be used
-    with NuttX because NuttX provides its own, built-in C-Library.  For
-    toolchains that do include built-in header files from a foreign C-
-    Library, NuttX must be compiled without using the standard header files
-    that are distributed with your toolchain.  This prevents including
-    conflicting, incompatible header files (such as stdio.h).
+    When a GCC toolchain is built, it must be built against a C library.
+    The compiler together with the contents of the C library completes the
+    C language definition and provides the complete C development
+    environment.  NuttX provides its own, built-in C library.  So the
+    complete, consistent C language definition for use with NuttX comes from
+    the combination of the compiler and the header files provided by the
+    NuttX C library.
+
+    When a GCC toolchain is built, it incorporates the C library header
+    files into the compiler internal directories and, in this way, the C
+    library really becomes a part of the toolchain.  If you use the NuttX
+    buildroot toolchain as described below under under "NuttX Buildroot
+    Toolchain", your GCC toolchain will build against the NuttX C library
+    and will incorporate the NuttX C library header files as part of the
+    toolchain.
+
+    If you use some other, third-party tool chain, this will not be the
+    case, however.  Those toolchains were probably built against some
+    other, incompatible C library distribution (such as newlib).  Those
+    tools will have incorporated the incompatible C library header files
+    as part of the toolchain.  These incompatible header files must *not*
+    be used with NuttX because the will conflict with definitions in the
+    NuttX built-in C-Library.  For such toolchains that include header
+    files from a foreign C-Library, NuttX must be compiled without using
+    the standard header files that are distributed with your toolchain.
+    This prevents including conflicting, incompatible header files such
+    as stdio.h.
+
+    The math.h and stdarg.h are probably the two most trouble some header
+    files to deal with.  These troublesome header files are discussed in
+    more detail below.
 
   Header Files Provided by Your Toolchain.
 
@@ -266,10 +292,12 @@ Instantiating "Canned" Configurations
 
     configs/<board-name>/<config-dir>
 
-  Where <board-name> is the name of your development board and <config-dir>.
-  Configuring NuttX requires only copying three files from the <config-dir>
-  to the directory where you installed NuttX (TOPDIR) (and sometimes one
-  additional file to the directory the NuttX application package (APPSDIR)):
+  Where <board-name> is the name of your development board and <config-dir>
+  is the name of the sub-directory containing a specific configuration for
+  that board.  Configuring NuttX requires only copying three files from the
+  <config-dir> to the directory where you installed NuttX (TOPDIR) (and
+  sometimes one additional file to the directory the NuttX application
+  package (APPSDIR)):
 
     Copy configs/<board-name>/<config-dir>/Make.def to ${TOPDIR}/Make.defs
 
@@ -313,26 +341,37 @@ Instantiating "Canned" Configurations
 Refreshing Configurations
 -------------------------
 
-  Configurations can get out of data.  It is a good practice to "refresh"
-  each configuration before making.  To refresh the configuration, use the
-  NuttX Configuration Tool like this:
+  Configurations can get out of date.  As new configuration settings are
+  added or removed or as dependencies between configuration settings
+  change, the contents of a default configuration can become out of synch
+  with the build systems.  Hence, it is a good practice to "refresh" each
+  configuration after configuring and before making.  To refresh the
+  configuration, use the NuttX Configuration Tool like this:
 
     make oldconfig
 
-  If you configuration is out of date, you will be prompted to resolve the
-  issues detected by the configuration tool.  Doing this can save you a lot
-  of problems done the road due to a bad configuration.  The NuttX
-  configuration is discussed in the following paragraph.
+  AFTER you have instantiated the NuttX configuration as described above.
+  The configuration step copied the .config file into place in the top-level
+  NuttX directory; 'make oldconfig' step will then operate on that .config
+  file to bring it up-to-date.
+
+  If you configuration is out of date, you will be prompted by 'make oldconfig'
+  to resolve the issues detected by the configuration tool, that is, to
+  provide values for the new configuration options in the build system.  Doing
+  this can save you a lot of problems down the road due to obsolete settings in
+  the default board configuration file.  The NuttX configuration tool is
+  discussed in more detail in the following paragraph.
+
+  Confused about what the correct value for a new configuration item should
+  be?  Enter ? in response to the 'make oldconfig' prompt and it will show
+  you the help text that goes with the option.
 
 NuttX Configuration Tool
 ------------------------
 
-  An automated tool is under development to support re-configuration
-  of NuttX.  This tool, however, is not yet quite ready for general
-  usage.
-
-  This automated tool is based on the kconfig-frontends application
-  available at http://ymorin.is-a-geek.org/projects/kconfig-frontends
+  An automated tool has been incorported to support re-configuration
+  of NuttX.  This automated tool is based on the kconfig-frontends
+  application available at http://ymorin.is-a-geek.org/projects/kconfig-frontends
   (A snapshot of this tool is also available at ../misc/tools).  This
   application provides a tool called 'kconfig-mconf' that is used by
   the NuttX top-level Makefile.  The following make target is provided:
@@ -345,6 +384,9 @@ NuttX Configuration Tool
   not been converted to use the kconfig-frontends tools!  This will
   damage your configuration (see
   http://www.nuttx.org/doku.php?id=wiki:howtos:convertconfig).
+
+  How do we tell a new configuration from an old one? See "Incompatibilities
+  with Older Configurations" below.
 
   The 'menuconfig' make target depends on two things:
 
@@ -401,21 +443,62 @@ NuttX Configuration Tool
 
     make gconfig
 
-Refreshing Configurations with 'make oldconfig'
------------------------------------------------
+Finding Selections in the Configuration Menus
+---------------------------------------------
 
-  Whenever you use a configuration, you really should always do
-  the following *before* you make NuttX:
+  The NuttX configuration options have gotten complex and it can be very
+  difficult to find options in the menu trees if you are not sure where
+  to look.  The "basic configuration order" describe above can help to
+  narrow things down.
 
-    make oldconfig
+  But if you know exactly what configuration setting you want to select,
+  say CONFIG_XYZ, but not where to find it, then the 'make memconfig'
+  version of the tool offers some help:  By pressing the '/' key, the
+  tool will bring up a menu that will allow you to search for a
+  configuration item.  Just enter the string CONFIG_XYZ and press 'ENTER'.
+  It will show you not only where to find the configuration item, but
+  also all of the dependencies related to the configuration item.
 
-  This will make sure that the configuration is up-to-date in
-  the event that it has lapsed behind the current NuttX development.
+Comparing Two Configurations
+----------------------------
 
-  WARNING:  Never do 'make oldconfig' (OR 'make menuconfig') on a
-  configuration that has not been converted to use the kconfig-frontends
-  tools!  This will damage your configuration (see
-  http://www.nuttx.org/doku.php?id=wiki:howtos:convertconfig).
+  If you try to compare to configurations using 'diff', you will probably
+  not be happy with the result.  There are superfluous things added to
+  the configuration files that makes comparisons with the human eye
+  difficult.
+
+  There is a tool at nuttx/tools/cmpconfig.c that can be build to simplify
+  these comparisons.  The output from this difference tools will show only
+  the meaningful differences between two configuration files.  This tools
+  built as follows:
+
+    cd nuttx/tools
+    make -f Makefile.host
+
+  This will crate a program called 'cmpconfig' or 'comconfig.exe' on Windows.
+
+  Why would you want to compare two configuration files?  Here are a few
+  of reasons why I do this:
+
+  1. When I create a new configuration I usually base it on an older
+     configuration and I want to know, "What are the options that I need to
+     change to add the new feature to the older configurations?"  For example,
+     suppose that I have a boardA/nsh configuration and I want to create a
+     boardA/nxwm configuration.  Suppose I already have boardB/nsh and
+     boardB/nxwm configurations.  Then by comparing the boardB/nsh with the
+     boardB/nxwm I can see the modifications that I would need to make to my
+     boardA/nsh to create a new  boardA/nxwm.
+
+  2. But the most common reason that I use the 'cmpconfig' program to to
+     check the results of "refreshing" a configuration with 'make oldconfig'
+     (see the paragraph "Refreshing Configurations" above).  The 'make
+     oldconfig' command will make changes to my configuration and using
+     'cmpconfig', I can see precisely what those changes were and if any
+     should be of concern to me.
+
+  3. The 'cmpconfig' tool can also be useful when converting older, legacy
+     manual configurations to the current configurations based on the
+     kconfig-frontends tools.  See the following paragraph.
 
 Incompatibilities with Older Configurations
 -------------------------------------------
@@ -423,11 +506,13 @@ Incompatibilities with Older Configurations
   ***** WARNING *****
 
   The current NuttX build system supports *only* the new configuration
-  files generated using the kconfig-frontends tools.  The older, legacy,
-  manual configurations and the new kconfig-frontends configurations are
-  not compatible.  Old legacy configurations can *not* be used with the
-  kconfig-frontends tool and, hence, cannot be used with recent releases
-  of NuttX:
+  files generated using the kconfig-frontends tools.  Support for the
+  older, legacy, manual configurations was eliminated in NuttX 7.0; all
+  configuration must now be done using the kconfig-frontends tool.  The
+  older manual configurations and the new kconfig-frontends configurations
+  are not compatible.  Old legacy configurations can *not* be used
+  with the kconfig-frontends tool and, hence, cannot be used with releases
+  of NuttX 7.0 and beyond:
 
   If you run 'make menuconfig' with a legacy configuration the resulting
   configuration will probably not be functional.
@@ -442,6 +527,24 @@ Incompatibilities with Older Configurations
      kconfig-frontends toolchain.
 
   A: Refer to http://www.nuttx.org/doku.php?id=wiki:howtos:convertconfig
+
+  ***** WARNING *****
+
+  As described above, whenever you use a configuration, you really should
+  always refresh the configuration the following command *before* you make
+  NuttX:
+
+    make oldconfig
+
+  This will make sure that the configuration is up-to-date in the event that
+  it has lapsed behind the current NuttX development (see the paragraph
+  "Refreshing Configurations" above).  But this only works with *new*
+  configuration files created with the kconfig-frontends tools
+
+  Never do 'make oldconfig' (OR 'make menuconfig') on a  configuration that
+  has not been converted to use the kconfig-frontends tools!  This will
+  damage your configuration (see
+  http://www.nuttx.org/doku.php?id=wiki:howtos:convertconfig).
 
 NuttX Configuration Tool under DOS
 ----------------------------------

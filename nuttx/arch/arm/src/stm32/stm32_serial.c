@@ -327,7 +327,8 @@ static void up_rxint(struct uart_dev_s *dev, bool enable);
 static bool up_rxavailable(struct uart_dev_s *dev);
 #endif
 #ifdef CONFIG_SERIAL_IFLOWCONTROL
-static bool up_rxflowcontrol(struct uart_dev_s *dev);
+static bool up_rxflowcontrol(struct uart_dev_s *dev, unsigned int nbuffered,
+                             bool upper);
 #endif
 static void up_send(struct uart_dev_s *dev, int ch);
 static void up_txint(struct uart_dev_s *dev, bool enable);
@@ -409,6 +410,9 @@ static const struct uart_ops_s g_uart_dma_ops =
   .receive        = up_dma_receive,
   .rxint          = up_dma_rxint,
   .rxavailable    = up_dma_rxavailable,
+#ifdef CONFIG_SERIAL_IFLOWCONTROL
+  .rxflowcontrol  = up_rxflowcontrol,
+#endif
   .send           = up_send,
   .txint          = up_txint,
   .txready        = up_txready,
@@ -1293,7 +1297,7 @@ static void up_set_format(struct uart_dev_s *dev)
   regval  = up_serialin(priv, STM32_USART_CR3_OFFSET);
   regval &= ~(USART_CR3_CTSE|USART_CR3_RTSE);
 
-#ifdef CONFIG_SERIAL_IFLOWCONTROL
+#if defined(CONFIG_SERIAL_IFLOWCONTROL) && !defined(CONFIG_STM32_FLOWCONTROL_BROKEN)
   if (priv->iflow && (priv->rts_gpio != 0))
     {
       regval |= USART_CR3_RTSE;
@@ -1436,8 +1440,15 @@ static int up_setup(struct uart_dev_s *dev)
 #ifdef CONFIG_SERIAL_IFLOWCONTROL
   if (priv->rts_gpio != 0)
     {
-      stm32_configgpio(priv->rts_gpio);
-    }
+      uint32_t config = priv->rts_gpio;
+
+#ifdef CONFIG_STM32_FLOWCONTROL_BROKEN
+      /* Instead of letting hw manage this pin, we will bitbang */
+
+      config = (config & ~GPIO_MODE_MASK) | GPIO_OUTPUT;
+#endif
+      stm32_configgpio(config);
+   }
 #endif
 
 #if HAVE_RS485
@@ -2134,37 +2145,79 @@ static bool up_rxavailable(struct uart_dev_s *dev)
  * Name: up_rxflowcontrol
  *
  * Description:
- *   Called when Rx buffer is full. Return true if the Rx interrupt was
- *   disabled.
+ *   Called when Rx buffer is full (or exceeds configured watermark levels
+ *   if CONFIG_SERIAL_IFLOWCONTROL_WATERMARKS is defined).
+ *   Return true if UART activated RX flow control to block more incoming
+ *   data
+ *
+ * Input parameters:
+ *   dev       - UART device instance
+ *   nbuffered - the number of characters currently buffered
+ *               (if CONFIG_SERIAL_IFLOWCONTROL_WATERMARKS is
+ *               not defined the value will be 0 for an empty buffer or the
+ *               defined buffer size for a full buffer)
+ *   upper     - true indicates the upper watermark was crossed where
+ *               false indicates the lower watermark has been crossed
+ *
+ * Returned Value:
+ *   true if RX flow control activated.
  *
  ****************************************************************************/
 
 #ifdef CONFIG_SERIAL_IFLOWCONTROL
-static bool up_rxflowcontrol(struct uart_dev_s *dev)
+static bool up_rxflowcontrol(struct uart_dev_s *dev,
+                             unsigned int nbuffered, bool upper)
 {
   struct up_dev_s *priv = (struct up_dev_s*)dev->priv;
   uint16_t ie;
 
+#if defined(CONFIG_SERIAL_IFLOWCONTROL_WATERMARKS) && defined(CONFIG_STM32_FLOWCONTROL_BROKEN)
+  if (priv->iflow && (priv->rts_gpio != 0))
+    {
+      /* Assert/de-assert nRTS set it high resume/stop sending */
+
+      stm32_gpiowrite(priv->rts_gpio, upper);
+      return upper;
+    }
+
+#else
   if (priv->iflow)
     {
-      /* Disable Rx interrupt to prevent more data being from peripheral.
-       * When hardware RTS is enabled, this will prevent more data from
-       * coming in.
-       *
-       * This function is only called when UART recv buffer is full, that
-       * is: "dev->recv.head + 1 == dev->recv.tail".
-       *
-       * Logic in "uart_read" will automatically toggle Rx interrupts when
-       * buffer is read empty and thus we do not have to re-enable Rx
-       * interrupts in any other place.
-       */
+      /* Is the RX buffer full? */
 
-      ie = priv->ie;
-      ie &= ~USART_CR1_RXNEIE;
-      up_restoreusartint(priv, ie);
+      if (upper)
+        {
+          /* Disable Rx interrupt to prevent more data being from
+           * peripheral.  When hardware RTS is enabled, this will
+           * prevent more data from coming in.
+           *
+           * This function is only called when UART recv buffer is full,
+           * that is: "dev->recv.head + 1 == dev->recv.tail".
+           *
+           * Logic in "uart_read" will automatically toggle Rx interrupts
+           * when buffer is read empty and thus we do not have to re-
+           * enable Rx interrupts.
+           */
 
-      return true;
+          ie = priv->ie;
+          ie &= ~USART_CR1_RXNEIE;
+          up_restoreusartint(priv, ie);
+          return true;
+        }
+
+      /* No.. The RX buffer is empty */
+
+      else
+        {
+          /* We might leave Rx interrupt disabled if full recv buffer was
+           * read empty.  Enable Rx interrupt to make sure that more input is
+           * received.
+           */
+
+          up_rxint(dev, true);
+        }
     }
+#endif
 
   return false;
 }
@@ -2610,14 +2663,13 @@ void up_serialinit(void)
 
   (void)uart_register("/dev/ttyS0", &uart_devs[CONSOLE_UART - 1]->dev);
   minor = 1;
+#endif
 
+#ifdef SERIAL_HAVE_CONSOLE_DMA
   /* If we need to re-initialise the console to enable DMA do that here. */
 
-# ifdef SERIAL_HAVE_CONSOLE_DMA
   up_dma_setup(&uart_devs[CONSOLE_UART - 1]->dev);
-# endif
-#endif /* CONFIG_SERIAL_DISABLE_REORDERING not defined */
-
+#endif
 #endif /* CONSOLE_UART > 0 */
 
   /* Register all remaining USARTs */
