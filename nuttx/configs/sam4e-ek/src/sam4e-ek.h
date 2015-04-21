@@ -291,10 +291,6 @@
 #define IRQ_SCROLLDWN  SAM_IRQ_PA2
 #define IRQ_WAKU       SAM_IRQ_PA19
 #define IRQ_TAMP       SAM_IRQ_PA20
-#define IRQ_SCROLLUP   SAM_IRQ_PA1
-#define IRQ_SCROLLDWN  SAM_IRQ_PA2
-#define IRQ_WAKU       SAM_IRQ_PA19
-#define IRQ_TAMP       SAM_IRQ_PA20
 
 /* USART1: To avoid any electrical conflict, the RS232 and RS485 transceiver
  * are isolated from the receiving line PA21.
@@ -457,16 +453,6 @@ bool sam_writeprotected(int slotno);
 int sam_at25_automount(int minor);
 #else
 #  define sam_at25_automount(minor) (-ENOSYS)
-#endif
-
-/************************************************************************************
- * Name: board_led_initialize
- ************************************************************************************/
-
-#ifdef CONFIG_ARCH_LEDS
-void board_led_initialize(void);
-#else
-#  define board_led_initialize()
 #endif
 
 #endif /* __ASSEMBLY__ */

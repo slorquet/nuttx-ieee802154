@@ -56,7 +56,7 @@
 #include "pic32mx-internal.h"
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 /* Timer Setup **************************************************************/
 /* Timer 1 is a type A timer.  Setting the TCS bit in the timer control
@@ -83,7 +83,7 @@
  *
  *   TIMER1_PRESCALE >= TIMER1_SRC_FREQ / CLOCKS_PER_SEC / 65535
  *
- * Timer 1 does not have very many options for the perscaler value.  So we
+ * Timer 1 does not have very many options for the prescaler value.  So we
  * can pick the best by brute force.  Example:
  *
  * Example 1. Given:
@@ -169,7 +169,7 @@ int up_timerisr(int irq, uint32_t *regs)
 void up_timer_initialize(void)
 {
   /* Configure and enable TIMER1.  Used the computed TCKPS divider and timer
-   * match valude.  The source will be either the internal PBCLOCK (TCS=0) or
+   * match value.  The source will be either the internal PBCLOCK (TCS=0) or
    * the external SOSC (TCS=1)
    */
 

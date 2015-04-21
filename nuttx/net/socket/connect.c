@@ -1,7 +1,7 @@
 /****************************************************************************
  * net/socket/connect.c
  *
- *   Copyright (C) 2007-2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2007-2012, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -45,6 +45,7 @@
 
 #include <stdint.h>
 #include <errno.h>
+#include <assert.h>
 #include <debug.h>
 
 #include <arch/irq.h>
@@ -56,6 +57,7 @@
 #include "devif/devif.h"
 #include "tcp/tcp.h"
 #include "udp/udp.h"
+#include "local/local.h"
 #include "socket/socket.h"
 
 /****************************************************************************
@@ -84,12 +86,8 @@ static inline void psock_teardown_callbacks(FAR struct tcp_connect_s *pstate,
 static uint16_t psock_connect_interrupt(FAR struct net_driver_s *dev,
                                         FAR void *pvconn, FAR void *pvpriv,
                                         uint16_t flags);
-#ifdef CONFIG_NET_IPv6
 static inline int psock_tcp_connect(FAR struct socket *psock,
-                                    FAR const struct sockaddr_in6 *inaddr);
-#else
-static inline int psock_tcp_connect(FAR struct socket *psock, const struct sockaddr_in *inaddr);
-#endif
+                                    FAR const struct sockaddr *addr);
 #endif /* CONFIG_NET_TCP */
 
 /****************************************************************************
@@ -259,8 +257,26 @@ static uint16_t psock_connect_interrupt(FAR struct net_driver_s *dev,
        */
 
       DEBUGASSERT(pstate->tc_conn);
-      pstate->tc_conn->mss = TCP_INITIAL_MSS(dev);
+
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+  if (pstate->tc_conn->domain == PF_INET)
 #endif
+    {
+      pstate->tc_conn->mss = TCP_IPv4_INITIAL_MSS(dev);
+    }
+#endif /* CONFIG_NET_IPv4 */
+
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+  else
+#endif
+    {
+      pstate->tc_conn->mss = TCP_IPv4_INITIAL_MSS(dev);
+    }
+#endif /* CONFIG_NET_IPv6 */
+
+#endif /* CONFIG_NET_MULTILINK */
 
       /* Wake up the waiting thread */
 
@@ -278,8 +294,8 @@ static uint16_t psock_connect_interrupt(FAR struct net_driver_s *dev,
  *   Perform a TCP connection
  *
  * Parameters:
- *   psock    A reference to the socket structure of the socket to be connected
- *   inaddr   The address of the remote server to connect to
+ *   psock - A reference to the socket structure of the socket to be connected
+ *   addr  - The address of the remote server to connect to
  *
  * Returned Value:
  *   None
@@ -290,13 +306,8 @@ static uint16_t psock_connect_interrupt(FAR struct net_driver_s *dev,
  ****************************************************************************/
 
 #ifdef CONFIG_NET_TCP
-#ifdef CONFIG_NET_IPv6
 static inline int psock_tcp_connect(FAR struct socket *psock,
-                                    FAR const struct sockaddr_in6 *inaddr)
-#else
-static inline int psock_tcp_connect(FAR struct socket *psock,
-                                    FAR const struct sockaddr_in *inaddr)
-#endif
+                                    FAR const struct sockaddr *addr)
 {
   struct tcp_connect_s state;
   net_lock_t           flags;
@@ -319,7 +330,7 @@ static inline int psock_tcp_connect(FAR struct socket *psock,
     {
       /* Perform the TCP connection operation */
 
-      ret = tcp_connect(psock->s_conn, inaddr);
+      ret = tcp_connect(psock->s_conn, addr);
     }
 
   if (ret >= 0)
@@ -370,8 +381,8 @@ static inline int psock_tcp_connect(FAR struct socket *psock,
         }
     }
 
-    net_unlock(flags);
-    return ret;
+  net_unlock(flags);
+  return ret;
 }
 #endif /* CONFIG_NET_TCP */
 
@@ -450,15 +461,10 @@ static inline int psock_tcp_connect(FAR struct socket *psock,
 int psock_connect(FAR struct socket *psock, FAR const struct sockaddr *addr,
                   socklen_t addrlen)
 {
-#if defined(CONFIG_NET_TCP) || defined(CONFIG_NET_UDP)
-#ifdef CONFIG_NET_IPv6
-  FAR const struct sockaddr_in6 *inaddr = (const struct sockaddr_in6 *)addr;
-#else
-  FAR const struct sockaddr_in *inaddr = (const struct sockaddr_in *)addr;
-#endif
+  FAR const struct sockaddr_in *inaddr = (FAR const struct sockaddr_in *)addr;
+#if defined(CONFIG_NET_TCP) || defined(CONFIG_NET_UDP) || defined(CONFIG_NET_LOCAL)
   int ret;
 #endif
-
   int err;
 
   /* Verify that the psock corresponds to valid, allocated socket */
@@ -471,21 +477,55 @@ int psock_connect(FAR struct socket *psock, FAR const struct sockaddr *addr,
 
   /* Verify that a valid address has been provided */
 
-#ifdef CONFIG_NET_IPv6
-  if (addr->sa_family != AF_INET6 || addrlen < sizeof(struct sockaddr_in6))
-#else
-  if (addr->sa_family != AF_INET || addrlen < sizeof(struct sockaddr_in))
+  switch (inaddr->sin_family)
+    {
+#ifdef CONFIG_NET_IPv4
+    case AF_INET:
+      {
+        if (addrlen < sizeof(struct sockaddr_in))
+          {
+            err = EBADF;
+            goto errout;
+          }
+      }
+      break;
 #endif
-  {
-      err = EBADF;
+
+#ifdef CONFIG_NET_IPv6
+    case AF_INET6:
+      {
+        if (addrlen < sizeof(struct sockaddr_in6))
+          {
+            err = EBADF;
+            goto errout;
+          }
+      }
+      break;
+#endif
+
+#ifdef CONFIG_NET_LOCAL
+    case AF_LOCAL:
+      {
+        if (addrlen < sizeof(sa_family_t))
+          {
+            err = EBADF;
+            goto errout;
+          }
+      }
+      break;
+#endif
+
+    default:
+      DEBUGPANIC();
+      err = EAFNOSUPPORT;
       goto errout;
-  }
+    }
 
   /* Perform the connection depending on the protocol type */
 
   switch (psock->s_type)
     {
-#ifdef CONFIG_NET_TCP
+#if defined(CONFIG_NET_TCP) || defined(CONFIG_NET_LOCAL_STREAM)
       case SOCK_STREAM:
         {
           /* Verify that the socket is not already connected */
@@ -496,9 +536,30 @@ int psock_connect(FAR struct socket *psock, FAR const struct sockaddr *addr,
               goto errout;
             }
 
-          /* Its not ... connect it */
+          /* It's not ... connect it */
 
-          ret = psock_tcp_connect(psock, inaddr);
+#ifdef CONFIG_NET_LOCAL_STREAM
+#ifdef CONFIG_NET_TCP
+          if (psock->s_domain == PF_LOCAL)
+#endif
+            {
+              /* Connect to the local Unix domain server */
+
+              ret = psock_local_connect(psock, addr);
+            }
+#endif /* CONFIG_NET_LOCAL_STREAM */
+
+#ifdef CONFIG_NET_TCP
+#ifdef CONFIG_NET_LOCAL_STREAM
+          else
+#endif
+            {
+              /* Connect the TCP/IP socket */
+
+              ret = psock_tcp_connect(psock, addr);
+            }
+#endif /* CONFIG_NET_TCP */
+
           if (ret < 0)
             {
               err = -ret;
@@ -506,12 +567,31 @@ int psock_connect(FAR struct socket *psock, FAR const struct sockaddr *addr,
             }
         }
         break;
-#endif
+#endif /* CONFIG_NET_TCP || CONFIG_NET_LOCAL_STREAM */
 
-#ifdef CONFIG_NET_UDP
+#if defined(CONFIG_NET_UDP) || defined(CONFIG_NET_LOCAL_DGRAM)
       case SOCK_DGRAM:
         {
-          ret = udp_connect(psock->s_conn, inaddr);
+#ifdef CONFIG_NET_LOCAL_DGRAM
+#ifdef CONFIG_NET_UDP
+          if (psock->s_domain == PF_LOCAL)
+#endif
+            {
+              /* Perform the datagram connection logic */
+
+              ret = psock_local_connect(psock, addr);
+            }
+#endif /* CONFIG_NET_LOCAL_DGRAM */
+
+#ifdef CONFIG_NET_UDP
+#ifdef CONFIG_NET_LOCAL_DGRAM
+          else
+#endif
+            {
+              ret = udp_connect(psock->s_conn, addr);
+            }
+#endif /* CONFIG_NET_UDP */
+
           if (ret < 0)
             {
               err = -ret;
@@ -519,7 +599,7 @@ int psock_connect(FAR struct socket *psock, FAR const struct sockaddr *addr,
             }
         }
         break;
-#endif
+#endif /* CONFIG_NET_UDP || CONFIG_NET_LOCAL_DGRAM */
 
       default:
         err = EBADF;

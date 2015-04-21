@@ -1,7 +1,7 @@
 /********************************************************************************
  * include/signal.h
  *
- *   Copyright (C) 2007-2009, 2011, 2013-2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2007-2009, 2011, 2013-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -165,11 +165,22 @@
 #define SIGEV_NONE      0 /* No notification desired */
 #define SIGEV_SIGNAL    1 /* Notify via signal */
 
-/* Special values of sigaction (all treated like NULL) */
+/* Special values of of sa_handler used by sigaction and sigset.  They are all
+ * treated like NULL for now.  This is okay for SIG_DFL and SIG_IGN because
+ * in NuttX, the default action for all signals is to ignore them.
+ *
+ * REVISIT:  Need to distinguish the value of SIG_HOLD.  It is needed in the
+ * implementation of sigset() but would need to be recognized in all signal
+ * functions that deal with signal disposition.
+ */
 
 #define SIG_ERR         ((CODE void*)-1)
 #define SIG_DFL         ((CODE void*)0)
 #define SIG_IGN         ((CODE void*)0)
+
+#if 0 /* Not yet supported */
+#  define SIG_HOLD      ((CODE void*)0)
+#endif
 
 /********************************************************************************
  * Global Type Declarations
@@ -262,8 +273,13 @@ int sigdelset(FAR sigset_t *set, int signo);
 int sigismember(FAR const sigset_t *set, int signo);
 int sigaction(int sig, FAR const struct sigaction *act,
               FAR struct sigaction *oact);
+void (*sigset(int signo, void (*disp)(int)))(int);
+int sigignore(int signo);
 int sigprocmask(int how, FAR const sigset_t *set, FAR sigset_t *oset);
+int sigpause(int signo);
+int sigrelse(int signo);
 int sigpending(FAR sigset_t *set);
+int sighold(int signo);
 int sigsuspend(FAR const sigset_t *sigmask);
 int sigwaitinfo(FAR const sigset_t *set, FAR struct siginfo *value);
 int sigtimedwait(FAR const sigset_t *set, FAR struct siginfo *value,

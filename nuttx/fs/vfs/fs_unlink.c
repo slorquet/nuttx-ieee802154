@@ -161,6 +161,36 @@ int unlink(FAR const char *pathname)
               goto errout_with_inode;
             }
 
+          /* Notify the driver that it has been unlinked.  If there are no
+           * open references to the driver instance, then the driver should
+           * release all resources because it is no longer accessible.
+           */
+
+          if (INODE_IS_DRIVER(inode) && inode->u.i_ops->unlink)
+            {
+              /* Notify the character driver that it has been unlinked */
+
+              ret = inode->u.i_ops->unlink(inode);
+              if (ret < 0)
+                {
+                  errcode = -ret;
+                  goto errout_with_inode;
+                }
+            }
+#ifndef CONFIG_DISABLE_MOUNTPOINT
+          else if (INODE_IS_BLOCK(inode) && inode->u.i_bops->unlink)
+            {
+              /* Notify the block driver that it has been unlinked */
+
+              ret = inode->u.i_bops->unlink(inode);
+              if (ret < 0)
+                {
+                  errcode = -ret;
+                  goto errout_with_inode;
+                }
+            }
+#endif
+
           /* Remove the old inode.  Because we hold a reference count on the
            * inode, it will not be deleted now.  It will be deleted when all
            * of the references to to the inode have been released (perhaps

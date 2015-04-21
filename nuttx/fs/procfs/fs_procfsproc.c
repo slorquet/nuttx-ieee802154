@@ -631,7 +631,7 @@ static ssize_t proc_stack(FAR struct proc_file_s *procfile,
   buffer    += copysize;
   remaining -= copysize;
 
-#if defined(CONFIG_DEBUG) && defined(CONFIG_DEBUG_STACK)
+#ifdef CONFIG_STACK_COLORATION
   if (totalsize >= buflen)
     {
       return totalsize;
@@ -1343,9 +1343,8 @@ static int proc_readdir(struct fs_dirent_s *dir)
            node = g_groupinfo[index];
            break;
 
-          default:
-            ret = -ENOENT;
-           break;
+         default:
+           return -ENOENT;
         }
 
       /* Save the filename and file type */

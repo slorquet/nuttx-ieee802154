@@ -48,7 +48,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 
-#include <nuttx/watchdog.h>
+#include <nuttx/timers/watchdog.h>
 #include <arch/board/board.h>
 
 #include <nuttx/kthread.h>
@@ -59,7 +59,7 @@
 #ifdef CONFIG_WATCHDOG
 
 /************************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ************************************************************************************/
 /* Configuration *******************************************************************/
 /* Watchdog hardware should be enabled */

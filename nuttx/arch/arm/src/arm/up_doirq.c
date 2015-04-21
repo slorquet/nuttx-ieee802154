@@ -1,7 +1,7 @@
 /****************************************************************************
  * arch/arm/src/arm/up_doirq.c
  *
- *   Copyright (C) 2007-2009, 2011, 2013-2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2007-2009, 2011, 2013-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,6 +44,7 @@
 #include <nuttx/arch.h>
 #include <assert.h>
 
+#include <nuttx/board.h>
 #include <arch/board/board.h>
 
 #include "up_arch.h"
@@ -87,9 +88,9 @@ void up_doirq(int irq, uint32_t *regs)
 
   current_regs = regs;
 
-  /* Mask and acknowledge the interrupt */
+  /* Acknowledge the interrupt */
 
-  up_maskack_irq(irq);
+  up_ack_irq(irq);
 
   /* Deliver the IRQ */
 
@@ -128,10 +129,6 @@ void up_doirq(int irq, uint32_t *regs)
    */
 
   current_regs = NULL;
-
-  /* Unmask the last interrupt (global interrupts are still disabled) */
-
-  up_enable_irq(irq);
 #endif
   board_led_off(LED_INIRQ);
 }

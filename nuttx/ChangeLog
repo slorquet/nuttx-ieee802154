@@ -660,7 +660,7 @@
 	* examples/dchpd: Added a tiny DHCP server example
 	* net/uip: Correct UDP bind behavior.  It should select a valid port number
 	  if it receives a port number of zero.
-	* netutils/dhcpd:  Corrrect for ZDS compiler.  Fix issue with re-use of a
+	* netutils/dhcpd:  correct for ZDS compiler.  Fix issue with re-use of a
 	  port number. Fixed a number of broadcast-related problems.
 	* eZ80Acclaim!: Add a tiny webserver configuration
 	* eZ80Acclaim!: Fixed an important bug in the EMAC Tx timeout logic. It was
@@ -4926,7 +4926,7 @@
 	  Finally finished the SAM4L clock configuration logic; Added a
 	  WDT register definition header file (2013-6-8).
 	* nuttx/arch/arm/src/sam34/chip/sam4l_usart.h and sam4l_picouart.h:
-	  Add UART/USART register defintion files for the SAM4L (2013-6-8).
+	  Add UART/USART register definition files for the SAM4L (2013-6-8).
 	* arm/src/sam34/chip/sam3u_periphclks.h:  More macros and definitions
 	  to generalize peripheral clocking and to hide differences between
 	  the SAM3U and the SAM4L (2013-6-8).
@@ -5217,7 +5217,7 @@
 	  will (eventually) support reconfiguration of NOR flash when NuttX
 	  boots from NOR FLASH (2013-7-29).
 	* arch/arm/src/sama5/chip/sam_hsmc/h:  SAMA5 HSMC register
-	  defintion file (2013-7-29)
+	  definition file (2013-7-29)
 	* configs/sama5d3x-ek/src/sam_norflash.c:  Add board specific
 	  logic to re-configure the SAMA5D3x-EK NOR FLASH before while
 	  running out of NOR FLASH.  We need to change the NOR FLASH
@@ -6194,7 +6194,7 @@
 	* include/nuttx/fs/ramdisk.h:  Move ramdisk.h to include/fs/ramdisk.h
 	  (2013-12-10).
 	* arch/arm/src/a1x/chip/a1x_pio.h and a10_piocfg.h:  PIO register
-	  defintion header files (2013-12-10).
+	  definition header files (2013-12-10).
 	* arch/arm/src/a1x/a1x_pio.c and .h:  Support for PIO configuration
 	  (2013-12-11).
 	* libc/misc/lib_match.c:  Pattern matching logic extended to handle
@@ -8902,7 +8902,7 @@
 	  PDC or DMAC support is required (2014-10-29).
 	* configs/sam4e-ek/src/sam4e-ek.h: Fix an error in a USART1 pin number
 	  (2014-10-29).
-	* configs/efm32gg-stk3700:  Board support for the SiLbas EFM32GG
+	* configs/efm32gg-stk3700:  Board support for the SiLabs EFM32GG
 	  Giant Gecko Starter kit.  Current with basic NSH configuration only.
 	  Testing is on hold until I receive hardware (2014-11-03).
 	* libc/Kconfig: Move CONFIG_NSH_TMPDIR to CONFIG_LIBC_TMPDIR (2014-11-05).
@@ -9025,7 +9025,7 @@
 	* arch/arm/src/stm32/stm32_otghs.c, Make.defs,
 	  configs/stm32f429i-disco/src/stm32_usb.c and Makefile: STM32 F4 OTGHS
 	  device controller driver from Brennan Ashton (2014-11-20).
-	* configs/sama5d3-xplained/bridge: Add a simple test for the the EMAC
+	* configs/sama5d3-xplained/bridge: Add a simple test for the EMAC
 	  and GMAC on the SAMA5D3 working together (2014-11-20).
 	* libnx/nxtk/nxtk_drawframe.c: Remove warnings when CONFIG_NXTK_BORDERWIDTH
 	  is set to zero.  From Pierre-Noel Bouteville (2014-11-20).
@@ -9056,7 +9056,7 @@
 	* include/nuttx/fs/fs.h: Fix typo in conditional compilation.  From
 	  Alan Carvalho de Assis (2014-11-23).
 
-7.7 2015-xx-xx Gregory Nutt <gnutt@nuttx.org>
+7.7 2015-01-26 Gregory Nutt <gnutt@nuttx.org>
 
 	* nuttx/drivers/eeprom and include/nuttx/eeprom/: Add support for generic
 	  EEPROM access via a character driver.  Add also the EEPROM driver itself.
@@ -9155,7 +9155,7 @@
 	* arch/sim/Kconfig:  Allow building the simulated framebuffer driver
 	  even if NX is not enabled (12014-12-8).
 	* configs/sim/traveler and README.txt:  Add a configuration build and test
-	  the Traveler firt person game using the simualtor (2014-12-8).
+	  the Traveler first person game using the simulator (2014-12-8).
 	* arch/arm/src/stm32/chip/stm32f20xxx_pinmap.h and stm32f40xxx_pinmap.h:
 	  Set the GPIO_SPEED_50MHz on all F2 and F4 SPI pin configurations.
 	  This is based on an F411 SPI1 errata but the fixed is generalized to
@@ -9165,8 +9165,8 @@
 	* libc/stdio/lib_avsprintf.c: avsprintf():  Fix a bug in usage of
 	  va_list on x86.  On x86, va_list is a pointer to a single copy on the
 	  stack.  avsprintf() calls lib_vsprintf() twice and so traverses the
-	  va_list twice using va_start.  va_start modifies that single copy on 
-	  he stack so that the second call to lib_vsprintf() fails.  This appears
+	  va_list twice using va_start.  va_start modifies that single copy on
+	  the stack so that the second call to lib_vsprintf() fails.  This appears
 	  to be an issue with x86 only so far (2014-12-8).
 	* stdint.h:  Don't use hex values to specify minimum values of fixed
 	  width, signed values.  Hex values are inherently unsigned and not
@@ -9183,11 +9183,11 @@
 	  smartfs_procfs.c, smartfs_utils.c, smartfs.h, Kconfig,
 	  include/nuttx/fs/ioctl.h, smart.h, and mtd/smart.h: Implements wear-
 	  leveling in the SmartFS.  From Ken Pettit (2014-12-9).
-	* arch/arm/src/tiva/tiva_i2c.c: Drive is code complete but still
+	* arch/arm/src/tiva/tiva_i2c.c: Driver is code complete but still
 	  untested (2014-12-10).
 	* configs/tm4c123g-launchpad/src/tm4c_at24.c, tm4c_bringup.c, and other
 	  files:  Add initialization logic for an external AT24 EEPROM.  This
-	  is intended only to suppport testing of the Tiva I2C driver
+	  is intended only to support testing of the Tiva I2C driver
 	  (2014-12-10).
 	* libnx/Makefile, libnx/nxfonts/nxfonts_x11-misc-fixed-*.h, Make.defs,
 	  Makefile.sources, nxfonts_bitmaps.c, graphics/Kconfig, and
@@ -9215,7 +9215,7 @@
 	  This means that once the serial device is opened next time, data will
 	  arrive on the serial port (and driver interrupts handled as normal),
 	  but the received characters never arrive in the reader thread.
-	  Th problem was fixed by re-initializing the semaphores on the last
+	  The problem was fixed by re-initializing the semaphores on the last
 	  uart_close() on the device. From Harald Welte (2014-12-13).
 	* sched/semaphore/sem_recover.c, Make.defs, seamphore.c,
 	  sched/wdog/wd_recover.c, Make.defs, wdog.h, sched/task/task_recover.c:
@@ -9354,7 +9354,7 @@
 	* arch/arm/src/stm32/stm32_ltdc.c:  Clean up documentation, some
 	  formatting improvements.  From Marco Krahl (2014-12-29).
 	* arch/arm/src/tiva/chip/tiva_ethernet.h, lm3s_ethernet.c, and
-	  tm4c_ethernet.h:  Add logic to discriminate betwen LM3S class Ethernet
+	  tm4c_ethernet.h:  Add logic to discriminate between LM3S class Ethernet
 	  register definitions and TM4C129X class Ethernet register definitions.
 	  Add TM4C129X Ethernet register definitions (2014-12-30).
 	* arch/arm/src/tiva/tm4c_ethernet.c, lm3s_ethernet.c, Kconfig, and
@@ -9377,7 +9377,7 @@
 	  SDWAIT_WRCOMPLETE condition.  The previous logic used a busy-wait loop
 	  to poll the card R1 status to determine when the card was ready for
 	  the next transfer.  That busy-wait can be quite long -- up to hundreds
-	  of milliseconds.  An alternative is to look the the SD D0 pin which
+	  of milliseconds.  An alternative is to look the SD D0 pin which
 	  will change state when the card is no longer busy.  This change avoids
 	  the busy-wait poll by reconfiguring the SD D0 pin as a GPIO interrupt,
 	  then waiting for the card to become ready without taking up CPU
@@ -9410,3 +9410,843 @@
 	  and IPv6_HDRLEN, (6) ip_chksum() became ipv4_chksum() and
 	  ipv6_chksum(), and (7) added partial support for ICMPv6 statistics
 	  (2015-01-14).
+	* arch/, drivers/net/, include/nuttx/net, and net/devif:  (1) Rename
+	  devif_input() ipv4_input(), (2) copy net/devif/devif_input.c to
+	  ipv6_input.c, remove all IPv4-specific logic, (3) rename
+	  net/devif/devif_input.c to ipv4_input.c, remove all IPv6-specific
+	  logic, and (4) xplit IPv4 header structure out as net_ipv4hdr_s from
+	  net_iphdr_s (2015-01-15).
+	* arch/ and drivers/net:  All Ethernet drivers:  Call ipv6_input() if
+	  IPv6 is enabled and an IPv6 packet is received (2015-01-15).
+	* net/devif, net/tcp, net/ucp, include/nuttx/net:  Separate tcp_input()
+	  and udp_input() into separate functions tcp_ipv4_input(),
+	  tcp_ipv6_input(), udp_ipv4_input(), and upd_ipv6_input() than can deal
+	  will the data offsets caused by the differing sizes of the IP header
+	  (2015-01-15).
+	* net/utils/net_ipv6_maskcmp.c:  Add missing implementation of
+	  net_ipv6_maskcmp() (2015-01-15).
+	* Networking: Drivers can have both IPv4 and IPv6 addresses, but a
+	  socket can only only one or the other; The socket connection
+	  structures need to include a union of IPv4 and IPv6 addresses for
+	  the local address binding and for the remote address connections
+	  (2015-01-16).
+	* Networking:  Replace all references to net_ipaddr_t with either
+	  in_addr_t on net_ipv6addr_t.  The goal is to support both IPv4 and
+	  IPv6 simultaneously.  This requires that the two types be distinct
+	  and not conditionally typedef'ed to net_ipaddr_t (2015-01-16).
+	* Networking:  Replace all references to the macros net_ipaddr_copy,
+	  net_ipaddr_hdrcopy, net_ipaddr_cmp, net_ipaddr_hdrcmp, and
+	  net_ipaddr_maskcmp with the appropriate IPv4 or IPv6 version of the
+	  macro (such as net_ipv4addr_copy).  The goal is to support both
+	  IPv4 and IPv6 simultaneously.  This requires that the macros be
+	  distinct and not conditionally defined to one on or the other
+	  (2015-01-16).
+	* Networking: UDP and TCP MSS depends on the IP header size (as well
+	  as the link layer header size) and cannot be represented with a
+	  single value (2015-01-16).
+	* net/neighbor:  Move net/ipv6 to net/neighbor (2015-01-16).
+	* include/net/if.h:  Add a bit to the device flags to indicate if the
+	  device packet buffer holds an IPv4 or an IPv6 domain packet.
+	  Set/clear the flag along with the correct offset to the application
+	  payload data as each packet is received (2015-01-17).
+	* net/socket, net/tcp, net/udp:  Add logic to select the domain of the
+	  outgoing packet before sending any UDP or TCP packet.  This sets the
+	  bit to indicate the IPv4 or IPv6 domain and the correct offset to the
+	  output going payload data (2015-01-17).
+	* net/socket and net/tcp: When we are ready to receive data or when we
+	  have outgoing data ready to be sent, we need to the notify the
+	  appropriate device driver of this condition.  The notifying socket
+	  will be configured as either PF_INET or PF_INET6 and must look up the
+	  correct driver using the correct IP domain (2015-01-17).
+	* net/socket/accept.c:  Fix accept() so that it returns the correct IP
+	  address for the selected socket IP domain (2015-01-17).
+	* Networking: Final detangling off IPv4 and IPv6 TCP/UDP send logic.
+	  The networking subsystem now compiles with IPv6 enabled (2015-01-18).
+	* arch/arm/src/tiva/tm4c_ethernet.c:  When calling into the stack
+	  from the worker thread, it is necessary to have the stack locked
+	  (2015-01-18).
+	* nuttx/arch/arm/src/stm32/stm32_serial.c: fix declaration and
+	definition of up_receive() and up_dma_receive() to match fields of
+	  uart_ops_s from nuttx/include/nuttx/serial/serial.h.  From Freddie
+	  Chopin (2015-01-19).
+	* drivers/pipes/pipe.c, drivers/usbdev/cdcacm.c, and
+	  mm/mm_gran/mm_granalloc.c: Fixes some issues found by the PX4 team
+	  using Coverity.  From Pavel Krienko (2015-01-19).
+	* net/icmpv6/icmpv6_solicit.c, net/neighbor/neighbor_out.c, and other
+	  files: Add logic to search the Neighbor Table and update the
+	  destination address in the output Ethernet header OR to send an
+	  ICMPv6 Neighbor Solicitation if there is no entry in the Neighbor
+	  table for the IPv6 address (2015-01-20).
+	* arch/ and drivers/net:  Add missing raw/packet socket support to
+	  all Ethernet driverss (2015-01-20).
+	* arch/ and drivers/net: Networking:  Modify all Ethernet drivers:
+	  Do neighbor look-up on all outgoing IPv6 packs in order to properly
+	  set the destination link layer address (2015-01-20).
+	* Networking:  When sending ICMPv6 advertisements and solicitations,
+	  set the NOARP bit so that we don't overwrite the destination MAC
+	  address (2015-01-20).
+	* Many files: Correct name of fields in struct sockaddr_in6:  sin6_port
+	  and sin6_family, not sin_port and sin_family (2015-01-20).
+	* net/socket/accept.c: Correct the value returned by accept() in the
+	  case where net_lockingwait() is called.  It was returning -1 and
+	  losing the errno value.  Noted by Rony Xln (2015-01-22).
+	* net/: After some significant effort, ICMPv6 and TCP are both
+	  functional when IPv6 is selected.  UDP still requires testing
+	  (2015-01-22).
+	* configs/dk-tm4c129x/ipv6:  Add an IPv6-enabled NSH configuration
+	  (2015-01-23)
+	* include/nuttx/net/icmpv6.h and net/icmpv6/icmpv6_ping.c: First cut
+	  at ICMPv6 ping logic.  It works in both directions! (2015-01-23).
+	* arch/arm/src/efm32/efm32_rmu.c and .h: Add support for the EFM32
+	  reset management unit (RMU).  From Pierre-noel Bouteville
+	  (2015-01-23).
+	* include/nuttx/math.h: Adds support for the expm1 functions:
+	  http://pubs.opengroup.org/onlinepubs/009695399/functions/expm1.html.
+	  From Brennan Ashton (2015-01-23).
+	* Many file: Add CONFIG_STACK_COLORATION that does the same thing as
+	  CONFIG_DEBUG_STACK but without enabling debug.  From David Sidrane
+	  (2015-01-24).
+	* Remove CONFIG_DEBUG_STACK.  Adding CONFIG_STACK_COLORATION makes
+	  this configuration option pointless (2015-01-24).
+	* net/: Clean up network status collection for IPv6 (2015-01-24).
+	* arch/ and configs/: Changes to get USART 2 & 3 working on
+	  lpc4357-evb. These changes are required to get USART 2 and 3 working
+	  on the Embest development board.  From Toby Duckworth.
+
+7.8 2015-02-11 Gregory Nutt <gnutt@nuttx.org>
+
+	* include/nuttx/math.h and libc/math: Add support for inverse
+	  hyperbolic functions.  From Brennan Ashton (2015-01-26).
+	* include/nuttx/math.h: Add math library definition for isfinite().
+	  From Brennan Ashton (2015-01-26).
+	* include/nuttx/math.h and libc/math/lib_erf*.c: Add error function
+	  to math library.  From Brennan Ashton (2015-01-26).
+	* include/nuttx/math.h and libc/math: Add math library defines for
+	  nan(), copysign(), and trunc() functions.  From Brennan Ashton
+	  (2015-01-26).
+	* sched/wqueue/kwork_process and libc/wqueue/lib_usrthread.c:  Fix
+	  a backward calculation when determining the time to the next event.
+	  This is a bug in the back-up, "fail safe", work queue timing so it
+	  not as bad as it seems.  From Liio Chen via the PX4 repository
+	 (2015-01-27).
+	* arch/arm/src/stm32/stm32_exti_gpio.c:  Disabling any of EXTI 5-9
+	  interrupts was disabling interrupts for all EXTI 5-9. Same issue with
+	  EXTI 10-15.  From Jussi Kivilinna (2015-01-27).
+	* arch/arm/src/stm32/stm32_rtcc.c and Kconfig:  Recent changes to
+	  stm32_rtcc.c do not compile with STM32L15XX configurations.  From
+	  Jussi Kivilinna (2015-01-27).
+	* net/local:  Add initial support for local, Unix domain sockets.
+	  Initial support is limited to SOCK_STREAM and is untested on
+	  initial commit (2014-01-27).
+	* net/iob, net/tcp/tcp_callback.c, and include/nuttx/net/iob.h:  There
+	  were issues with the TCP write-ahead buffering if CONFIG_NET_NOINTS was
+	  enabled:  There is a possibility of deadlocks in certain timing conditions.
+	  I have not seen this with the Tiva driver that I have been users but
+	  other people claim to see the issue on other platforms.  Certainly it
+	  is a logic error:  The network should never wait for TCP read-ahead
+	  buffering space to be available.  It should drop the packets
+	  immediately. This was fixed by duplicating most of the IOB interfaces:
+	  The versions that waited are still present (like iob_alloc()), but now
+	  there are non-waiting versions of the same interfaces (like
+	  iob_tryalloc()).  The TCP read-ahead logic now uses only these non-
+	  waiting interfaces (2015-01-27).
+	* net/tcp/tcp_send_buffered.c and tcp_wrbuffer.c: Fix another deadlock
+	  condition.  tcp_write_buffer_alloc() calls sem_wait() with network
+	  locked.  That worked if CONFIG_NET_NOINTS was not defined because
+	  interrupts are automatically restored when the wait happens.  But
+	  with CONFIG_NET_NOINTS=y, the wait blocks with the network locked --
+	  bad style and also can lead to a deadlock condition (2015-01-28).
+	* arch/arm/src/armv7-a/arm_memcpy.S and arch/arm/src/armv7-m/up_memcpy.S:
+	  ARM assembly language memcpy.S's were not returning a value in R0 they
+	  are required to do.  From David Sidrane (2015-01-29).
+	* net/local:  Extend Unix domain socket support to include support
+	  for datagram Unix domain sockets (2015-01-29).
+	* net/socket/accept.c:  Fix a major TCP bug introduced with commit
+	  e71c09ce9777ff732cb60bd07fb43d85522f79d6.  Some connection logic was
+	  reordered; setting the socket as 'connected' got moved to BEFORE the point
+	  where the check was made if the socket was already connected.  The
+	  resulting behavior was odd:  Telnet would connect, but then when you
+	  exit and reconnect, it would fail to connect.  But then if try again, it
+	  would connect okay. So the symptom was connect-fail-connect-fail-...
+	  (2015-01-29).
+	* net/socket/net_poll.c, recvfrom.c, and udp/udp_callback.c: Add UDP
+	  read-ahead support.  This enables support for for poll/select on UDP
+	  sockets and also non-blocking UDP sockets.  From Macs N (2015-01-30).
+	* net/local/local_netpoll.c, socket/net_poll.c, and udp/udp_netpoll.c:
+	  Separate out UDP poll logic from net_poll.c into a new udp_netpoll.c;
+	  Create a skeleton local_netpoll (2015-01-30).
+	* net/socket/net_poll.c and tcp/tcp_netpoll.c: Separate TCP poll logic
+	  out of net_poll.c and move it into the new tcp_netpoll.c (2015-01-30).
+	* arch/arm/src/efm32/efm32_clockconfig.c: Logic to unconditionally enable
+	  LE clocking. Even you don't use core clock LE as source for LFA or LFB,
+	  to read are write any register not clocked by HFPERCLK or HFCORECLK,
+	  HFCORECLKLE should be enabled.  From Pierre-noel Bouteville (2015-01-30).
+	* drivers/net/slip.c: SLIP interface improvements.  From Macs N
+	  (2015-01-30).
+	* clock_systimespec():  Fixes for compilation errors in certain
+	  configurations.  From Macs N.
+	* drivers/pipes/fifo.c, include/nuttx/fs/ioctl.h, and net/local/local_fifo.c:
+	  Fix a race condition between FIFO buffer operations and the opening and
+	  closing of FIFOs which necessary when the FIFOs are used to support
+	  Unix domain, datagram sockets.  The default policy is the deallocate
+	  FIFO buffering when the last client closes the pipe.  When when used
+	  for datagram communications, packets left in the FIFO will be lost.
+	  Some like UDP read-ahead is needed:  The buffered data in the FIFO
+	  needs to be retained until the reader gets a chance to re-open the
+	  FIFO.  Added an ioctl (PIPEIOC_POLICY) to control the buffer policy.
+	  Default (0) is the legacy behavior; Unix domain datagram logic sets
+	  the alternative policy so that the packet data persists after the FIFO
+	  is closed (2015-01-30).
+	* net/local:  Add configuration options so that Unix domain stream and
+	  datagram support can be separately enabled (2015-01-31).
+	* fs/vfs/fs_unlink.c and include/nuttx/fs/fs.h: Add an unlink method to
+	  both the character and block driver interface.  This is important
+	  because if the driver inode is unlinked and there are no open references
+	  to the driver, then the driver resources will be stranded.  On the unlink
+	  call, the driver has the opportunity (1) check if there an any open
+	  references, and if not, (2) free the driver resources (2015-01-31).
+	* drivers/pipes:  Implement the unlink method.  If the pipe/FIFO is
+	  unlinked, it will marked the pipe/FIFO as unlinked.  If/when all open
+	  references to the driver are closed, all of the driver resources will
+	  be freed (2015-01-31).
+	* arch/avr: Added architecture support for the Atmel AVR ATMega1284P
+	  MCU.  From Jedi Tek'Unum (2015-01-31).
+	* configs/moteino-mega: Added support for the LowPowerLab MoteinoMEGA
+	  that is based on the Atmel AVR ATMega1284P MCU.  From Jedi Tek'Unum
+	  (2015-01-31).
+	* EFM32 RTC:  RTC driver using BURTC. From Pierre-Noel Bouteville
+	  (2015-02-01).
+	* drivers/ramdisk.c, include/nuttx/fs/ramdisk.h, and other files:  Add
+	  logic to dispose of the driver and RAM buffer when the RAM disk has
+	  been unlinked and all open references to the RAM disk have been
+	  closed.  Add new parameters to romdisk() to specify what should be
+	  done with the RAM/ROM buffer -- Should it be freed or not?  Changed
+	  all calls to ramdisk() to use these new parameters (2015-02-01).
+	* net/icmpv6/icmpv6_neighbor.c, icmpv6_notify.c (and other files): Adds
+	  basic logic to support verification that we have the IPv6 address in
+	  the Neighbor Table.  This feature is important because otherwise the
+	  first packet sent to a remote peer will fail (it will be replaced
+	  with a Neighbor Solicitation) (2015-01-02).
+	* net/arp/arp.h, arp_notify.c, and arp_send.c: Fixes another
+	  CONFIG_NET_NOINTS issues.  When called sem_timedwait() with the
+	  network locked, the network stays locked while we wait which is not
+	  what we want (without CONFIG_NET_NOINTS, interrupts are re-enabled
+	  while we wait and all is well) (2015-02-02).
+	* net/icmpv6/icmpv6.h, icmpv6_neighbor.c, icmpv6_notify.c: Apply the
+	  same fix as for ARP to the Neighbor Solicitation logic (2015-02-02).
+	* sched/sched/sched_timerexpiration.c, Kconfig, and include/nuttx/arch.h:
+	  On my platform I have just 16-bit timer clocked at 32kHz. As result
+	  oneshot timer max delay is 2s. The patch adds limit of maximum ticks
+	  in sched_timer_start(). From Macs N (2015-02-03).
+	* arch/arm/src/sam34:  Add support for Tickless mode of operation for
+	  the SAM4CM platform.  From Macs N (2015-02-03).
+	* include/nuttx/net/icmpv6.h and net/icmpv6/Kconfig: Add support for
+	  sending ICMPv6 Router Solicitation and receiving Router advertisement.
+	  This is a part of the ICMPv6 auto-configuration logic is still not
+	  complete (2015-02-03).
+	* libnx/nxfonts/nxfonts_getfont.c and nxfonts_sans39x48.h: Fixes a
+	  problem with one of the font files.  From Pierre-noel Bouteville
+	 (2015-02-03).
+	* arch/arm/src/efm32/efm32_rtc_burtc.c:  Remove a misbehaving assertion.
+	  From Pierre-noel Bouteville (2015-02-03).
+	* net/icmpv6:  Implemented the ICMPv6 Autonomous Auto-Configuration
+	  logic.  This is an IPv6 alternative to DHCP.  It obtains the IPv6
+	  addresses and masks using ICMPv6 Router Solicitation and
+	  Advertisement messages (2015-02-03).
+	* arch/arm/src/stm32/stm32_aes.c, stm32_aes.h, and
+	  chip/stm32l15xxx_aes.h:  Add driver for STM32L162XX AES peripheral.
+	  From Juha Niskanen (2015-02-04).
+	* net/icmpv6/icmpv6_radvertise.c, Kconfig, and other files: Add option
+	  to send Router Advertisement Messages (2015-02-05).
+	* net/icmpv6/icmpv6_input.c, arch/arm/src/tiva/tm4c_ethernet.c, and
+	  stm32/stm32_eth.c: Add logic to behave like a router (if so
+	  configured):  NuttX will not send the router advertisement message
+	  in response to any router solicitation messages (2015-02-05).
+	* configs/stm32f4discovery/ipv6 and arch/arm/src/stm32/stm32_eth.c: Add
+	  an IPv6 configuration for the STM32F4-Discovery board (with the
+	  STM32-DISCO_BB base board).  Verify that the STM32 Ethernet driver
+	  works with IPv6 (2015-02-05).
+	* net/icmpv6/icmpv6_input.c and icmpv6_rnotify.c:  With these two
+	  changes both ICMPv6 autonomous autoconfiguration and router
+	  functionality appear to be working with no problems (2015-02-05).
+	* arch/arm/src/tiva and configs/tm4c123g-launchpad:  Adds support for
+	  TM4C123G timers; integrates with the TM4C123G Launchpad.  From Calvin
+	  Maguranis (2015-02-05).
+	* arc/arc/src/tiva/tiva_adc.c and .h: Adds a Tiva ADC driver.  From
+	  Calvin Maguranis (2015-02-05).
+	* tmv4c123g-launchpad:  Add Tiva ADC support to the TM4C123G-Launchpad.
+	  From Calvin Maguranis (2015-02-05).
+	* arch/arm/src/stm32/stm32_spi.c: The source clock for SPI 4,5, and 6
+	  should be PCLK2, not PCLK1 (for F411, F427, and F429).  Per David
+	  Sidrane (2015-02-07).
+	* drivers/syslog/syslog_console.c, include/nuttx/syslog/syslog_console.h,
+	  and the console device initialization logic for all architectures: Add
+	  an option to use the syslog'ing device as the system console.  This
+	  option enables a low-level, write-only console device at /dev/console
+	  (similar to the low-level UART console device).  From Pierre-noel
+	  Bouteville (2015-02-08).
+	* net/utils:  Clean up and consolidate some clunky stuff in ARP and
+	  ICMPv6 time waiting logic by adding new net_timedwait() function
+	  (2015-4-09).
+	* arch/arm/src/stm32/stm32_eth.c: Add logic so that STM32 Ethernet
+	  driver can avoid interrupt level processing and, instead, execute on
+	  the work thread (2015-4-09).
+	* configs/stm32f4discovery/netnsh and ipv6: Convert all STM32F4-
+	  Discovery configurations (with base board) to configure the Ethernet
+	  driver to use the work queue (vs. interrupt level processing)
+	  (2015-4-09).
+	* libc/unisted/lib_execl.c:   Fix bad logic in counting the number of
+	  arguments.  This could never have worked.  Noted by Pierre-noel
+	  Bouteville (2015-4-09).
+	* arch/arm/src/sama5/sam_emacb.c: Add support for Multicast address
+	  matching and IPv6 in the SAMA5D4 Ethernet driver (2015-02-09).
+	* configs/sama5d4-ek/ipv6: Add a configuration for testing IPv6 with
+	  the SAMA5D4-EK (2015-02-09).
+	* arch/arm/src/armv7-a/arm_doirq.c: ARMv7-A interrupt handler should not
+	  automatically re-enable interrupts on interrupt return.  That
+	  interferes with the driver's ability to manage interrupts (2015-02-09).
+	* arch/arm/src/sama5/sam_emacb.c: Add support for CONFIG_NET_NOTINTS in
+	  the SAMA5D4 Ethernet driver so that the driver can operate from the
+	  work queue thread instead of doing everything from the interrupt level
+	  (2015-02-09).
+	* SAMA5D4-EK: CONFIG_NET_NOINTS is now enabled in the nsh and ipv6
+	  configurations (2015-02-09).
+	* arch/arm/src/a1x, arm, c5471, common, dm320, imx, lpc2378, lpc31xx,
+	  sama5, str71x, hc/src.common, sh/src/common, x86/src/common,
+	  z16/src/common, z16f, z80/src/z8: Big, very risky change:  Remove all
+	  occurrences of up_maskack_irq() that disable and enable interrupts
+	  with up_ack_irq() that only acknowledges the interrupts.  This is only
+	  used in interrupt decoding logic.  Also remove the logic that
+	  unconditionally re-enables interrupts with the interrupt exits.  This
+	  interferes with the drivers ability to control the interrupt state.
+	  This is a necessary, sweeping, global change and unfortunately
+	  to test (2015-02-09).
+	* mtd/ramtron.c:  Table of parts is not terminated properly if
+	  CONFIG_RAMTRON_FRAM_NON_JEDEC is not defined.  Noted by David
+	  Sidrane (2015-02-09).
+	* arch/arm/src/sam34/sam_emac.c, sama5/sam_emaca.c, and sama5/sam_gmac.c:
+	  Clone the SAMA5D4 IPv6 support to the SAM4E EMAC and SAMAd3 EMAC and
+	  GMAC drivers  (2015-02-09).
+	* net/:  Lots of build problems introduced into multiple NIC support.
+	  Many places where conditional logic based on CONFIG_NETDEV_MULTINIC is
+	  confused with CONFIG_NET_MULTILINK.  Lots of code changed with IPv6
+	  that was never compiled with MULTINIC enabled.  Still some problem
+	  with parameter passing in the MULTINIC configuration(2015-02-09).
+	* net/iob/Kconfig: In IOB Configuration, the default number of IOB
+	  chains must be more than zero is UDP read-ahead is enabled (2015-02-10).
+	* net/tcp/tcp_conn.c and udp/udp_conn.c: Fix several build errors/warning
+	  with IPv4 + IPv6 + multiple networks are enabled (2015-02-10).
+	* arch/arm/src/sam34/sam_emac.c: SAM4 Ethernet driver bow supports
+	  operation using the high priority work queue so that packet processing
+	  can occur outside of interrupt level processing (2015-02-10).
+	* SAM4E-EK: The nsh configuration now configures the Ethernet driver
+	  for execution on the HP work thread (2015-02-10).
+	* arch/arm/src/lpc17xx/lpc17_ethernet.c: Add IPv6 support to the LPC17
+	  Ethernet driver.  Untested... I no longer have a proper environment
+	  for LPC17 debug (2015-02-10).
+	* include/netinet/in.h and libc/net/lib_addrconfig.c: Some extensions
+	  to netinet/in.h adding some Linux compatible definitions.  From Macs N
+	  (2015-02-11).
+	* arch/arm/src/kl:  Add architectural support for the K26Z128VLH4 chip.
+	  From Derek B. Noonburg (2015-02-11).
+	* configs/freedom-kl26z: Add board support for the Freedom KL26Z board.
+	  From Derek B. Noonburg (2015-02-11).
+
+7.9 2015-04-14 Gregory Nutt <gnutt@nuttx.org>
+
+	* arch/arm/src/tiva:  Add support for the TM4C1294.  Contributed by
+	  Frank Sautter (2015-02-11).
+	* configs/tm4c1294-launchpad:  Add support for the TM4C1294 Launchpad.
+	  Contributed by Frank Sautter (2015-02-11).
+	* gettimeofday():  Move gettimeofdady() from sched/clock to libc/time.
+	  Remove gettimeofday() from NuttX system calls.  It is only a wrapper
+	  around clock_settime() and does not need a trap.  gettimeofday() is
+	  no longer treated as a core OS interface (2015-02-12).
+	* settimeofday(): gettimeofday has been decrecated in POSIX 2008.
+	  settimeofday() was never part of POSIX, but I decided to add it to
+	  libc as well just for symmetry (2015-02-12).
+	* drivers/sensors/mpl115a.c and include/nuttx/sensors/mpl115a.h: Add
+	  driver for the Feescale MPL115A baramoter.  From Alan Carvalho de
+	  Assis (2015-02-12).
+	* configs/viewtool-stm32f107:  Add support for an optional, add-on
+	  Freescale MPL115A baramoter.  From Alan Carvalho de Assis
+	  (2015-02-12).
+	* sched/clock/clock_systimer.c: Fix a problem in clock_systimer64 that
+	  occurs when (1) the 64-bit system time is enabled, and (2) the value
+	  of CONFIG_USEC_PER_TICK is less than 1 milliseconds (such as when using
+	  the tickless mode of operation).  In that case, the conversion of time
+	  to 64-bit millisecond value in clock_systmer64() causes some bad times
+	  to be returned.  Time was converted to milliseconds, then to configured
+	  ticks.  Precision was lost in the millisecond conversion. The fix is
+	  to first convert time to a 64-bit microsecond value, then to the
+	  configured tick value. Noted by David Sidrane (2015-02-13).
+	* include/nuttx/rtc.h, arch.h, and arch/*/src/*_rtc.h: Removed all of the
+	  old, malformed RTC interface definitions from include/nuttx/rtc.h.  The
+	  necessary prototypes have been removed, renamed, scattered to the wind,
+	  hidden under rocks, -- whatever it takes to make it clear that there is
+	  no RTC interface callable from application code (2015-02-13).
+	* include/nuttx/rtc.h and fs/ioctl.h:  Begin the definition of a proper,
+	  driver based RTC interfaces that is better suited to the architectural
+	  goals of nuttx (2015-02-13).
+	* drivers/timers/timer.c and watchdog.c: Move timer-related drivers from
+	  drivers/ to drivers/timers (2015-02-13).
+	* drivers/timers/rtc.c:  Add an RTC upper half driver.  This is the driver
+	  that is documented in include/nutt/rtc.h (2015-02-13).
+	* arch/arm/src/stm32/stm32_rtcc.c and stm32_rtc.h: Break out a new internal
+	  interface, stm32_rtc_setdatetime().  This eliminates some un-necessary
+	  time conversions.  From Freddie Chopin (2015-02-13).
+	* arch/arm/src/stm32/stm32_rtc_lowerhalf.c, Make.defs, and stm32_rtc.h: Add
+	  a skeleton implementation of the RTC lower half interface at
+	  arch/arm/src/stm32/stm32_rtc_lowerhalf.c.  This is just the framework for
+	  the RTC lower half.  None of the interface methods have yet been
+	  implemented (2015-02-13).
+	* net/icmpv6/icmpv6_advertise.c and icmpv6_solicit.c:  Add inclusion of
+	  nuttx/net.h to two files.  Without these there can be compilation errors
+	  in certain configurations.  From Max Neklyudov (2015-02-13).
+	* net/net_initialize.c, sched/init/os_start.c, and a few other files:
+	  Divide net_intiialize() into net_setup() and net_initialize() to solve
+	  a chicken-and-egg problem.  net_setup() must be called before
+	  up_initialize() is called so that networking data structures are ready
+	  to register new network devices.  net_initialize() now does only timer
+	  related operations and is called AFTER up_initialize() where the timers
+	  are configured.  Problem note by Max Neklyudov (2015-02-14).
+	* include/time.h and sys/time.h: Move struct timeval from include/time.h
+	  to include/sys/time.h where it belongs (2015-02-15).
+	* arch/arm/src/stm32/stm32_rtcc.c, stm32_rtc.h, and Kconfig: Extend the
+	  RTC interface to support reading subseconds.  From Jussi Kivilinna
+	  (2015-02-16).
+	* arch/arm/src/efm32/efm32_usbdev.c: EFM32 USB Device is now basically
+	  functional with this change.  From Pierre-noel Bouteville (2015-02-16).
+	* include/nuttx/net/ip.h:  Move macros and common logic for IPv4-mapped
+	  IPv6 addresses from files in net/ to include/nuttx/ip.h.  These are
+	  currently only used for UDP, but will need to be be used in many places
+	  in the future (2015-02-17).
+	* includes/nuttx/compiler.h:  Add support for the restrict keyword
+	  (2015-02-17).
+	* include/netdb.h:  Add a mostly-commented-out version of the standard
+	  netdb.h header file (2015-02-17).
+	* arch/arm/src/tiva/:  Updated files to allow for ADC triggering by the
+	  timer. I’ve cleaned up some parts of the ADC code, too, and fleshed
+	  out the PWM triggering ioctl.  From Calvin Maguranis (2015-02-17).
+	* configs/tm4c123g-launchpad: Add ADC support.  From Calvin Maguranis
+	  (2015-02-17).
+	* fs/fat/fs_mkfatfs.c:  Use DMA memory for mkfatfs when needed. This makes
+	  mkfatfs use fat_dma_alloc() when CONFIG_FAT_DMAMEMORY is set. This is
+	  needed to ensure mkfatfs operates with boards that use DMA for microSD.
+	  From Andrew Tridgell via the PX4/NuttX repository (2015-02-17).
+	* include/nuttx/rtc.h, fs/fs.h, drivers/ramdisk.c, pipes/, and
+	  timers/rtc.c: The inode unlink method should not be support if
+	  operations on the root pseudo-filesystem are disabled (2015-02-18).
+	* include/nuttx/sched timing functions:  Fix some nanosecond comparisons.
+	  Comparisons should be greate than OR EQUAL TO 1000000000 for maximum
+	  value of nanoseconds in struct tm.  From Juha Niskanen (2015-02-20).
+	* tm4c123g-launchpad: Add board button interrupt logic.  From Calvin
+	  Maguranis (2015-02-20).
+	* "Tiva: Move GPIO prototypes out of arch/arm/include/tiva/irq.h to
+	  arch/arm/tiva/tiva_gpio.h where they belong (2015-02-20).
+	* arch/arm/src/tiva: Tiva GPIO clean-up by Calvin Maguranis (2015-02-20).
+	* arch/arm/src/stm32/stm32_pwr.c, stm32_pwr.h, and stm32_rtcc.c: Changes
+	  to support fully write protecting the backup domain. N.B.
+	  stm32_pwr_enablebkp did not account for the delay from enable to the
+	  domain being writable. The KISS solution is a up_udelay. A more
+	  complex solution would be a negated write test with restore.  From
+	  David Sidrane (2015-02-21).
+	* arch/arm/src/stm32/stm32_bbsram.c, stm32_bbsram.h, Kconfig, and
+	  Make.defs: Adds the ability to use the STM32F2 and STM32F4 Battery
+	  Backedup SRAM in the file system. With an option to Save Panic
+	  context to one of the files. From David Sidrane (2015-02-21).
+	* configs/pic32mx-starterkit:  Rename from pic32-starterkit to make
+	  room on the namespace for a pic3mz-starterkit.  Update src/ directory
+	  file naming to match current standard.  Refresh configurations.  Move
+	  linker scripts to a new scripts/directory.  Make sure that it builds
+	  using the Pinquino toolchain (2015-02-21).
+	* arch/mips/src/mips32/Toolchain.mk: Current Pinguino toolchain uses
+	  the prefix p32- instead of mips- (2015-02-21).
+	* configs/pic32mz-starterkit: Add basic board support for the PIC32MZ
+	  (can't build yet of course because there is not yet any PIC32MZ
+	  support) (2015-02-22).
+	* arch/mips/src/pic32mz and include/pic32mz:  Add some PIC32MZ header
+	  file definitions and just enough logic in the source directory so
+	  that we can run 'make menuconfig'.  Still a very long way from being
+	  complete (2015-02-22).
+	* libc/time/lib/lib_sfrtime.c:  Missing implementation of %C in
+	  sfrtime() C (was being treated as %y).  From Freddie Chopin
+	  (2015-02-23).
+	* drivers/can.c: In the can_open function: this line
+	  'dev->cd_ocount = tmp;' needs to be moved a few lines down otherwise
+	  the open count will only be incremented from 0 to 1. This causes
+	  problems when trying to open the can bus from two different tasks.
+	  SourceForge Patch #46 from Anonymous (2015-02-23).
+	* Tiva TM4c1294: Updates from Frank Sautter (2015-02-24).
+	* fs/aio: correct some backward tests in aio_read() and aio_write():
+	  Socket descriptors have higher numbers than file descriptors.  In
+	  aio_contain(),  Copy u.ptr (void *) when initializing aioc and not
+	  the case specific u.aioc_filep.  From Michal Ulianko (2015-02-24).
+	* include/pthread.h: Fix PTHREAD_COND_INITIALIZER (2015-02-24).
+	* sched/clock/clock_systimespec.c:  When an RTC is used clock_systimespec()
+	  must subtract the basetime from the returned time.  It needs to
+	  return the time since power up, no the current time.  Issue noted
+	  by Max Neklyudov (2015-02-25).
+	* fs/vfs/fs_select.c and sched/semaphore/sem_timedwait.c: Fix places
+	  where the errno value was being overwritten by subsequent actions so
+	  that the returned errno value was incorrect.  From Max Neklyudov
+	  (2015-02-25).
+	* include/sys/select.h: Extend the fd_set type definition so that it
+	  can handle more than 32 descriptors (if so configured).  From Max
+	  Neklyudov (2015-02-25).
+	* net/netdev/netdev_unregister.c:  Fix a list handling error in
+	  netdev_unregister().  From Max Neklyudov (2015-02-27).
+	* net/netdev/netdev_register.c: Improve the network device registration
+	  logic.  When multiple link types are used, modify how each interface
+	  number is assigned to the device name by incrementing the device
+	  number individually for each interface link type.  From Max Neklyudov
+	  (2015-02-27).
+	* include/nuttx/board.h:  Remove common board function prototypes from
+	  other files and consolidate them in this new header file (2015-02-27).
+	* arch/mips/src/pic32mz/: Implement support IO port interrupts
+	  (2015-03-01).
+	* configs/pic32mz-starterkit/src: Add support for on-board buttons
+	  (2015-03-01).
+	* include/nuttx/spi/spi.h:  Add an SPIDEV_USER so that there can be
+	  board-specific definitions of SPI devices (2015-03-01).
+	* arch/arm/src/stm32 and arch/arm/src/stm32: Adds architecture support
+	  for the STM32F372 and F373 (no board support yet). Only tested on
+	  STM32F373CC, but should work on the rest.  Contributed by  Marten
+	  Svanfeldt (2015-03-01).
+	* arch/mips/src/pic32mz/pic32mz-spi.c and chip/pic32mz-spi.h:  Add
+	  support for a basic SPI driver for the PIC32MZ (2015-03-03).
+	* include/nuttx/i2c.h:  Add a user provided void * argument to the
+	  I2C callback method for the I2C slave interface.  Suggested by
+	  Nate Weibley (2015-03-03).
+	* crypto/, include/nuttx/crypto, and arm/src/common/up_initialize.c:
+	  Fix issues when AES support was added for the STM32L1.  From Juha
+	  Niskanen (2015-03-04).
+	* arch/arm/src/stm32/stm32_spi.c and .h: Add missing SPI callback
+	  functions to the STM32 SPI driver.  From Freddie Chopin (2015-03-04).
+	* arch/*/src/*/*_assert.c, configs/Kconfig, and include/nuttx/board.h:
+	  Add support for dumping board-specific information on assertion.
+	  From David Sidrane (2015-03-04).
+	* drivers/spi/Kconfig: Add missing CONFIG_SPI_CALLBACK selection.  Noted
+	  by Freddie Chopin (2015-03-04).
+	* arch/arm/src/samv7 and include/samv7:  Add basic build directories
+	  and configuration logic for the Atmel SAMV7 family (2015-03-05).
+	* arch/arm/src/Makefile, armv7-m/Toolchain.defs: Make ARM build system
+	  Cortex-M7 ready (2015-03-05).
+	* arch/arm/src/sam34/sam_start.c:  Leverage start-up logic from STM32
+	  to (1) Enable the FPU and (2) perform IDLE stack coloration
+	  (2015-03-05).
+	* arch/arm/src/armv7-m/up_lazyexception.S, Kconfig and severl other
+	  files:  Add support for lazy FPU state saving.  Not yet verified.
+	  (2015-03-06).
+	* arch/arm/Kconfig, Make.defs, sam_start.c, configs/Kconfig,
+	  samv71-xult: Add a bare bones framework that will do nothing more than
+	  support configuration for the Atmel SAMV71 Xplained Ultra board.  Very
+	  much a work in progress (2015-03-06).
+	* sched/mqueue/mq_timedsend.c:  Should not check for valid time if
+	  there is space in the message queue.  Noted by Freddie Chopin
+	  (2015-03-10).
+	* arch/arm/src/tiva/tiva_timerlib.c:  Fix a typo in peripheral wait
+	  logic:  gptm, not gpio.  From Bradley Noyes (2015-03-10).
+	* drivers/net/tun.c, Make.defs, include/nuttx/net/net.h, tun.h, and
+	  net/Kconfig: Add TUN device.  From Max Neklyudov (2015-03-11).
+	* fs/fat/fs_fat32.c: fat_unbind() was accessing 'fs->fs_sem' after
+	  freeing the 'fs' struct. From Juha Niskanen (2015-03-11).
+	* fs/procfs/fs_procfsproc.c: fs_procfsproc: Fix potential NULL pointer
+	  dereference of 'node'.  From Juha Niskanen (2015-03-12).
+	* sched/sched/sched_waitpid.c: Do not use uninitialized boolean in
+	  waitpid().  From Juha Niskanen (2015-03-12).
+	* libc/stdio/lib_ungetc.c:Fix NULL pointer dereference in ungetc().
+	  If 'stream' was NULL, 'stream->fs_oflags' was evaluated.  From Juha
+	  Niskanen (2015-03-12).
+	* arch/arm/src/stm32/stm32_i2c.c: Add missing NULL check.  From Juha
+	  Niskanen (2015-03-12).
+	* drivers/usbdev/usbmsc_scsi.c: Add NULL pointer check.  From Juha
+	  Niskanen (2015-03-12).
+	* drivers/bch/bchdev_driver.c: Avoid NULL pointer dereference when
+	  bch->refs  == 255.  From Juha Niskanen (2015-03-12).
+	* arch/arm/src/armv7-m/mpu.h:  Bad syntax in ARMv7-M MPU logic would
+	  cause failure to write the correct value to the MPU_RASR register.
+	  From Juha Niskanen (2015-03-12).
+	* net/socket/net_dupsd.c: Do not call sockfd_socket() twice.  From
+	  Juha Niskanen (2015-03-12).
+	* arch/arm/src/stm32/stm32_usbdev.c: Fix stale initialization
+	  invalidating later NULL check.  From Juha Niskanen (2015-03-12).
+	* arch/arm/src/stm32/stm32_serial.c and chip/stm32f10xxx_dma.h: Fix
+	  RX DMA setup for UART5.  From  Jussi Kivilinna (2015-03-13).
+	* arch/arm/src/stm32/stm32_serial.c: Make input hardware flow-control
+	  work with RX DMA.  From Jussi Kivilinna (2015-03-13).
+	* drivers/pipes/pipe_common.c: Fix zero-lenth writes to pipes/FIFOs.
+	  From Jussi Kivilinna (2015-03-13).
+	* drivers/serial/serial.c: Report correct number of bytes free in
+	  serial buffer with FIONWRITE.  From Sami Pelkonen via Jussi Kivilinna
+	  (2015-03-13).
+	* drivers/mmcsd/mmcsd_spi.c: Debugging and manuals (this one
+	  https://www.sdcard.org/downloads/pls/simplified_specs/part1_410.pdf
+	  and this one https://www.sdcard.org/downloads/pls/simplified_specs/part1_410.pdf)
+	  shows that ACMD23 must be preceded with CMD55 command as any other
+	  ACMD commands. Also, after the block reading wait loop must be
+	  inserted before writing the next block of data to the sd card.  From
+	  Dmitry Nikolaev via Jussi Kivilinna (2015-03-13).
+	* arch/arm/src/efm32/efm32_i2c.c:  Add I2C driver.  From Pierre-noel
+	  Bouteville (2015-03-14).
+	* fs/mount/, include.sys/mount, syscall/:  Add umount2().  umount() is
+	  now a macro that just calls umount2() with flags = 0 (2015-03-14).
+	* fs/mount/fs_umount2.c, all file systems, include/nuttx/fs/fs.h:  Pass
+	  the umount2() flags to every unbind() implementation.  That is where
+	  the decision to umount or not will be made (2015-03-14).
+	* fs/fat/fs_fat32.c: Fix a bug in the FAT unbind() logic.  There were
+	  problems with the way certain internal list handling was implemented.
+	  The end result is that newly opened or cloned file structures were
+	  never being added to the list of open files.  So when the unmount()
+	  happens, it always looked like there were not open files and a crash
+	  could ensue (2015-03-14).
+	* fs/fat/fs_fat32.c and fs_fat32.h: Add support for umount2(target,
+	  MNT_FORCE) in the FAT file system (2015-03-15).
+	* drivers/mmcsd/mmcsd_sdio.c:  Fix some bad logic when file system debug
+	  is turned on:  Arguments to syslog were missing so that garbage was
+	  being printed (2015-03-15).
+	* arch/arm/src/sama5/sam_hsmci.c:  Fix a bug in SAMA5 HSMCI.  The
+	  bitfield mask and shift values were reversed resulting in a trashed
+	  value for the number of blocks in the BLOCKR register.  This was
+	  sufficient to prevent DMA writes from working (2015-03-15).
+	* drivers/mtd/at24xx.c, Kconfig, and include/nuttx/fs/ioctl.h:  Add
+	  support for (1) the byte-oriented read() method, (2) devices that
+	  have extended memory regions, and (3) devices that use 8-bit
+	  addressing (2015-03-17).
+	* arch/mips/src/mips32/Kconfig, Toolchain.defs, and
+	  configs/pic32mz-starterkit/nsh/Make.defs:  Changes that will permit
+	  building of the PIC32MZ Start Kit configuration using MPLAB and the
+	  XC32 toolchain.  From David Sidrane (2015-03-17).
+	* arch/arm/src/stm32/stm32_rtc_lowerhalf.c:  Fix some errors in the
+	  STM32 RTC lower-half driver that cause compilation failures.  From
+	  shilo.xyz (2015-03-19).
+	* arch/arm/src/sama5/chip/sam_tc.h: Fix typos in timer/counter header
+	  file.  From Bob Doiron (2015-03-20).
+	* configs/olimexino-stm32: Board support for the Olimexino STM32 board
+	  from David Sidrane (2015-03-20).
+	* PIC32MZ:  Incorporated a set of patches that makes the basic NSH
+	  configuration on the PIC32MZ Starter Kit.  From Kristopher Tate
+	  (2015-03-22).
+	* arch/arm/src/tiva: (1) ADC driver has been re-organized; configuration
+	  is now handled in code instead of Kconfig to help reduce bloat and
+	  confusion. (2) Timer changed to remove ADC coupling in Kconfig to code
+	  and moved configuration up from arch/arm/src/tiva to
+	  configs/tm4c123g-launchpad/src. (3) GPIO driver needed small fixes in
+	  the configuration routines and discovered false-positive bugs in
+	  interrupt testing: interrupts are now verified to actually be working
+	  reliably. (4) Attempt to apply some consistency in the tiva arch/
+	  level's interface to the config/board/ level driver configuration.
+	  From Calvin Maguranis (2015-03-23).
+	* arch/mips/src/pic32mz: Various fixes for Ethernet support.  Still
+	  not fully functional.  From Kristopher Tate (2015-030-29).
+	* arch/arm/src/armv7-m:  Add configuration option and logic to support
+	  the D-Cache in write-through mode (2015-03-29).
+	* arch/arm/src/stm32/Kconfig, stm32_lse.c, stm32_lsi.c, stm32_rtc.c/.h,
+	  stm32_rtcc.c, stm32_rtcounter.c, and stm32f*_rcc.c: The
+	  STM32F4Discovery board doesn't come with a Low speed external
+	  oscillator so the default LSE source for the RTC doesn't work. In
+	  stm32_rtcc.c the up_rtcinitialize() logic doesn't work with the LSI.
+	  The check on RTC_MAGIC on the BK0R register lead to rtc_setup() call
+	  that rightfully enables the lsi clock; but the next times, when the
+	  rtc is already setup, the rtc_resume() call does NOT start the lsi
+	  clock! The right place to put LSE/LSI initialisation is inside
+	  stm32_stdclockconfig() in stm32fxxxxx_rcc.c.  Doing this I checked
+	  the possible uses of the LSI and the LSE sources: the LSI can be used
+	  for RTC and/or the IWDG, while the LSE only for the RTC (and to output
+	  the MCO1 pin). This change is not verifed for any other platforms.
+	  From Leo Aloe3132
+	* Rename arch_nshinitialize() to board_app_initialize() (2015-03-30).
+	* ./*.mk, configs/.gitignore, Makefile, boardctl.c, include/nuttx/fs/ioctl,
+	  include/sys/boardctl.h, syscall.h, and syscall/:  Add a new non-
+	  standard OS interface called boardctl().  This is similar to a driver
+	  IOCTL call.  But this is an IOCTL call directly on the board logic.
+	  This function will eventually replace all of the ad hoc OS interfaces
+	  that are current used to perform application specific initialization
+	  and application driver test configuration.  It essentially formalizes
+	  and institutionalizes these rogue interface in to at least a single
+	  crazy call (2015-03-31).
+	* configs/: Modify all configurations:  Make sure that
+	  CONFIG_LIB_BOARDCTL=y appears wherever CONFIG_NSH_ARCHINIT=y appears.
+	  Remove support for CONFIG_NSH_ARCHMAC.  It is not used and there are
+	  better ways to do that operation (2015-03-31).
+	* configs/Kconfig, boardctl.c, all touchscreen driver setup functions,
+	  include/board.h, include/sys/boardctl.h, and
+	  include/nuttx/input/touchscreen.h: arch_tcinitialize() and
+	  arch_tcunitinitialize() renamed to board_tsc_setup() and
+	  board_tsc_teardown().  These are not long called directly by
+	  applications but only indirectly throught the crappy boardctl() OS
+	  interface (2015-03-31).
+	* configs/Kconfig, boardctl.c, include/nuttx/board.h, include/sys/boardctl.h,
+	  and several ADC files in configs/<board>/src/:  Rename adc_devinit() to
+	  board_adc_setup().  Add support to the boardctl() interface so that it
+	  can call board_adc_setup() on behalf of an application.  Make sure that
+	  the proper features are enabled in the defconfig files that have
+	  CONFIG_EXAMPLES_ADC=y (2015-03-31).
+	* configs/*/defconfig:  Make sure that all defconfig files that require
+	  external graphics intiialization also enable the correct boarctl()
+	  settings (2015-03-31).
+	* include/nuttx/board.h, include/sys/boardctl.h, nuttx/configs/Kconfig and
+	  boardctl.c, and board configurations and PWM implementations: Rename
+	  pwm_devinit() to board_pwm_setup().  Add CONFIG_BOARDCTL_PWMTEST that
+	  will enable calling board_pwm_setup() from boardctl().  In all
+	  configurations that enable the apps/examples/pwm test, make sure that
+	  boardctl() support is properly enabled (2015-03-31).
+	* Move include/nuttx/timer.h, rtc.h and watchdog.h to include/nuttx/timers/.
+	  (2015-04-01).
+	* drivers/timer/cs2100-cp.c and include/nuttx/timers/cs2100-cp.h: Add a
+	  very basic driver for the CS2100-CP Fractional-N Multipler chip (2015-04-02).
+	* configs/, graphics/, include/nuttx:  More renaming: up_lcdinitialize->board_lcd_initialize,
+	  up_lcdgetdev->board_lcd_getdev, up_lcduninitialize->board_lcd_uninitialize
+	  (2015-04-04).
+	* include/nuttx/nx, libnx/nx, libnx/nxtk: Add a new 'capped' parameter to
+	  nx_drawline(), nxtk_drawlinetoolbar(), and nxtk_drawlinewindow()
+	  (2015-04-05).
+	* libnx/nx/nx_drawline.c, libnx/nxtk/nxtk_drawlinetoolbar.c and
+	  nxtk_drawlinewindow.c: Implement line caps by drawing a file circle at
+	  the each endpoint of a line with a radius equal to half of the width
+	  of the line (2015-04-05).
+	* include/time.h, nuttx/time.h, libc/time/lib_dayofweek.c and
+	  lib_gmtimer.c: Implements CONFIG_TIME_EXTENDED as we discussed
+	  relative to providing the last 3 members of the tm struct and support
+	  for filling them in and even using the wday in the STM32 RTC. From
+	  David Sidrane.
+	* arch/arm/src/sam34/sam_serial.c and samv7/sam_serial.c:  A side-effect
+	  of changing serial settings via TERMIOS (such as tcsetattr) is that
+	  serial interrupts were being left disabled.  This is not a problem if
+	  the serial configuration is changed when there are no open references
+	  to the serial device.  In that case, serial interrupts are disabled and
+	  will not be enabled enabled until the serial device is first opened.
+	  But it is fatal if the serial device is already opened and if there is
+	  a task waiting to receive data.  In that case, the side-effect of
+	  disabling interrupts is fatal:  That task is then left hanging with
+	  interrupts disabled (2015-04-08)
+	* arch/arm/src/sama5/sam_serial.c:  Backport support for flowcontrol and
+	  termios from SAM3/4 -- UNVERIFIED. (2015-04-08).
+	* arch/arm/src/sam34/sam_serial.c and samv7/sam_serial.c: The IMR
+	  register is read-only.  This means that sam_restoreints() did not
+	  actually re-enable UART interrupts (2015-04-08).
+	* sigaddset() and sigdelset(): Need to set errno if a bad signal number
+	  is received (2015-04-09).
+	* sighold(), sigrelse(), sigignore(), sigset() and sigpause():  New
+	  signal handling functions (2015-04-09).
+	* Fixes to asinh(), atanh(), and sinh():  The 'basic' expansions all
+	  exhibited bad cancellation errors near zero (<= 1E-10). This can be
+	  easily seen e.g. with x = 1E-30, the results are all zero though they
+	  should be extremely close to x. The cutoff values (1E-5, 1E-9) are
+	  chosen so that the next term in the Taylor series is negligible (for
+	  double). Functions could maybe be optimized to use only first term (x)
+	  and a smaller cutoff, just bigger than where the cancellation occurs
+	  (2015-04-09).
+	* syscall/syscall.csv: Last changes to message queue prototypes did not
+	  make it into call gate logic (2015-04-09).
+	* syscall/syscall_stublookup.c: Fix some errors that crept in recently
+	  (2015-04-09).
+	* libc/time/lib_localtime.c: Inconsistent configuration name:
+	  CONFIG_LIBC_TZDIR vs CONFIG_LIBC_TZ_TZDIR.  Former wins (2015-04-11).
+	* libc/time/lib_calendar2utc.c and lib_mktime.c: Fix an error in time
+	  initialization when there is not RTC and the time is initialized from
+	  a fixed configured value. The call to clock_calendar2utc() was
+	  returning the time in units of seconds.  The initialization logic,
+	  however, was expecting to get time in units of days.  This problem
+	  has been there forever but obviously has not significant impact to
+	  behavior in systems where time is not visible (2015-04-12).
+	* fs/fat/fs_fat32utils.c:  Fix misthink when CONFIG_ENDIAN_BIG=y.  From
+	  Lwazi Dube (2015-04-12).
+	* include/nuttx/net/netdev.h, net/devif/ipv6_input.c,
+	  icmpv6/icmpv6_rsolicit.c and net/icmpv6/icmpv6_solicit.c: Use common
+	  macro(s) for calculating link layer header length.  From Brennan
+	  Ashton (2015-04-13).
+	* apps/netutils/pppd/Kconfig, pppd.c, and ntpv3.h (removed):  Remove
+	  ntpclient header file in and NTP client references from the pppd
+	  dir.  From Brennan Ashton (2015-04-13).
+	* configs/galileo: Remove all references to the Galileo board.  That
+	  port is not going to happen (I don't even have the hardware anymore)
+	  (2015-04-13).
+	* drivers/input/max11802.c:  Fix possible unmatched IRQ restore.  Noted
+	  by Juha Niskanen (2015-04-14).
+	* atexit(): Fix reference to undefined variable in certain
+	  configurations.  From Juha Niskanen (2015-04-14).
+
+7.10 2015-xx-xx Gregory Nutt <gnutt@nuttx.org>
+
+	* configs/sim/src/sim.h, sim_zoneinfo.c, Makefile, and sim_boot.c: Add
+	  logic to test localtime and TZ database.  See apps/system/README.txt
+	  for info (2015-04-15).
+	* libc/Kconfig: Fix defaults for timezone limits.  They need to be much
+	  larger (2015-04-15).
+	* Watchdog files:  Fix repeated typo wachog.h in several watchdog
+	  drivers (2015-04-15).
+	* configs/boardctl.c and Kconfig:  Add missing causing that caused
+	  failures of PWM test (2015-04-15).
+	* arch/arm/src/stm32: Defines a second interface for the dma2d controller.
+	  Controlling both LTDC and DMA2D was unpractical from the programmers
+	  view because both controllers are to different. LTDC only controls the
+	  display visibility but the DMA2D controller changes the content of the
+	  frame buffer (buffer of the layer).
+
+	  The main features are:
+
+	  1. DMA2D interface
+	     Supports the nuttx pixel formats:
+	     - FB_FMT_RGB8
+	     - FB_FMT_RGB24
+	     - FB_FMT_RGB16_565
+	     Dynamic layer allocation during runtime for the supported formats
+	     - The number of allocatable layer can be configured.
+	     Supported dma2d operation:
+	     - blit (Copy content from source to destination layer) also works
+	       with selectable area.
+	     - blend (Blend two layer and copy the result to a destination layer
+	       which canbe a third layer or one of the source layer) also works
+	       awith selectablerea.
+	     - fillarea (Fill a defined area of the whole layer with a specific
+	       color)
+
+	  As a result of that the dma2d controller can't transfer data from the
+	  core coupled memory, CCM is disabled but usable by the ccm allocator.
+	  Currently the ccm allocator is used for allocating the layer structure
+	  only. For the dma memory (layers frame buffer) memory is allocated from
+	  heap 2 and 3.
+
+	  2. LTDC interface
+	     I have changed the api for the currently non implemented operations:
+	     - blit (Copy content from a dma2d layer to an ltdc layer) also works with
+	       selectable area.
+	     - blend (Blend two dma2d layer and copy the result to a destination ltdc
+	       layer) also  works with selectable area.
+
+	       Note! ltdc layer is a layer referenced by the ltdc interface. dma2d layer
+	       is a layer referenced by the dma2d interface.
+
+	       One of the most important questions for me was, How can i flexible use an
+	       ltdc layer with the dma2d interface, e.g. as source layer for dma2d
+	       operations?
+	       Get the layer id of the related dma2d layer by a special flag when using
+	       getlid() function of the ltdc interface and use the layer id to reference
+	       the specific dma2d layer by the dma2d interface.
+
+	       The ltdc coupled dma2d layers are predefined and can't be dynamically
+	       allocated of freed. They use the same frame buffer memory and the same
+	       color lookup table.
+
+	     Changes:
+	     - layer internal format of the clut table
+	     - interrupt handling for register reload (vertical vblank) instead using
+	       waiting loop
+	     - small fixes and refactoring
+	  From Marco Krahl (2015-04-16).
+	* Add support for the new DMA2D features to the STM32F429i-Disco LTDC
+	  configuration.  From Marco Krahl (2015-04-16).
+	* stdlib.h:  MAX_RAND should be RAND_MAX (2015-04-16).
+	* STM32F429i Disco: (1) Fix a bad return value if the LCD driver is already
+	  initialized. (2) The LCD driver initialization is now performed during the
+	  early boot sequence.  (3) Increased the size of the message queue from 32
+	  to 64 in the lcd configuration.  From Marco, ocram.lhark@yahoo.com
+	  (2015-04-17).
+	* STM23 RTC: Fix an error introduced into stm32_pwr_enablebkp().  That
+	  function must preserve the previous state of backup domain access on
+	  return (2015-04-19).
+	* include/nuttx/usb/hub.h: Add USB hub header file from Kaushal Parikh
+	  (2015-04-18).
+	* arch/arm/src/stm32/stm32_rtcounter.c: Now need to enable backup
+	  domain write access when setting the time.  From Darcy Gong (2015-04-19).

@@ -37,12 +37,31 @@ ifeq ($(CONFIG_NET_ICMPv6),y)
 
 # ICMPv6 source files
 
-NET_CSRCS += icmpv6_input.c
+NET_CSRCS += icmpv6_input.c icmpv6_solicit.c icmpv6_advertise.c
 
 ifeq ($(CONFIG_NET_ICMPv6_PING),y)
-NET_CSRCS += icmpv6_ping.c icmpv6_poll.c icmpv6_send.c
+NET_CSRCS += icmpv6_ping.c
 endif
 
+ifeq ($(CONFIG_NET_ICMPv6_NEIGHBOR),y)
+NET_CSRCS += icmpv6_neighbor.c icmpv6_notify.c
+endif
+
+ifeq ($(CONFIG_NET_ICMPv6_PING),y)
+NET_CSRCS += icmpv6_poll.c
+else
+ifeq ($(CONFIG_NET_ICMPv6_NEIGHBOR),y)
+NET_CSRCS += icmpv6_poll.c
+endif
+endif
+
+ifeq ($(CONFIG_NET_ICMPv6_AUTOCONF),y)
+NET_CSRCS += icmpv6_autoconfig.c icmpv6_rsolicit.c icmpv6_rnotify.c
+endif
+
+ifeq ($(CONFIG_NET_ICMPv6_ROUTER),y)
+NET_CSRCS += icmpv6_radvertise.c
+endif
 # Include ICMPv6 build support
 
 DEPPATH += --dep-path icmpv6

@@ -909,10 +909,14 @@ examples/nx
       function with a prototype like:
 
       #ifdef CONFIG_NX_LCDDRIVER
-      FAR struct lcd_dev_s *up_nxdrvinit(unsigned int devno);
+      FAR struct lcd_dev_s *board_graphics_setup(unsigned int devno);
       #else
-      FAR struct fb_vtable_s *up_nxdrvinit(unsigned int devno);
+      FAR struct fb_vtable_s *board_graphics_setup(unsigned int devno);
       #endif
+
+      and must also define: CONFIG_LIB_BOARDCTL=y and
+      CONFIG_BOARDCTL_GRAPHICS=y so that the boardctl() interface
+      will be available in order to access this function.
 
   This test can be performed with either the single-user version of
   NX or with the multiple user version of NX selected with CONFIG_NX_MULTIUSER.
@@ -982,10 +986,14 @@ examples/nxterm
       function with a prototype like:
 
       #ifdef CONFIG_NX_LCDDRIVER
-      FAR struct lcd_dev_s *up_nxdrvinit(unsigned int devno);
+      FAR struct lcd_dev_s *board_graphics_setup(unsigned int devno);
       #else
-      FAR struct fb_vtable_s *up_nxdrvinit(unsigned int devno);
+      FAR struct fb_vtable_s *board_graphics_setup(unsigned int devno);
       #endif
+
+      and must also define: CONFIG_LIB_BOARDCTL=y and
+      CONFIG_BOARDCTL_GRAPHICS=y so that the boardctl() interface
+      will be available in order to access this function.
 
     CONFIG_EXAMPLES_NXCON_MINOR -- The NX console device minor number.
       Default is 0 corresponding to /dev/nxterm0
@@ -1054,10 +1062,14 @@ examplex/nxhello
       function with a prototype like:
 
       #ifdef CONFIG_NX_LCDDRIVER
-      FAR struct lcd_dev_s *up_nxdrvinit(unsigned int devno);
+      FAR struct lcd_dev_s *board_graphics_setup(unsigned int devno);
       #else
-      FAR struct fb_vtable_s *up_nxdrvinit(unsigned int devno);
+      FAR struct fb_vtable_s *board_graphics_setup(unsigned int devno);
       #endif
+
+      and must also define: CONFIG_LIB_BOARDCTL=y and
+      CONFIG_BOARDCTL_GRAPHICS=y so that the boardctl() interface
+      will be available in order to access this function.
 
 examples/nximage
 ^^^^^^^^^^^^^^^^
@@ -1090,10 +1102,14 @@ examples/nximage
       function with a prototype like:
 
       #ifdef CONFIG_NX_LCDDRIVER
-      FAR struct lcd_dev_s *up_nxdrvinit(unsigned int devno);
+      FAR struct lcd_dev_s *board_graphics_setup(unsigned int devno);
       #else
-      FAR struct fb_vtable_s *up_nxdrvinit(unsigned int devno);
+      FAR struct fb_vtable_s *board_graphics_setup(unsigned int devno);
       #endif
+
+      and must also define: CONFIG_LIB_BOARDCTL=y and
+      CONFIG_BOARDCTL_GRAPHICS=y so that the boardctl() interface
+      will be available in order to access this function.
 
     How was that run-length encoded image produced?
 
@@ -1148,10 +1164,14 @@ examplex/nxlines
       function with a prototype like:
 
       #ifdef CONFIG_NX_LCDDRIVER
-      FAR struct lcd_dev_s *up_nxdrvinit(unsigned int devno);
+      FAR struct lcd_dev_s *board_graphics_setup(unsigned int devno);
       #else
-      FAR struct fb_vtable_s *up_nxdrvinit(unsigned int devno);
+      FAR struct fb_vtable_s *board_graphics_setup(unsigned int devno);
       #endif
+
+      and must also define: CONFIG_LIB_BOARDCTL=y and
+      CONFIG_BOARDCTL_GRAPHICS=y so that the boardctl() interface
+      will be available in order to access this function.
 
     CONFIG_NSH_BUILTIN_APPS - Build the NX lines examples as an NSH built-in
       function.
@@ -1203,10 +1223,14 @@ examples/nxtext
       function with a prototype like:
 
       #ifdef CONFIG_NX_LCDDRIVER
-      FAR struct lcd_dev_s *up_nxdrvinit(unsigned int devno);
+      FAR struct lcd_dev_s *board_graphics_setup(unsigned int devno);
       #else
-      FAR struct fb_vtable_s *up_nxdrvinit(unsigned int devno);
+      FAR struct fb_vtable_s *board_graphics_setup(unsigned int devno);
       #endif
+
+      and must also define: CONFIG_LIB_BOARDCTL=y and
+      CONFIG_BOARDCTL_GRAPHICS=y so that the boardctl() interface
+      will be available in order to access this function.
 
     CONFIG_EXAMPLES_NXTEXT_BMCACHE - The maximum number of characters that
       can be put in the background window.  Default is 128.
@@ -1753,7 +1777,7 @@ examples/tiff
 examples/timer
 ^^^^^^^^^^^^^^
 
-  This is a simple test of the timer driver (see include/nuttx/timer.h).
+  This is a simple test of the timer driver (see include/nuttx/timers/timer.h).
 
   Dependencies:
     CONFIG_TIMER - The timer driver must be selected
@@ -1809,12 +1833,13 @@ examples/touchscreen
 
     CONFIG_EXAMPLES_TOUCHSREEN=y
 
-  The board-specific logic must provide the following interfaces that will
-  be called by the example in order to initialize and uninitialize the
-  touchscreen hardware:
+  This example code will call boardctl() to setup the touchscreen driver
+  for texting.  The implementation of boardctl() will require that board-
+  specific logic  provide the following interfaces that will be called by
+  the boardctl() in order to initialize and uninitialize the touchscreen hardware:
 
-    int arch_tcinitialize(int minor);
-    int arch_tcuninitialize(void);
+    int board_tsc_setup(int minor);
+    void board_tsc_teardown(void);
 
 examples/udp
 ^^^^^^^^^^^^
@@ -1975,6 +2000,34 @@ examples/usbterm
   Other relevant configuration options:  CONFIG_CDCACM selected by the
   Prolifics emulation (not defined) and the CDC serial implementation
   (when defined). CONFIG_USBDEV_TRACE_INITIALIDSET.
+
+examples/ustream
+^^^^^^^^^^^^^^^^
+
+  This is the same test as examples/udp and similar to examples/ustream,
+  but using Unix domain datagram sockets.
+
+  Dependencies:
+    CONFIG_NET_LOCAL - Depends on support for Unix domain sockets
+
+  Configuration:
+    CONFIG_EXAMPLES_UDGRAM - Enables the Unix domain socket example.
+    CONFIG_EXAMPLES_UDGRAM_ADDR - Specifics the Unix domain address.
+      Default "/dev/fifo".
+
+examples/ustream
+^^^^^^^^^^^^^^^^
+
+  This is the same test as examples/udp and similar to examples/udgram,
+  but using Unix domain stream sockets.
+
+  Dependencies:
+    CONFIG_NET_LOCAL - Depends on support for Unix domain sockets
+
+  Configuration:
+    CONFIG_EXAMPLES_USTREAM - Enables the Unix domain socket example.
+    CONFIG_EXAMPLES_USTREAM_ADDR - Specifics the Unix domain address.
+      Default "/dev/fifo".
 
 examples/watchdog
 ^^^^^^^^^^^^^^^^^

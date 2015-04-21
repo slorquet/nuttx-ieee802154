@@ -91,14 +91,12 @@ void icmp_poll(FAR struct net_driver_s *dev)
   /* Setup for the application callback */
 
   dev->d_appdata = &dev->d_buf[NET_LL_HDRLEN(dev) + IPICMP_HDRLEN];
-  dev->d_snddata = &dev->d_buf[NET_LL_HDRLEN(dev) + IPICMP_HDRLEN];
-
   dev->d_len     = 0;
   dev->d_sndlen  = 0;
 
   /* Perform the application callback */
 
-  (void)devif_callback_execute(dev, NULL, ICMP_POLL, g_echocallback);
+  (void)devif_callback_execute(dev, NULL, ICMP_POLL, g_icmp_echocallback);
 }
 
 #endif /* CONFIG_NET && CONFIG_NET_ICMP && CONFIG_NET_ICMP_PING */

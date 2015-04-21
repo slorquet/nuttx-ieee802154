@@ -82,14 +82,12 @@ int arp_poll(FAR struct net_driver_s *dev, devif_poll_callback_t callback)
   /* Setup for the ARP callback (most of these do not apply) */
 
   dev->d_appdata = NULL;
-  dev->d_snddata = NULL;
-
   dev->d_len     = 0;
   dev->d_sndlen  = 0;
 
   /* Perform the ARP callbacks */
 
-  (void)devif_callback_execute(dev, &g_arp_conn, PKT_POLL, g_arp_conn.list);
+  (void)devif_callback_execute(dev, &g_arp_conn, ARP_POLL, g_arp_conn.list);
 
   /* Call back into the driver */
 

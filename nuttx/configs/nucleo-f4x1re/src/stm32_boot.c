@@ -1,7 +1,7 @@
 /************************************************************************************
  * configs/nucleo-f4x1re/src/stm32_boot.c
  *
- *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2014-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *           Librae <librae8226@gmail.com>
  *
@@ -43,6 +43,7 @@
 #include <debug.h>
 
 #include <nuttx/arch.h>
+#include <nuttx/board.h>
 #include <nuttx/spi/spi.h>
 
 #include <arch/board/board.h>
@@ -120,7 +121,7 @@ void board_initialize(void)
    */
 
 #if defined(CONFIG_NSH_LIBRARY) && !defined(CONFIG_NSH_ARCHINIT)
-  nsh_archinitialize();
+  board_app_initialize();
 #endif
 
   /* CC3000 wireless initialization */

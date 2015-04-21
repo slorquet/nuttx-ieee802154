@@ -38,8 +38,9 @@
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#if defined(CONFIG_NET) && defined(CONFIG_NET_ICMPv6) && defined(CONFIG_NET_ICMPv6_PING)
+#if defined(CONFIG_NET_ICMPv6_PING) || defined(CONFIG_NET_ICMPv6_NEIGHBOR)
 
+#include <semaphore.h>
 #include <debug.h>
 
 #include <nuttx/net/netconfig.h>
@@ -91,14 +92,12 @@ void icmpv6_poll(FAR struct net_driver_s *dev)
   /* Setup for the application callback */
 
   dev->d_appdata = &dev->d_buf[NET_LL_HDRLEN(dev) + IPICMPv6_HDRLEN];
-  dev->d_snddata = &dev->d_buf[NET_LL_HDRLEN(dev) + IPICMPv6_HDRLEN];
-
   dev->d_len     = 0;
   dev->d_sndlen  = 0;
 
   /* Perform the application callback */
 
-  (void)devif_callback_execute(dev, NULL, ICMPv6_POLL, g_echocallback);
+  (void)devif_callback_execute(dev, NULL, ICMPv6_POLL, g_icmpv6_conn.list);
 }
 
-#endif /* CONFIG_NET && CONFIG_NET_ICMPv6 && CONFIG_NET_ICMPv6_PING */
+#endif /* CONFIG_NET_ICMPv6_PING || CONFIG_NET_ICMPv6_NEIGHBOR */

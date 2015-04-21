@@ -44,6 +44,7 @@
 #include <nuttx/arch.h>
 #include <nuttx/fs/fs.h>
 #include <nuttx/syslog/ramlog.h>
+#include <nuttx/syslog/syslog_console.h>
 
 #include <arch/board/board.h>
 
@@ -141,7 +142,7 @@ static void up_calibratedelay(void)
  *
  ****************************************************************************/
 
-#if defined(CONFIG_DEBUG_STACK) && CONFIG_ARCH_INTERRUPTSTACK > 3
+#if defined(CONFIG_STACK_COLORATION) && CONFIG_ARCH_INTERRUPTSTACK > 3
 static inline void up_color_intstack(void)
 {
   uint8_t *ptr = (uint8_t *)&g_intstackalloc;
@@ -246,6 +247,8 @@ void up_initialize(void)
 
 #if defined(CONFIG_DEV_LOWCONSOLE)
   lowconsole_init();
+#elif defined(CONFIG_SYSLOG_CONSOLE)
+  syslog_console_init();
 #elif defined(CONFIG_RAMLOG_CONSOLE)
   ramlog_consoleinit();
 #endif

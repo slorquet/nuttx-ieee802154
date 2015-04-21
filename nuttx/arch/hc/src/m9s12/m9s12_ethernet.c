@@ -1,7 +1,7 @@
 /****************************************************************************
  * drivers/net/m9s12_ethernet.c
  *
- *   Copyright (C) 2011, 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2011, 2014-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -55,8 +55,12 @@
 #include <nuttx/net/arp.h>
 #include <nuttx/net/netdev.h>
 
+#ifdef CONFIG_NET_PKT
+#  include <nuttx/net/pkt.h>
+#endif
+
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /* CONFIG_HCS12_NINTERFACES determines the number of physical interfaces
@@ -212,7 +216,30 @@ static int emac_txpoll(struct net_driver_s *dev)
 
   if (priv->d_dev.d_len > 0)
     {
-      arp_out(&priv->d_dev);
+      /* Look up the destination MAC address and add it to the Ethernet
+       * header.
+       */
+
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+      if (IFF_IS_IPv4(priv->d_dev.d_flags))
+#endif
+        {
+          arp_out(&priv->d_dev);
+        }
+#endif /* CONFIG_NET_IPv4 */
+
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+      else
+#endif
+        {
+          neighbor_out(&priv->d_dev);
+        }
+#endif /* CONFIG_NET_IPv6 */
+
+      /* Send the packet */
+
       emac_transmit(priv);
 
       /* Check if there is room in the device to hold another packet. If not,
@@ -256,16 +283,62 @@ static void emac_receive(FAR struct emac_driver_s *priv)
        * amount of data in priv->d_dev.d_len
        */
 
+#ifdef CONFIG_NET_PKT
+      /* When packet sockets are enabled, feed the frame into the packet tap */
+
+      pkt_input(&priv->d_dev);
+#endif
+
       /* We only accept IP packets of the configured type and ARP packets */
 
+#ifdef CONFIG_NET_IPv4
+      if (BUF->type == HTONS(ETHTYPE_IP))
+        {
+          nllvdbg("IPv4 frame\n");
+
+          /* Handle ARP on input then give the IPv4 packet to the network
+           * layer
+           */
+
+          arp_ipin(&priv->d_dev);
+          ipv4_input(&priv->d_dev);
+
+          /* If the above function invocation resulted in data that should be
+           * sent out on the network, the field  d_len will set to a value > 0.
+           */
+
+          if (priv->d_dev.d_len > 0)
+            {
+              /* Update the Ethernet header with the correct MAC address */
+
+#ifdef CONFIG_NET_IPv6
+              if (IFF_IS_IPv4(priv->d_dev.d_flags))
+#endif
+                {
+                  arp_out(&priv->d_dev);
+                }
+#ifdef CONFIG_NET_IPv6
+              else
+                {
+                  neighbor_out(&priv->d_dev);
+                }
+#endif
+
+              /* And send the packet */
+
+              emac_transmit(priv);
+            }
+        }
+      else
+#endif
 #ifdef CONFIG_NET_IPv6
       if (BUF->type == HTONS(ETHTYPE_IP6))
-#else
-      if (BUF->type == HTONS(ETHTYPE_IP))
-#endif
         {
-          arp_ipin(&priv->d_dev);
-          devif_input(&priv->d_dev);
+          nllvdbg("Iv6 frame\n");
+
+          /* Give the IPv6 packet to the network layer */
+
+          ipv6_input(&priv->d_dev);
 
           /* If the above function invocation resulted in data that should be
            * sent out on the network, the field  d_len will set to a value > 0.
@@ -273,11 +346,30 @@ static void emac_receive(FAR struct emac_driver_s *priv)
 
           if (priv->d_dev.d_len > 0)
            {
-             arp_out(&priv->d_dev);
-             emac_transmit(priv);
-           }
+              /* Update the Ethernet header with the correct MAC address */
+
+#ifdef CONFIG_NET_IPv4
+              if (IFF_IS_IPv4(priv->d_dev.d_flags))
+                {
+                  arp_out(&priv->d_dev);
+                }
+              else
+#endif
+#ifdef CONFIG_NET_IPv6
+                {
+                  neighbor_out(&priv->d_dev);
+                }
+#endif
+
+              /* And send the packet */
+
+              emac_transmit(priv);
+            }
         }
-      else if (BUF->type == htons(ETHTYPE_ARP))
+      else
+#endif
+#ifdef CONFIG_NET_ARP
+      if (BUF->type == htons(ETHTYPE_ARP))
         {
           arp_arpin(&priv->d_dev);
 
@@ -290,6 +382,7 @@ static void emac_receive(FAR struct emac_driver_s *priv)
               emac_transmit(priv);
             }
         }
+#endif
     }
   while (true); /* While there are more packets to be processed */
 }

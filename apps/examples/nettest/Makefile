@@ -121,15 +121,19 @@ $(TARG_COBJS) $(TARG_MAINOBJ): %$(OBJEXT): %.c
 
 $(HOST_OBJS): %$(HOSTOBJEXT): %.c
 	@echo "CC:  $<"
-	@$(HOSTCC) -c $(HOSTCFLAGS) $< -o $@
+	$(Q) $(HOSTCC) -c $(HOSTCFLAGS) $< -o $@
 
-$(HOST_BIN): $(HOST_OBJS)
+config.h: $(TOPDIR)/include/nuttx/config.h
+	@echo "CP:  $<"
+	$(Q) cp $< $@
+
+$(HOST_BIN): config.h $(HOST_OBJS)
 	@echo "LD:  $@"
-	@$(HOSTCC) $(HOSTLDFLAGS) $(HOST_OBJS) -o $@
+	$(Q) $(HOSTCC) $(HOSTLDFLAGS) $(HOST_OBJS) -o $@
 
-.built: $(TARG_OBJS)
+.built: config.h $(TARG_OBJS)
 	$(call ARCHIVE, $(TARG_BIN), $(TARG_OBJS))
-	@touch .built
+	$(Q) touch .built
 
 ifeq ($(CONFIG_BUILD_KERNEL),y)
 $(BIN_DIR)$(DELIM)$(PROGNAME): $(OBJS) $(TARG_MAINOBJ)
@@ -153,7 +157,7 @@ else
 context:
 endif
 
-.depend: Makefile $(TARG_SRCS)
+.depend: Makefile config.h $(TARG_SRCS)
 	@$(MKDEP) $(ROOTDEPPATH) "$(CC)" -- $(CFLAGS) -- $(TARG_SRCS) >Make.dep
 	@touch $@
 
@@ -164,6 +168,7 @@ clean:
 	$(call DELFILE, $(HOST_BIN))
 	$(call DELFILE, .built)
 	$(call DELFILE, *.dSYM)
+	$(call DELFILE, config.h)
 	$(call CLEAN)
 
 distclean: clean

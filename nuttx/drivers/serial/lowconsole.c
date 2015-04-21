@@ -47,7 +47,7 @@
 #include <nuttx/fs/fs.h>
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /* The architecture must provide up_putc for this driver */
@@ -115,6 +115,7 @@ static ssize_t lowconsole_write(struct file *filep, const char *buffer, size_t b
     {
       up_putc(*buffer++);
     }
+
   return ret;
 }
 

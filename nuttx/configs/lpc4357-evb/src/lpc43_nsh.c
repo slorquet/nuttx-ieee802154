@@ -43,6 +43,8 @@
 #include <debug.h>
 #include <errno.h>
 
+#include <nuttx/board.h>
+
 #include "chip.h"
 
 #ifdef CONFIG_LPC43_SPIFI
@@ -56,7 +58,7 @@
 #endif
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 /* Configuration ************************************************************/
 
@@ -132,14 +134,14 @@ static int nsh_spifi_initialize(void)
  ****************************************************************************/
 
 /****************************************************************************
- * Name: nsh_archinitialize
+ * Name: board_app_initialize
  *
  * Description:
  *   Perform architecture specific initialization
  *
  ****************************************************************************/
 
-int nsh_archinitialize(void)
+int board_app_initialize(void)
 {
   /* Initialize the SPIFI block device */
 

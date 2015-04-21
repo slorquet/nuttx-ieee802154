@@ -1,7 +1,7 @@
 /****************************************************************************
  * examples/nxterm/nxterm_server.c
  *
- *   Copyright (C) 2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2012, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,6 +39,7 @@
 
 #include <nuttx/config.h>
 
+#include <sys/boardctl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -47,6 +48,7 @@
 #include <debug.h>
 
 #include <nuttx/arch.h>
+#include <nuttx/board.h>
 #include <nuttx/nx/nx.h>
 
 #ifdef CONFIG_NX_LCDDRIVER
@@ -58,7 +60,7 @@
 #include "nxterm_internal.h"
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /****************************************************************************
@@ -87,33 +89,44 @@ int nxterm_server(int argc, char *argv[])
   int ret;
 
 #if defined(CONFIG_EXAMPLES_NXCON_EXTERNINIT)
+  struct boardioc_graphics_s devinfo;
+  int ret;
+
   /* Use external graphics driver initialization */
 
   printf("nxterm_server: Initializing external graphics device\n");
-  dev = up_nxdrvinit(CONFIG_EXAMPLES_NXCON_DEVNO);
-  if (!dev)
+
+  devinfo.devno = CONFIG_EXAMPLES_NXCON_DEVNO;
+  devinfo.dev = NULL;
+
+  ret = boardctl(BOARDIOC_GRAPHICS_SETUP, (uintptr_t)&devinfo);
+  if (ret < 0)
     {
-      printf("nxterm_server: up_nxdrvinit failed, devno=%d\n", CONFIG_EXAMPLES_NXCON_DEVNO);
+      printf("nxterm_server: boardctl failed, devno=%d: %d\n",
+             CONFIG_EXAMPLES_NXCON_DEVNO, errno);
       return ERROR;
     }
+
+  dev = devinfo.dev;
 
 #elif defined(CONFIG_NX_LCDDRIVER)
   /* Initialize the LCD device */
 
   printf("nxterm_server: Initializing LCD\n");
-  ret = up_lcdinitialize();
+  ret = board_lcd_initialize();
   if (ret < 0)
     {
-      printf("nxterm_server: up_lcdinitialize failed: %d\n", -ret);
+      printf("nxterm_server: board_lcd_initialize failed: %d\n", -ret);
       return 1;
     }
 
   /* Get the device instance */
 
-  dev = up_lcdgetdev(CONFIG_EXAMPLES_NXCON_DEVNO);
+  dev = board_lcd_getdev(CONFIG_EXAMPLES_NXCON_DEVNO);
   if (!dev)
     {
-      printf("nxterm_server: up_lcdgetdev failed, devno=%d\n", CONFIG_EXAMPLES_NXCON_DEVNO);
+      printf("nxterm_server: board_lcd_getdev failed, devno=%d\n",
+             CONFIG_EXAMPLES_NXCON_DEVNO);
       return 2;
     }
 

@@ -1,7 +1,7 @@
 /************************************************************************************
  * configs/sam4s-xplained-pro/src/sam_boot.c
  *
- *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2014-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,13 +40,15 @@
 #include <nuttx/config.h>
 
 #include <debug.h>
-#include <nuttx/watchdog.h>
 
+#include <nuttx/board.h>
+#include <nuttx/timers/watchdog.h>
 #include <arch/board/board.h>
+
 #include "sam4s-xplained-pro.h"
 
 /************************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ************************************************************************************/
 
 /************************************************************************************

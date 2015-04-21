@@ -1,7 +1,7 @@
 /****************************************************************************
  * net/netdev/netdev_ioctl.c
  *
- *   Copyright (C) 2007-2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2007-2012, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -66,21 +66,165 @@
 #include "socket/socket.h"
 #include "netdev/netdev.h"
 #include "igmp/igmp.h"
+#include "icmpv6/icmpv6.h"
 #include "route/route.h"
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 
+/* This is really kind of bogus.. When asked for an IP address, this is
+ * family that is returned in the ifr structure.  Probably could just skip
+ * this since the address family has nothing to do with the Ethernet address.
+ */
+
 #ifdef CONFIG_NET_IPv6
-# define AF_INETX AF_INET6
+#  define AF_INETX AF_INET6
 #else
-# define AF_INETX AF_INET
+#  define AF_INETX AF_INET
 #endif
 
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
+
+/****************************************************************************
+ * Name: ioctl_addipv4route
+ *
+ * Description:
+ *   Add an IPv4 route to the routing table.
+ *
+ * Input Parameters:
+ *   rentry - Describes the route to be added
+ *
+ ****************************************************************************/
+
+#if defined(CONFIG_NET_ROUTE) && defined(CONFIG_NET_IPv4)
+static int ioctl_addipv4route(FAR struct rtentry *rtentry)
+{
+  FAR struct sockaddr_in *addr;
+  in_addr_t target;
+  in_addr_t netmask;
+  in_addr_t router;
+
+  addr    = (FAR struct sockaddr_in *)rtentry->rt_target;
+  target  = (in_addr_t)addr->sin_addr.s_addr;
+
+  addr    = (FAR struct sockaddr_in *)rtentry->rt_netmask;
+  netmask = (in_addr_t)addr->sin_addr.s_addr;
+
+  /* The router is an optional argument */
+
+  if (rtentry->rt_router)
+    {
+      addr   = (FAR struct sockaddr_in *)rtentry->rt_router;
+      router = (in_addr_t)addr->sin_addr.s_addr;
+    }
+  else
+    {
+      router = 0;
+    }
+
+  return net_addroute(target, netmask, router);
+}
+#endif /* CONFIG_NET_ROUTE && CONFIG_NET_IPv4 */
+
+/****************************************************************************
+ * Name: ioctl_addipv6route
+ *
+ * Description:
+ *   Add an IPv6 route to the routing table.
+ *
+ * Input Parameters:
+ *   rentry - Describes the route to be added
+ *
+ ****************************************************************************/
+
+#if defined(CONFIG_NET_ROUTE) && defined(CONFIG_NET_IPv6)
+static int ioctl_addipv6route(FAR struct rtentry *rtentry)
+{
+  FAR struct sockaddr_in6 *addr;
+  net_ipv6addr_t target;
+  net_ipv6addr_t netmask;
+  net_ipv6addr_t router;
+
+  addr    = (FAR struct sockaddr_in6 *)rtentry->rt_target;
+  target  = (net_ipv6addr_t)addr->sin6_addr.u6_addr16;
+
+  addr    = (FAR struct sockaddr_in6 *)rtentry->rt_netmask;
+  netmask = (net_ipv6addr_t)addr->sin6_addr.u6_addr16;
+
+  /* The router is an optional argument */
+
+  if (rtentry->rt_router)
+    {
+      addr   = (FAR struct sockaddr_in6 *)rtentry->rt_router;
+      router = (net_ipv6addr_t)addr->sin6_addr.u6_addr16;
+    }
+  else
+    {
+      router = NULL;
+    }
+
+  return net_addroute(target, netmask, router);
+}
+#endif /* CONFIG_NET_ROUTE && CONFIG_NET_IPv6 */
+
+/****************************************************************************
+ * Name: ioctl_delipv4route
+ *
+ * Description:
+ *   Delete an IPv4 route to the routing table.
+ *
+ * Input Parameters:
+ *   rentry - Describes the route to be deleted
+ *
+ ****************************************************************************/
+
+#if defined(CONFIG_NET_ROUTE) && defined(CONFIG_NET_IPv4)
+static int ioctl_delipv4route(FAR struct rtentry *rtentry)
+{
+  FAR struct sockaddr_in *addr;
+  in_addr_t target;
+  in_addr_t netmask;
+
+  addr    = (FAR struct sockaddr_in *)rtentry->rt_target;
+  target  = (in_addr_t)addr->sin_addr.s_addr;
+
+  addr    = (FAR struct sockaddr_in *)rtentry->rt_netmask;
+  netmask = (in_addr_t)addr->sin_addr.s_addr;
+
+  return net_delroute(target, netmask);
+}
+#endif /* CONFIG_NET_ROUTE && CONFIG_NET_IPv4 */
+
+/****************************************************************************
+ * Name: ioctl_delipv6route
+ *
+ * Description:
+ *   Delete an IPv6 route to the routing table.
+ *
+ * Input Parameters:
+ *   rentry - Describes the route to be deleted
+ *
+ ****************************************************************************/
+
+#if defined(CONFIG_NET_ROUTE) && defined(CONFIG_NET_IPv6)
+static int ioctl_delipv6route(FAR struct rtentry *rtentry)
+{
+  FAR struct sockaddr_in6 *addr;
+  net_ipv6addr_t target;
+  net_ipv6addr_t netmask;
+
+  addr    = (FAR struct sockaddr_in6 *)rtentry->rt_target;
+  target  = (net_ipv6addr_t)addr->sin6_addr.u6_addr16;
+
+  addr    = (FAR struct sockaddr_in6 *)rtentry->rt_netmask;
+  netmask = (net_ipv6addr_t)addr->sin6_addr.u6_addr16;
+
+  return net_delroute(target, netmask);
+}
+#endif /* CONFIG_NET_ROUTE && CONFIG_NET_IPv6 */
 
 /****************************************************************************
  * Name: ioctl_getipv4addr
@@ -90,18 +234,17 @@
  *
  * Input Parameters:
  *   outaddr - Pointer to the user-provided memory to receive the address.
- *   inaddr - The source IP adress in the device structure.
+ *   inaddr - The source IP address in the device structure.
  *
  ****************************************************************************/
 
 #ifdef CONFIG_NET_IPv4
-static void ioctl_getipv4addr(FAR struct sockaddr *outaddr,
-                              FAR const net_ipaddr_t *inaddr)
+static void ioctl_getipv4addr(FAR struct sockaddr *outaddr, in_addr_t inaddr)
 {
   FAR struct sockaddr_in *dest  = (FAR struct sockaddr_in *)outaddr;
   dest->sin_family              = AF_INET;
   dest->sin_port                = 0;
-  dest->sin_addr.s_addr         = *inaddr;
+  dest->sin_addr.s_addr         = inaddr;
 }
 #endif
 
@@ -119,11 +262,11 @@ static void ioctl_getipv4addr(FAR struct sockaddr *outaddr,
 
 #ifdef CONFIG_NET_IPv6
 static void ioctl_getipv6addr(FAR struct sockaddr_storage *outaddr,
-                              FAR const net_ipaddr_t *inaddr)
+                              FAR const net_ipv6addr_t inaddr)
 {
   FAR struct sockaddr_in6 *dest = (FAR struct sockaddr_in6 *)outaddr;
-  dest->sin_family              = AF_INET6;
-  dest->sin_port                = 0;
+  dest->sin6_family             = AF_INET6;
+  dest->sin6_port               = 0;
   memcpy(dest->sin6_addr.in6_u.u6_addr8, inaddr, 16);
 }
 #endif
@@ -142,7 +285,7 @@ static void ioctl_getipv6addr(FAR struct sockaddr_storage *outaddr,
  ****************************************************************************/
 
 #ifdef CONFIG_NET_IPv4
-static void ioctl_setipv4addr(FAR net_ipaddr_t *outaddr,
+static void ioctl_setipv4addr(FAR in_addr_t *outaddr,
                               FAR const struct sockaddr *inaddr)
 {
   FAR const struct sockaddr_in *src = (FAR const struct sockaddr_in *)inaddr;
@@ -164,65 +307,13 @@ static void ioctl_setipv4addr(FAR net_ipaddr_t *outaddr,
  ****************************************************************************/
 
 #ifdef CONFIG_NET_IPv6
-static void ioctl_setipv6addr(FAR net_ipaddr_t *outaddr,
+static void ioctl_setipv6addr(FAR net_ipv6addr_t outaddr,
                               FAR const struct sockaddr_storage *inaddr)
 {
   FAR const struct sockaddr_in6 *src = (FAR const struct sockaddr_in6 *)inaddr;
   memcpy(outaddr, src->sin6_addr.in6_u.u6_addr8, 16);
 }
 #endif
-
-/****************************************************************************
- * Name: ioctl_ifup / ioctl_ifdown
- *
- * Description:
- *   Bring the interface up/down
- *
- ****************************************************************************/
-
-static void ioctl_ifup(FAR struct net_driver_s *dev)
-{
-  /* Make sure that the device supports the d_ifup() method */
-
-  if (dev->d_ifup)
-    {
-      /* Is the interface already up? */
-
-      if ((dev->d_flags & IFF_UP) == 0)
-        {
-          /* No, bring the interface up now */
-
-          if (dev->d_ifup(dev) == OK)
-            {
-              /* Mark the interface as up */
-
-              dev->d_flags |= IFF_UP;
-            }
-        }
-    }
-}
-
-static void ioctl_ifdown(FAR struct net_driver_s *dev)
-{
-  /* Make sure that the device supports the d_ifdown() method */
-
-  if (dev->d_ifdown)
-    {
-      /* Is the interface already down? */
-
-      if ((dev->d_flags & IFF_UP) != 0)
-        {
-          /* No, take the interface down now */
-
-          if (dev->d_ifdown(dev) == OK)
-            {
-              /* Mark the interface as down */
-
-              dev->d_flags &= ~IFF_UP;
-            }
-        }
-    }
-}
 
 /****************************************************************************
  * Name: netdev_ifrdev
@@ -288,7 +379,7 @@ static int netdev_ifrioctl(FAR struct socket *psock, int cmd,
           dev = netdev_ifrdev(req);
           if (dev)
             {
-              ioctl_getipv4addr(&req->ifr_addr, &dev->d_ipaddr);
+              ioctl_getipv4addr(&req->ifr_addr, dev->d_ipaddr);
               ret = OK;
             }
         }
@@ -302,9 +393,9 @@ static int netdev_ifrioctl(FAR struct socket *psock, int cmd,
           dev = netdev_ifrdev(req);
           if (dev)
             {
-              ioctl_ifdown(dev);
+              netdev_ifdown(dev);
               ioctl_setipv4addr(&dev->d_ipaddr, &req->ifr_addr);
-              ioctl_ifup(dev);
+              netdev_ifup(dev);
               ret = OK;
             }
         }
@@ -317,7 +408,7 @@ static int netdev_ifrioctl(FAR struct socket *psock, int cmd,
           dev = netdev_ifrdev(req);
           if (dev)
             {
-              ioctl_getipv4addr(&req->ifr_dstaddr, &dev->d_draddr);
+              ioctl_getipv4addr(&req->ifr_dstaddr, dev->d_draddr);
               ret = OK;
             }
         }
@@ -352,7 +443,7 @@ static int netdev_ifrioctl(FAR struct socket *psock, int cmd,
           dev = netdev_ifrdev(req);
           if (dev)
             {
-              ioctl_getipv4addr(&req->ifr_addr, &dev->d_netmask);
+              ioctl_getipv4addr(&req->ifr_addr, dev->d_netmask);
               ret = OK;
             }
         }
@@ -380,7 +471,7 @@ static int netdev_ifrioctl(FAR struct socket *psock, int cmd,
             {
               FAR struct lifreq *lreq = (FAR struct lifreq *)req;
 
-              ioctl_getipv6addr(&lreq->lifr_addr, &dev->d_ipaddr);
+              ioctl_getipv6addr(&lreq->lifr_addr, dev->d_ipv6addr);
               ret = OK;
             }
         }
@@ -395,9 +486,9 @@ static int netdev_ifrioctl(FAR struct socket *psock, int cmd,
             {
               FAR struct lifreq *lreq = (FAR struct lifreq *)req;
 
-              ioctl_ifdown(dev);
-              ioctl_setipv6addr(&dev->d_ipaddr, &lreq->lifr_addr);
-              ioctl_ifup(dev);
+              netdev_ifdown(dev);
+              ioctl_setipv6addr(dev->d_ipv6addr, &lreq->lifr_addr);
+              netdev_ifup(dev);
               ret = OK;
             }
         }
@@ -412,7 +503,7 @@ static int netdev_ifrioctl(FAR struct socket *psock, int cmd,
             {
               FAR struct lifreq *lreq = (FAR struct lifreq *)req;
 
-              ioctl_getipv6addr(&lreq->lifr_dstaddr, &dev->d_draddr);
+              ioctl_getipv6addr(&lreq->lifr_dstaddr, dev->d_ipv6draddr);
               ret = OK;
             }
         }
@@ -427,7 +518,7 @@ static int netdev_ifrioctl(FAR struct socket *psock, int cmd,
             {
               FAR struct lifreq *lreq = (FAR struct lifreq *)req;
 
-              ioctl_setipv6addr(&dev->d_draddr, &lreq->lifr_dstaddr);
+              ioctl_setipv6addr(dev->d_ipv6draddr, &lreq->lifr_dstaddr);
               ret = OK;
             }
         }
@@ -444,14 +535,14 @@ static int netdev_ifrioctl(FAR struct socket *psock, int cmd,
 #endif
 
 #ifdef CONFIG_NET_IPv6
-      case SIOCGIFNETMASK:  /* Get network mask */
+      case SIOCGLIFNETMASK:  /* Get network mask */
         {
           dev = netdev_ifrdev(req);
           if (dev)
             {
               FAR struct lifreq *lreq = (FAR struct lifreq *)req;
 
-              ioctl_getipv6addr(&lreq->lifr_addr, &dev->d_netmask);
+              ioctl_getipv6addr(&lreq->lifr_addr, dev->d_ipv6netmask);
               ret = OK;
             }
         }
@@ -465,7 +556,7 @@ static int netdev_ifrioctl(FAR struct socket *psock, int cmd,
           if (dev)
             {
               FAR struct lifreq *lreq = (FAR struct lifreq *)req;
-              ioctl_setipv6addr(&dev->d_netmask, &lreq->lifr_addr);
+              ioctl_setipv6addr(dev->d_ipv6netmask, &lreq->lifr_addr);
               ret = OK;
             }
         }
@@ -484,6 +575,18 @@ static int netdev_ifrioctl(FAR struct socket *psock, int cmd,
         }
         break;
 
+#ifdef CONFIG_NET_ICMPv6_AUTOCONF
+      case SIOCIFAUTOCONF:  /* Perform ICMPv6 auto-configuration */
+        {
+          dev = netdev_ifrdev(req);
+          if (dev)
+            {
+              ret = icmpv6_autoconfig(dev);
+            }
+        }
+        break;
+#endif
+
       case SIOCSIFFLAGS:  /* Sets the interface flags */
         {
           /* Is this a request to bring the interface up? */
@@ -495,7 +598,7 @@ static int netdev_ifrioctl(FAR struct socket *psock, int cmd,
                 {
                   /* Yes.. bring the interface up */
 
-                  ioctl_ifup(dev);
+                  netdev_ifup(dev);
                 }
 
               /* Is this a request to take the interface down? */
@@ -504,7 +607,7 @@ static int netdev_ifrioctl(FAR struct socket *psock, int cmd,
                 {
                   /* Yes.. take the interface down */
 
-                  ioctl_ifdown(dev);
+                  netdev_ifdown(dev);
                 }
             }
 
@@ -545,7 +648,6 @@ static int netdev_ifrioctl(FAR struct socket *psock, int cmd,
           dev = netdev_ifrdev(req);
           if (dev)
             {
-              req->ifr_hwaddr.sa_family = AF_INETX;
               memcpy(dev->d_mac.ether_addr_octet,
                      req->ifr_hwaddr.sa_data, IFHWADDRLEN);
               ret = OK;
@@ -559,8 +661,13 @@ static int netdev_ifrioctl(FAR struct socket *psock, int cmd,
           dev = netdev_ifrdev(req);
           if (dev)
             {
-              ioctl_ifdown(dev);
-              memset(&dev->d_ipaddr, 0, sizeof(net_ipaddr_t));
+              netdev_ifdown(dev);
+#ifdef CONFIG_NET_IPv4
+              dev->d_ipaddr = 0;
+#endif
+#ifdef CONFIG_NET_IPv6
+              memset(&dev->d_ipv6addr, 0, sizeof(net_ipv6addr_t));
+#endif
               ret = OK;
             }
         }
@@ -729,7 +836,7 @@ static int netdev_imsfioctl(FAR struct socket *psock, int cmd,
 static int netdev_rtioctl(FAR struct socket *psock, int cmd,
                           FAR struct rtentry *rtentry)
 {
-  int ret = -EINVAL;
+  int ret = -EAFNOSUPPORT;
 
   /* Execute the command */
 
@@ -737,99 +844,59 @@ static int netdev_rtioctl(FAR struct socket *psock, int cmd,
     {
       case SIOCADDRT:  /* Add an entry to the routing table */
         {
-          if (rtentry)
+          /* The target address and the netmask are required values */
+
+          if (!rtentry || !rtentry->rt_target || !rtentry->rt_netmask)
             {
-              net_ipaddr_t target;
-              net_ipaddr_t netmask;
-              net_ipaddr_t router;
-#ifdef CONFIG_NET_IPv6
-              FAR struct sockaddr_in6 *addr;
-#else
-              FAR struct sockaddr_in *addr;
-#endif
-              /* The target address and the netmask are required value */
-
-              if (!rtentry->rt_target || !rtentry->rt_netmask)
-                {
-                  return -EINVAL;
-                }
-
-#ifdef CONFIG_NET_IPv6
-              addr    = (FAR struct sockaddr_in6 *)rtentry->rt_target;
-              target  = (net_ipaddr_t)addr->sin6_addr.u6_addr16;
-
-              addr    = (FAR struct sockaddr_in6 *)rtentry->rt_netmask;
-              netmask = (net_ipaddr_t)addr->sin6_addr.u6_addr16;
-
-              /* The router is an optional argument */
-
-              if (rtentry->rt_router)
-                {
-                  addr   = (FAR struct sockaddr_in6 *)rtentry->rt_router;
-                  router = (net_ipaddr_t)addr->sin6_addr.u6_addr16;
-                }
-              else
-                {
-                  router = NULL;
-                }
-#else
-              addr    = (FAR struct sockaddr_in *)rtentry->rt_target;
-              target  = (net_ipaddr_t)addr->sin_addr.s_addr;
-
-              addr    = (FAR struct sockaddr_in *)rtentry->rt_netmask;
-              netmask = (net_ipaddr_t)addr->sin_addr.s_addr;
-
-              /* The router is an optional argument */
-
-              if (rtentry->rt_router)
-                {
-                  addr   = (FAR struct sockaddr_in *)rtentry->rt_router;
-                  router = (net_ipaddr_t)addr->sin_addr.s_addr;
-                }
-              else
-                {
-                  router = 0;
-                }
-#endif
-              ret = net_addroute(target, netmask, router);
+              return -EINVAL;
             }
+
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+          if (rtentry->rt_target->ss_family == AF_INET)
+#endif
+            {
+              ret = ioctl_addipv4route(rtentry);
+            }
+#endif /* CONFIG_NET_IPv4 */
+
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+          else
+#endif
+            {
+              ret = ioctl_addipv6route(rtentry);
+            }
+#endif /* CONFIG_NET_IPv6 */
         }
         break;
 
       case SIOCDELRT:  /* Delete an entry from the routing table */
         {
-          if (rtentry)
+          /* The target address and the netmask are required values */
+
+          if (!rtentry || !rtentry->rt_target || !rtentry->rt_netmask)
             {
-              net_ipaddr_t target;
-              net_ipaddr_t netmask;
-#ifdef CONFIG_NET_IPv6
-              FAR struct sockaddr_in6 *addr;
-#else
-              FAR struct sockaddr_in *addr;
-#endif
-
-              /* The target address and the netmask are required value */
-
-              if (!rtentry->rt_target || !rtentry->rt_netmask)
-                {
-                  return -EINVAL;
-                }
-
-#ifdef CONFIG_NET_IPv6
-              addr    = (FAR struct sockaddr_in6 *)rtentry->rt_target;
-              target  = (net_ipaddr_t)addr->sin6_addr.u6_addr16;
-
-              addr    = (FAR struct sockaddr_in6 *)rtentry->rt_netmask;
-              netmask = (net_ipaddr_t)addr->sin6_addr.u6_addr16;
-#else
-              addr    = (FAR struct sockaddr_in *)rtentry->rt_target;
-              target  = (net_ipaddr_t)addr->sin_addr.s_addr;
-
-              addr    = (FAR struct sockaddr_in *)rtentry->rt_netmask;
-              netmask = (net_ipaddr_t)addr->sin_addr.s_addr;
-#endif
-              ret = net_delroute(target, netmask);
+              return -EINVAL;
             }
+
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+          if (rtentry->rt_target->ss_family == AF_INET)
+#endif
+            {
+              ret = ioctl_delipv4route(rtentry);
+            }
+#endif /* CONFIG_NET_IPv4 */
+
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+          else
+#endif
+            {
+              ret = ioctl_delipv6route(rtentry);
+            }
+#endif /* CONFIG_NET_IPv6 */
         }
         break;
 
@@ -843,7 +910,7 @@ static int netdev_rtioctl(FAR struct socket *psock, int cmd,
 #endif
 
 /****************************************************************************
- * Global Functions
+ * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
@@ -930,6 +997,58 @@ int netdev_ioctl(int sockfd, int cmd, unsigned long arg)
 errout:
   errno = -ret;
   return ERROR;
+}
+
+/****************************************************************************
+ * Name: netdev_ifup / netdev_ifdown
+ *
+ * Description:
+ *   Bring the interface up/down
+ *
+ ****************************************************************************/
+
+void netdev_ifup(FAR struct net_driver_s *dev)
+{
+  /* Make sure that the device supports the d_ifup() method */
+
+  if (dev->d_ifup)
+    {
+      /* Is the interface already up? */
+
+      if ((dev->d_flags & IFF_UP) == 0)
+        {
+          /* No, bring the interface up now */
+
+          if (dev->d_ifup(dev) == OK)
+            {
+              /* Mark the interface as up */
+
+              dev->d_flags |= IFF_UP;
+            }
+        }
+    }
+}
+
+void netdev_ifdown(FAR struct net_driver_s *dev)
+{
+  /* Make sure that the device supports the d_ifdown() method */
+
+  if (dev->d_ifdown)
+    {
+      /* Is the interface already down? */
+
+      if ((dev->d_flags & IFF_UP) != 0)
+        {
+          /* No, take the interface down now */
+
+          if (dev->d_ifdown(dev) == OK)
+            {
+              /* Mark the interface as down */
+
+              dev->d_flags &= ~IFF_UP;
+            }
+        }
+    }
 }
 
 #endif /* CONFIG_NET && CONFIG_NSOCKET_DESCRIPTORS */

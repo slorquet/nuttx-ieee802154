@@ -1,7 +1,7 @@
 /************************************************************************************
  * configs/sama5d3-xplained/src/sam_boot.c
  *
- *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2014-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,8 @@
 #include <nuttx/config.h>
 
 #include <debug.h>
+
+#include <nuttx/board.h>
 
 #include "sam_sckc.h"
 #include "sama5d3-xplained.h"
@@ -151,7 +153,7 @@ void board_initialize(void)
    */
 
 #if defined(CONFIG_NSH_LIBRARY) && !defined(CONFIG_NSH_ARCHINIT)
-  (void)nsh_archinitialize();
+  (void)board_app_initialize();
 #endif
 }
 #endif /* CONFIG_BOARD_INITIALIZE */

@@ -76,7 +76,7 @@
 #if defined(CONFIG_SAMA5_SSC0) || defined(CONFIG_SAMA5_SSC1)
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 /* Configuration ************************************************************/
 
@@ -88,8 +88,8 @@
 #  error CONFIG_AUDIO required by this driver
 #endif
 
-#ifndef SAMA5_SSC_MAXINFLIGHT
-#  define SAMA5_SSC_MAXINFLIGHT 16
+#ifndef CONFIG_SAMA5_SSC_MAXINFLIGHT
+#  define CONFIG_SAMA5_SSC_MAXINFLIGHT 16
 #endif
 
 /* Assume no RX/TX support until we learn better */
@@ -348,8 +348,7 @@
 #elif defined(ATSAMA5D4)
   /* System Bus Interfaces
    *
-   * Both SSC0 and SSC1 are APB1; HSMCI1 is on H32MX.  Both are accessible
-   * on MATRIX IF1.
+   * Both SSC0 and SSC1 are APB1.  Both are accessible on MATRIX IF1.
    *
    * Memory is available on either port 5 (IF0 for both XDMAC0 and 1) or
    * port 6 (IF1 for both XDMAC0 and 1).
@@ -508,7 +507,7 @@ struct sam_ssc_s
 
   sem_t bufsem;                   /* Buffer wait semaphore */
   struct sam_buffer_s *freelist;  /* A list a free buffer containers */
-  struct sam_buffer_s containers[SAMA5_SSC_MAXINFLIGHT];
+  struct sam_buffer_s containers[CONFIG_SAMA5_SSC_MAXINFLIGHT];
 
   /* Debug stuff */
 
@@ -792,7 +791,7 @@ static inline void ssc_putreg(struct sam_ssc_s *priv, unsigned int offset,
  * Name: ssc_physregaddr
  *
  * Description:
- *   Return the physical address of an HSMCI register
+ *   Return the physical address of an SSC register
  *
  ****************************************************************************/
 
@@ -1058,9 +1057,9 @@ static void ssc_buf_initialize(struct sam_ssc_s *priv)
   int i;
 
   priv->freelist = NULL;
-  sem_init(&priv->bufsem, 0, SAMA5_SSC_MAXINFLIGHT);
+  sem_init(&priv->bufsem, 0, CONFIG_SAMA5_SSC_MAXINFLIGHT);
 
-  for (i = 0; i < SAMA5_SSC_MAXINFLIGHT; i++)
+  for (i = 0; i < CONFIG_SAMA5_SSC_MAXINFLIGHT; i++)
     {
       ssc_buf_free(priv, &priv->containers[i]);
     }

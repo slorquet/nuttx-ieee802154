@@ -202,6 +202,14 @@ config ARCH_BOARD_FREEDOM_KL25Z
 		This is the configuration for the Freescale Freedom KL25Z board.  This
 		board has the K25Z120LE3AN chip with a built-in SDA debugger.
 
+config ARCH_BOARD_FREEDOM_KL26Z
+	bool "Freescale Freedom KL26Z"
+	depends on ARCH_CHIP_MKL26Z128
+	select ARCH_HAVE_LEDS
+	---help---
+		This is the configuration for the Freescale Freedom KL26Z board.  This
+		board has the K26Z128VLH4 chip with a built-in SDA debugger.
+
 config ARCH_BOARD_HYMINI_STM32V
 	bool "HY-Mini STM32v board"
 	depends on ARCH_CHIP_STM32F103VC
@@ -317,6 +325,15 @@ config ARCH_BOARD_MICROPENDOUS3
 		This is a port to the Opendous Micropendous 3 board. This board may
 		be populated with either an AVR AT90USB646, 647, 1286, or 1287 MCU.
 		Support is configured for the AT90USB647.
+
+config ARCH_BOARD_MOTEINO_MEGA
+	bool "LowPowerLab MoteinoMEGA"
+	depends on ARCH_CHIP_ATMEGA1284P
+	select ARCH_HAVE_LEDS
+	---help---
+		This is placeholder for the LowPowerLab MoteinoMEGA that is based
+		on the Atmel AVR ATMega1284P MCU.  There is not much there yet and what is
+		there is untested due to tool-related issues.
 
 config ARCH_BOARD_MX1ADS
 	bool "Motorola MX1ADS development board"
@@ -469,9 +486,21 @@ config ARCH_BOARD_OLIMEX_STM32P207
 	select ARCH_HAVE_BUTTONS
 	select ARCH_HAVE_IRQBUTTONS
 	---help---
-		This port uses the Olimex STM32 P207 board and a GNU arm-nuttx-elf toolchain* under
-		Linux or Cygwin. See the http://www.olimex.com for further information. This
-		 board features the STMicro STM32F207ZE MCU
+		This port uses the Olimex STM32 P207 board and a GNU arm-nuttx-elf
+		toolchain under Linux or Cygwin. See the http://www.olimex.com for
+		further information. This board features the STMicro STM32F207ZE MCU
+
+config ARCH_BOARD_OLIMEXINO_STM32
+	bool "Olimexino STM32 board"
+	depends on ARCH_CHIP_STM32F103RB
+	select ARCH_HAVE_LEDS
+	select ARCH_HAVE_BUTTONS
+	select ARCH_HAVE_IRQBUTTONS
+	---help---
+		This port uses the Olimexino STM32 board and a GNU arm-nuttx-elf
+		toolchain under Linux or Cygwin. See the http://www.olimex.com for
+		further information. This board features the STMicro STM32F103RBT6 MCU.
+		Contribued by David Sidrane.
 
 config ARCH_BOARD_OPEN1788
 	bool "Wave Share Open1788"
@@ -535,8 +564,8 @@ config ARCH_BOARD_PCDUINO_A10
 		the differences are cosmetic.  This port was developed on the v1 board,
 		but the others may be compatible.
 
-config ARCH_BOARD_PIC32_STARTERKIT
-	bool "Microchip PIC32 Ethernet Starter Kit (DM320004)"
+config ARCH_BOARD_PIC32MX_STARTERKIT
+	bool "Microchip PIC32MX Ethernet Starter Kit (DM320004)"
 	depends on ARCH_CHIP_PIC32MX795F512L
 	select ARCH_HAVE_LEDS
 	---help---
@@ -551,6 +580,24 @@ config ARCH_BOARD_PIC32MX7MMB
 	---help---
 		This is the port NuttX to the Mikroelektronika PIC32MX7 Multimedia Board
 		(MMB).  See http://www.mikroe.com/ for further information.
+
+config ARCH_BOARD_PIC32MZ_STARTERKIT
+	bool "Microchip PIC32MZ Ethernet Starter Kit ((DM320006)"
+	depends on ARCH_CHIP_PIC32MZ2048ECH || ARCH_CHIP_PIC32MZ2048ECM
+	select ARCH_HAVE_LEDS
+	select ARCH_HAVE_BUTTONS
+	select ARCH_HAVE_IRQBUTTONS if PIC32MZ_GPIOIRQ_PORTB
+	---help---
+		This is the port of NuttX to the Microchip PIC32MZ Embedded
+		Connectivity (EC) Starter Kit.  There are two configurations of the
+		starter kit:
+
+		1) The PIC32MZ Embedded Connectivity Starter Kit based on the
+		   PIC32MZ2048ECH144-I/PH chip (DM320006), and
+		2) The PIC32MZ Embedded Connectivity Starter Kit based on the
+		   PIC32MZ2048ECM144-I/PH w/Crypto Engine (DM320006-C)
+
+		See www.microchip.com for further information.
 
 config ARCH_BOARD_PIRELLI_DPL10
 	bool "Pirelli DPL10 phone"
@@ -669,6 +716,15 @@ config ARCH_BOARD_SAM4L_XPLAINED
 	---help---
 		The port of NuttX to the Atmel SAM4L-Xplained Pro development board.
 
+config ARCH_BOARD_SAM4S_XPLAINED
+	bool "Atmel SAM4S-Xplained development board"
+	depends on ARCH_CHIP_ATSAM4S16C
+	select ARCH_HAVE_LEDS
+	select ARCH_HAVE_BUTTONS
+	select ARCH_HAVE_IRQBUTTONS
+	---help---
+		The port of NuttX to the Atmel SAM4S-Xplained development board.
+
 config ARCH_BOARD_SAM4S_XPLAINED_PRO
 	bool "Atmel SAM4S-Xplained Pro development board"
 	depends on ARCH_CHIP_ATSAM4SD32C
@@ -678,14 +734,14 @@ config ARCH_BOARD_SAM4S_XPLAINED_PRO
 	---help---
 		The port of NuttX to the Atmel SAM4S-Xplained Pro development board.
 
-config ARCH_BOARD_SAM4S_XPLAINED
-	bool "Atmel SAM4S-Xplained development board"
-	depends on ARCH_CHIP_ATSAM4S16C
+config ARCH_BOARD_SAMV71_XULT
+	bool "Atmel SAMV71 Xplained Ultra evalutation board"
+	depends on ARCH_CHIP_SAMV71Q21
 	select ARCH_HAVE_LEDS
 	select ARCH_HAVE_BUTTONS
 	select ARCH_HAVE_IRQBUTTONS
 	---help---
-		The port of NuttX to the Atmel SAM4S-Xplained development board.
+		The port of NuttX to the Atmel SAMV71 Xplained Ultra evalutation board.
 
 config ARCH_BOARD_SHENZHOU
 	bool "Shenzhou STM32F107 board"
@@ -841,6 +897,14 @@ config ARCH_BOARD_TM4C123G_LAUNCHPAD
 	select ARCH_HAVE_IRQBUTTONS
 	---help---
 		Tiva TM4C123G LaunchPad.
+
+config ARCH_BOARD_TM4C1294_LAUNCHPAD
+	bool "Tiva EK-TM4C1294XL LaunchPad"
+	depends on ARCH_CHIP_TM4C1294NC
+	select ARCH_HAVE_LEDS
+	select ARCH_HAVE_BUTTONS
+	---help---
+		Tiva EK-TM4C1294XL LaunchPad.
 
 config ARCH_BOARD_CC3200_LAUNCHPAD
 	bool "Tiva CC3200 Launchpad"
@@ -1000,6 +1064,31 @@ config ARCH_BOARD_CUSTOM_DIR
 		to some location outside of the NuttX source tree (like
 		"~/projects/myboard").
 
+config BOARD_CRASHDUMP
+	bool "Enable Board level logging of crash dumps"
+	default n
+	---help---
+		If selected up_asseert will call out to board_crashdump, in the case
+		of an assertion failure, prior to calling exit. Or in the
+		case of a hardfault prior to looping indefinitely. board_crashdump
+		then has a chance to save the state of the machine.
+
+		The purpose of board_crashdump is to save as much information as it can
+		about the cause of the fault and then most likely reset the system.
+
+		 N.B. There is limited system resources that can be used, who knows
+		 what memory is trashed? So all we can expect to do is save the
+		"machine state" in a place where on the next reset can write it
+		to more sophisticated storage in a sane operating environment.
+
+config BOARD_RESET_ON_CRASH
+	bool "Eanble Board Reset after the crashdump is saved"
+	default n
+	depends on BOARD_CRASHDUMP
+	---help---
+		If selected the board_crashdump should reset the machine after
+		saveing the state of the machine
+
 config BOARD_CUSTOM_LEDS
 	bool "Custom board LEDs"
 	default n
@@ -1050,6 +1139,7 @@ config ARCH_BOARD
 	default "ez80f910200zco"           if ARCH_BOARD_EZ80F910200ZCO
 	default "fire-stm32v2"             if ARCH_BOARD_FIRE_STM32
 	default "freedom-kl25z"            if ARCH_BOARD_FREEDOM_KL25Z
+	default "freedom-kl26z"            if ARCH_BOARD_FREEDOM_KL26Z
 	default "hymini-stm32v"            if ARCH_BOARD_HYMINI_STM32V
 	default "kwikstik-k40"             if ARCH_BOARD_KWIKSTIK_K40
 	default "lincoln60"                if ARCH_BOARD_LINCOLN60
@@ -1065,6 +1155,7 @@ config ARCH_BOARD
 	default "mcu123-lpc214x"           if ARCH_BOARD_MCU123_LPC214X
 	default "micropendous3"            if ARCH_BOARD_MICROPENDOUS3
 	default "mirtoo"                   if ARCH_BOARD_MIRTOO
+	default "moteino-mega"             if ARCH_BOARD_MOTEINO_MEGA
 	default "mx1ads"                   if ARCH_BOARD_MX1ADS
 	default "ne64badge"                if ARCH_BOARD_NE64BADGE
 	default "ntosd-dm320"              if ARCH_BOARD_NTOSD_DM320
@@ -1078,12 +1169,14 @@ config ARCH_BOARD
 	default "olimex-stm32-p107"        if ARCH_BOARD_OLIMEX_STM32P107
 	default "olimex-stm32-p207"        if ARCH_BOARD_OLIMEX_STM32P207
 	default "olimex-strp711"           if ARCH_BOARD_OLIMEX_STRP711
+	default "olimexino-stm32"          if ARCH_BOARD_OLIMEXINO_STM32
 	default "open1788"                 if ARCH_BOARD_OPEN1788
 	default "p112"                     if ARCH_BOARD_P112
 	default "pcblogic-pic32mx"         if ARCH_BOARD_PCBLOGICPIC32MX
 	default "pcduino-a10"              if ARCH_BOARD_PCDUINO_A10
-	default "pic32-starterkit"         if ARCH_BOARD_PIC32_STARTERKIT
+	default "pic32mx-starterkit"       if ARCH_BOARD_PIC32MX_STARTERKIT
 	default "pic32mx7mmb"              if ARCH_BOARD_PIC32MX7MMB
+	default "pic32mz-starterkit"       if ARCH_BOARD_PIC32MZ_STARTERKIT
 	default "pirelli_dpl10"            if ARCH_BOARD_PIRELLI_DPL10
 	default "nucleo-f4x1re"            if ARCH_BOARD_NUCLEO_F401RE || ARCH_BOARD_NUCLEO_F411RE
 	default "qemu-i486"                if ARCH_BOARD_QEMU_I486
@@ -1097,6 +1190,7 @@ config ARCH_BOARD
 	default "sam4l-xplained"           if ARCH_BOARD_SAM4L_XPLAINED
 	default "sam4s-xplained"           if ARCH_BOARD_SAM4S_XPLAINED
 	default "sam4s-xplained-pro"       if ARCH_BOARD_SAM4S_XPLAINED_PRO
+	default "samv71-xult"              if ARCH_BOARD_SAMV71_XULT
 	default "shenzhou"                 if ARCH_BOARD_SHENZHOU
 	default "skp16c26"                 if ARCH_BOARD_SKP16C26
 	default "spark"                    if ARCH_BOARD_SPARK
@@ -1113,6 +1207,7 @@ config ARCH_BOARD
 	default "sure-pic32mx"             if ARCH_BOARD_SUREPIC32MX
 	default "teensy"                   if ARCH_BOARD_TEENSY
 	default "tm4c123g-launchpad"       if ARCH_BOARD_TM4C123G_LAUNCHPAD
+	default "tm4c1294-launchpad"       if ARCH_BOARD_TM4C1294_LAUNCHPAD
 	default "cc3200-launchpad"         if ARCH_BOARD_CC3200_LAUNCHPAD
 	default "twr-k60n512"              if ARCH_BOARD_TWR_K60N512
 	default "ubw32"                    if ARCH_BOARD_UBW32
@@ -1240,6 +1335,12 @@ endif
 if ARCH_BOARD_FIRE_STM32
 source "configs/fire-stm32v2/Kconfig"
 endif
+if ARCH_BOARD_FREEDOM_KL25Z
+source "configs/freedom-kl25z/Kconfig"
+endif
+if ARCH_BOARD_FREEDOM_KL26Z
+source "configs/freedom-kl26z/Kconfig"
+endif
 if ARCH_BOARD_HYMINI_STM32V
 source "configs/hymini-stm32v/Kconfig"
 endif
@@ -1288,6 +1389,9 @@ endif
 if ARCH_BOARD_MIRTOO
 source "configs/mirtoo/Kconfig"
 endif
+if ARCH_BOARD_MOTEINO_MEGA
+source "configs/moteino-mega/Kconfig"
+endif
 if ARCH_BOARD_MX1ADS
 source "configs/mx1ads/Kconfig"
 endif
@@ -1327,6 +1431,9 @@ endif
 if ARCH_BOARD_OLIMEX_STRP711
 source "configs/olimex-strp711/Kconfig"
 endif
+if ARCH_BOARD_OLIMEXINO_STM32
+source "configs/olimexino-stm32/Kconfig"
+endif
 if ARCH_BOARD_OPEN1788
 source "configs/open1788/Kconfig"
 endif
@@ -1336,11 +1443,14 @@ endif
 if ARCH_BOARD_PCDUINO_A10
 source "configs/pcduino-a10/Kconfig"
 endif
-if ARCH_BOARD_PIC32_STARTERKIT
-source "configs/pic32-starterkit/Kconfig"
+if ARCH_BOARD_PIC32MX_STARTERKIT
+source "configs/pic32mx-starterkit/Kconfig"
 endif
 if ARCH_BOARD_PIC32MX7MMB
 source "configs/pic32mx7mmb/Kconfig"
+endif
+if ARCH_BOARD_PIC32MZ_STARTERKIT
+source "configs/pic32mz-starterkit/Kconfig"
 endif
 if ARCH_BOARD_PIRELLI_DPL10
 source "configs/pirelli_dpl10/Kconfig"
@@ -1380,6 +1490,9 @@ source "configs/sam4s-xplained/Kconfig"
 endif
 if ARCH_BOARD_SAM4S_XPLAINED_PRO
 source "configs/sam4s-xplained-pro/Kconfig"
+endif
+if ARCH_BOARD_SAMV71_XULT
+source "configs/samv71-xult/Kconfig"
 endif
 if ARCH_BOARD_SHENZHOU
 source "configs/shenzhou/Kconfig"
@@ -1423,6 +1536,9 @@ endif
 if ARCH_BOARD_TM4C123G_LAUNCHPAD
 source "configs/tm4c123g-launchpad/Kconfig"
 endif
+if ARCH_BOARD_TM4C1294_LAUNCHPAD
+source "configs/tm4c1294-launchpad/Kconfig"
+endif
 if ARCH_BOARD_CC3200_LAUNCHPAD
 source "configs/cc3200-launchpad/Kconfig"
 endif
@@ -1465,3 +1581,31 @@ endif
 if ARCH_BOARD_SIM
 source "configs/sim/Kconfig"
 endif
+
+config LIB_BOARDCTL
+	bool "Enabled boardctl() interface"
+	default n
+
+if LIB_BOARDCTL
+
+config BOARDCTL_TSCTEST
+	bool "Enable touchscreen test interfaces"
+	default n
+
+config BOARDCTL_ADCTEST
+	bool "Enable ADC test interfaces"
+	default n
+
+config BOARDCTL_PWMTEST
+	bool "Enable PWM test interfaces"
+	default n
+
+config BOARDCTL_GRAPHICS
+	bool "Enable custom graphics initialization interfaces"
+	default n
+
+config BOARDCTL_IOCTL
+	bool "Board-specific boardctl() commands"
+	default n
+
+endif # LIB_BOARDCTL

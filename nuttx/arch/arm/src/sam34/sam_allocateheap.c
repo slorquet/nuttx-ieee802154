@@ -1,7 +1,7 @@
 /****************************************************************************
- * arch/arm/src/common/sam_allocateheap.c
+ * arch/arm/src/sam34/sam_allocateheap.c
  *
- *   Copyright (C) 2010, 2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2010, 2013, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,6 +43,7 @@
 #include <debug.h>
 
 #include <nuttx/arch.h>
+#include <nuttx/board.h>
 #include <nuttx/kmalloc.h>
 
 #include <arch/board/board.h>
@@ -56,7 +57,7 @@
 #include "sam_periphclks.h"
 
 /****************************************************************************
- * Private Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 /* All SAM's have SRAM0.  The SAM3U family also have SRAM1 and possibly
  * NFCSRAM.  NFCSRAM may not be used, however, if NAND support is enabled.

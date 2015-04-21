@@ -1,7 +1,7 @@
 /****************************************************************************
  * net/route/net_delroute.c
  *
- *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2013, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -56,8 +56,8 @@
 struct route_match_s
 {
   FAR struct net_route_s *prev;     /* Predecessor in the list */
-  net_ipaddr_t            target;   /* The target IP address to match */
-  net_ipaddr_t            netmask;  /* The network mask to match */
+  in_addr_t               target;   /* The target IP address to match */
+  in_addr_t               netmask;  /* The network mask to match */
 };
 
 /****************************************************************************
@@ -87,8 +87,8 @@ static int net_match(FAR struct net_route_s *route, FAR void *arg)
    * must be the same.
    */
 
-  if (net_ipaddr_maskcmp(route->target, match->target, match->netmask) &&
-      net_ipaddr_cmp(route->netmask, match->netmask))
+  if (net_ipv4addr_maskcmp(route->target, match->target, match->netmask) &&
+      net_ipv4addr_cmp(route->netmask, match->netmask))
     {
       /* They match.. Remove the entry from the routing table */
 
@@ -134,15 +134,15 @@ static int net_match(FAR struct net_route_s *route, FAR void *arg)
  *
  ****************************************************************************/
 
-int net_delroute(net_ipaddr_t target, net_ipaddr_t netmask)
+int net_delroute(in_addr_t target, in_addr_t netmask)
 {
   struct route_match_s match;
 
   /* Set up the comparison structure */
 
   match.prev = NULL;
-  net_ipaddr_copy(match.target, target);
-  net_ipaddr_copy(match.netmask, netmask);
+  net_ipv4addr_copy(match.target, target);
+  net_ipv4addr_copy(match.netmask, netmask);
 
   /* Then remove the entry from the routing table */
 

@@ -48,14 +48,14 @@
 
 #include <nuttx/fs/fs.h>
 #include <nuttx/irq.h>
-#include <nuttx/watchdog.h>
+#include <nuttx/timers/watchdog.h>
 #include <arch/watchdog.h>
 
 #include "chip.h"
 #include "up_arch.h"
 
 /**************************************************************************
- * Definitions
+ * Pre-processor Definitions
  **************************************************************************/
 
 #undef CONFIG_SOFTWARE_TEST

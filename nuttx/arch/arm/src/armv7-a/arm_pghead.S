@@ -162,7 +162,7 @@
 #define PG_L2_DATA_NPAGE1    (PTE_NPAGES - ((PG_L2_DATA_PADDR & ~PG_L1_PADDRMASK) >> 2))
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /* RX_NSECTIONS determines the number of 1Mb sections to map for the
@@ -675,7 +675,7 @@ __start:
 
 	bl		up_boot
 
-#ifdef CONFIG_DEBUG_STACK
+#ifdef CONFIG_STACK_COLORATION
 	/* Write a known value to the IDLE thread stack to support stack
 	 * monitoring logic
 	 */
@@ -797,7 +797,7 @@ arm_data_initialize:
 	.long	_edata
 	.size	.Ldatainit, . -.Ldatainit
 
-#ifdef CONFIG_DEBUG_STACK
+#ifdef CONFIG_STACK_COLORATION
 	.type	.Lstkinit, %object
 .Lstkinit:
 #ifdef CONFIG_BOOT_SDRAM_DATA

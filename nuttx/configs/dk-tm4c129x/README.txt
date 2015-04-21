@@ -27,12 +27,6 @@ README.txt
 
 Contents
     - Using OpenOCD and GDB with ICDI
-    - Development Environment
-    - GNU Toolchain Options
-    - IDEs
-    - NuttX EABI "buildroot" Toolchain
-    - NuttX OABI "buildroot" Toolchain
-    - NXFLAT Toolchain
     - Buttons and LEDs
     - Serial Console
     - Networking Support
@@ -134,204 +128,6 @@ Using OpenOCD and GDB with ICDI
     1. The MCU must be halted using 'mon halt' prior to loading code.
     2. Reset will restart the processor after loading code.
     3. The 'monitor' command can be abbreviated as just 'mon'.
-
-Development Environment
-=======================
-
-  Either Linux or Cygwin on Windows can be used for the development environment.
-  The source has been built only using the GNU toolchain (see below).  Other
-  toolchains will likely cause problems. Testing was performed using the Cygwin
-  environment.
-
-GNU Toolchain Options
-=====================
-
-  The NuttX make system has been modified to support the following different
-  toolchain options.
-
-  1. The NuttX buildroot Toolchain (default, see below),
-  2. The CodeSourcery GNU toolchain,
-  3. The devkitARM GNU toolchain,
-  4. The Atollic toolchain, or
-  5. The Code Red toolchain
-
-  All testing has been conducted using the Buildroot toolchain for Cygwin/Linux.
-  To use a different toolchain, you simply need to add one of the following
-  configuration options to your .config (or defconfig) file:
-
-    CONFIG_ARMV7M_TOOLCHAIN_BUILDROOT=y      : NuttX buildroot under Linux or Cygwin (default)
-    CONFIG_ARMV7M_TOOLCHAIN_CODESOURCERYW=y  : CodeSourcery under Windows or Cygwin
-    CONFIG_ARMV7M_TOOLCHAIN_CODESOURCERYL=y  : CodeSourcery under Linux
-    CONFIG_ARMV7M_TOOLCHAIN_DEVKITARM=y      : The Atollic toolchain under Windows or Cygwin
-    CONFIG_ARMV7M_TOOLCHAIN_CODEREDW=y       : The Code Red toolchain under Windows
-    CONFIG_ARMV7M_TOOLCHAIN_CODEREDL=y       : The Code Red toolchain under Linux
-
-    CONFIG_ARMV7M_OABI_TOOLCHAIN=y           : If you use an older, OABI buildroot toolchain
-
-  If you change the default toolchain, then you may also have to modify the PATH in
-  the setenv.h file if your make cannot find the tools.
-
-  NOTE: the CodeSourcery (for Windows), Atollic, devkitARM, and Code Red (for Windows)
-  toolchains are Windows native toolchains.  The CodeSourcey (for Linux) and NuttX
-  buildroot toolchains are Cygwin and/or Linux native toolchains. There are several
-  limitations to using a Windows based toolchain in a Cygwin environment.  The three
-  biggest are:
-
-  1. The Windows toolchain cannot follow Cygwin paths.  Path conversions are
-     performed automatically in the Cygwin makefiles using the 'cygpath' utility
-     but you might easily find some new path problems.  If so, check out 'cygpath -w'
-
-  2. Windows toolchains cannot follow Cygwin symbolic links.  Many symbolic links
-     are used in Nuttx (e.g., include/arch).  The make system works around these
-     problems for the Windows tools by copying directories instead of linking them.
-     But this can also cause some confusion for you:  For example, you may edit
-     a file in a "linked" directory and find that your changes had no effect.
-     That is because you are building the copy of the file in the "fake" symbolic
-     directory.  If you use a Windows toolchain, you should get in the habit of
-     making like this:
-
-       make clean_context all
-
-     An alias in your .bashrc file might make that less painful.
-
-  3. Dependencies are not made when using Windows versions of the GCC.  This is
-     because the dependencies are generated using Windows pathes which do not
-     work with the Cygwin make.
-
-       MKDEP                = $(TOPDIR)/tools/mknulldeps.sh
-
-  NOTE 1: The CodeSourcery toolchain (2009q1) did not work with default optimization
-  level of -Os (See Make.defs).  It will work with -O0, -O1, or -O2, but not with
-  -Os.  I have not seen this problem with current toolchains.
-
-  NOTE 2: The devkitARM toolchain includes a version of MSYS make.  Make sure that
-  the paths to Cygwin's /bin and /usr/bin directories appear BEFORE the devkitARM
-  path or will get the wrong version of make.
-
-IDEs
-====
-
-  NuttX is built using command-line make.  It can be used with an IDE, but some
-  effort will be required to create the project.
-
-  Makefile Build
-  --------------
-  Under Eclipse, it is pretty easy to set up an "empty makefile project" and
-  simply use the NuttX makefile to build the system.  That is almost for free
-  under Linux.  Under Windows, you will need to set up the "Cygwin GCC" empty
-  makefile project in order to work with Windows (Google for "Eclipse Cygwin" -
-  there is a lot of help on the internet).
-
-  Native Build
-  ------------
-  Here are a few tips before you start that effort:
-
-  1) Select the toolchain that you will be using in your .config file
-  2) Start the NuttX build at least one time from the Cygwin command line
-     before trying to create your project.  This is necessary to create
-     certain auto-generated files and directories that will be needed.
-  3) Set up include paths:  You will need include/, arch/arm/src/tiva,
-     arch/arm/src/common, arch/arm/src/armv7-m, and sched/.
-  4) All assembly files need to have the definition option -D __ASSEMBLY__
-     on the command line.
-
-  Startup files will probably cause you some headaches.  The NuttX startup file
-  is arch/arm/src/tiva/tiva_vectors.S.
-
-NuttX EABI "buildroot" Toolchain
-================================
-
-  A GNU GCC-based toolchain is assumed.  The files */setenv.sh should
-  be modified to point to the correct path to the Cortex-M3 GCC toolchain (if
-  different from the default in your PATH variable).
-
-  If you have no Cortex-M3 toolchain, one can be downloaded from the NuttX
-  SourceForge download site (https://sourceforge.net/projects/nuttx/files/buildroot/).
-  This GNU toolchain builds and executes in the Linux or Cygwin environment.
-
-  1. You must have already configured Nuttx in <some-dir>/nuttx.
-
-     cd tools
-     ./configure.sh dk-tm4c129x/<sub-dir>
-
-  2. Download the latest buildroot package into <some-dir>
-
-  3. unpack the buildroot tarball.  The resulting directory may
-     have versioning information on it like buildroot-x.y.z.  If so,
-     rename <some-dir>/buildroot-x.y.z to <some-dir>/buildroot.
-
-  4. cd <some-dir>/buildroot
-
-  5. cp configs/cortexm3-eabi-defconfig-4.6.3 .config
-
-  6. make oldconfig
-
-  7. make
-
-  8. Edit setenv.h, if necessary, so that the PATH variable includes
-     the path to the newly built binaries.
-
-  See the file configs/README.txt in the buildroot source tree.  That has more
-  details PLUS some special instructions that you will need to follow if you
-  are building a Cortex-M3 toolchain for Cygwin under Windows.
-
-  NOTE:  Unfortunately, the 4.6.3 EABI toolchain is not compatible with the
-  the NXFLAT tools.  See the top-level TODO file (under "Binary loaders") for
-  more information about this problem. If you plan to use NXFLAT, please do not
-  use the GCC 4.6.3 EABI toochain; instead use the GCC 4.3.3 OABI toolchain.
-  See instructions below.
-
-NuttX OABI "buildroot" Toolchain
-================================
-
-  The older, OABI buildroot toolchain is also available.  To use the OABI
-  toolchain:
-
-  1. When building the buildroot toolchain, either (1) modify the cortexm3-eabi-defconfig-4.6.3
-     configuration to use EABI (using 'make menuconfig'), or (2) use an exising OABI
-     configuration such as cortexm3-defconfig-4.3.3
-
-  2. Modify the Make.defs file to use the OABI conventions:
-
-    +CROSSDEV = arm-nuttx-elf-
-    +ARCHCPUFLAGS = -mtune=cortex-m3 -march=armv7-m -mfloat-abi=soft
-    +NXFLATLDFLAGS2 = $(NXFLATLDFLAGS1) -T$(TOPDIR)/binfmt/libnxflat/gnu-nxflat-gotoff.ld -no-check-sections
-    -CROSSDEV = arm-nuttx-eabi-
-    -ARCHCPUFLAGS = -mcpu=cortex-m3 -mthumb -mfloat-abi=soft
-    -NXFLATLDFLAGS2 = $(NXFLATLDFLAGS1) -T$(TOPDIR)/binfmt/libnxflat/gnu-nxflat-pcrel.ld -no-check-sections
-
-NXFLAT Toolchain
-================
-
-  If you are *not* using the NuttX buildroot toolchain and you want to use
-  the NXFLAT tools, then you will still have to build a portion of the buildroot
-  tools -- just the NXFLAT tools.  The buildroot with the NXFLAT tools can
-  be downloaded from the NuttX SourceForge download site
-  (https://sourceforge.net/projects/nuttx/files/).
-
-  This GNU toolchain builds and executes in the Linux or Cygwin environment.
-
-  1. You must have already configured Nuttx in <some-dir>/nuttx.
-
-     cd tools
-     ./configure.sh dk-tm4c129x/<sub-dir>
-
-  2. Download the latest buildroot package into <some-dir>
-
-  3. unpack the buildroot tarball.  The resulting directory may
-     have versioning information on it like buildroot-x.y.z.  If so,
-     rename <some-dir>/buildroot-x.y.z to <some-dir>/buildroot.
-
-  4. cd <some-dir>/buildroot
-
-  5. cp configs/cortexm3-defconfig-nxflat .config
-
-  6. make oldconfig
-
-  7. make
-
-  8. Edit setenv.h, if necessary, so that the PATH variable includes
-     the path to the newly builtNXFLAT binaries.
 
 Buttons and LEDs
 ================
@@ -496,7 +292,7 @@ f Application Configuration -> Network Utilities
   you can enable like DHCP client (or server) or network name
   resolution.
 
-  By default, the IP address of the SAM4E-EK will be 10.0.0.2 and
+  By default, the IP address of the DK-TM4C129X will be 10.0.0.2 and
   it will assume that your host is the gateway and has the IP address
   10.0.0.1.
 
@@ -526,7 +322,7 @@ f Application Configuration -> Network Utilities
   the first time you ping due to the default handling of the ARP
   table.
 
-  On the host side, you should also be able to ping the SAM4E-EK:
+  On the host side, you should also be able to ping the DK-TM4C129X:
 
     $ ping 10.0.0.2
 
@@ -860,7 +656,7 @@ DK-TM4129X Configuration Options
 Configurations
 ==============
 
-Each DK-TM4129X configuration is maintained in a
+Each DK-TM4C129X configuration is maintained in a
 sub-directory and can be selected as follow:
 
     cd tools
@@ -892,9 +688,10 @@ Where <subdir> is one of the following:
        for Windows and builds under Cygwin (or probably MSYS).  That
        can easily be reconfigured, of course.
 
-       CONFIG_HOST_LINUX=y                 : Linux (Cygwin under Windows okay too).
-       CONFIG_ARMV7M_TOOLCHAIN_BUILDROOT=y : Buildroot (arm-nuttx-elf-gcc)
-       CONFIG_RAW_BINARY=y                 : Output formats: ELF and raw binary
+       CONFIG_HOST_WINDOWS=y                   : Windows
+       :CONFIG_WINDOWS_CYGWIN=y                : Cygwin under Windows
+       CONFIG_ARMV7M_TOOLCHAIN_CODESOURCERYW=y : CodeSourcry fro Windows (arm-none-eabi-gcc)
+       CONFIG_RAW_BINARY=y                     : Output formats: ELF and raw binary
 
     3. Default stack sizes are large and should really be tuned to reduce
        the RAM footprint:
@@ -909,9 +706,12 @@ Where <subdir> is one of the following:
          CONFIG_NSH_TELNETD_DAEMONSTACKSIZE=2048
          CONFIG_NSH_TELNETD_CLIENTSTACKSIZE=2048
 
-    4. This configuration has the network enabled by default.  This can be
-       easily disabled or reconfigured (See see the network related
-       configuration settings above in the section entitled "Networking").
+    4. This configuration has the network enabled by default.  See the
+       paragraph "Using the network with NSH" above).
+
+       Networking can be easily be disabled or reconfigured (See see the
+       network related configuration settings above in the section entitled
+       "Networking").
 
        By default, this configuration assumes a 10.0.0.xx network.  It
        uses a fixed IP address of 10.0.0.2 and assumes that the host is
@@ -932,7 +732,7 @@ Where <subdir> is one of the following:
        link status and gracefully take the network down when the link is
        lost (for example, if the cable is disconnected) and bring the
        network back up when the link becomes available again (for example,
-       if the cable is reconnected.  The paragraph "Network Monitor" above
+       if the cable is reconnected).  The paragraph "Network Monitor" above
        for additional information.
 
     5. I2C6 and support for the on-board TMP-100 temperature sensor are
@@ -947,3 +747,85 @@ Where <subdir> is one of the following:
        The default units is degrees Fahrenheit, but that is easily
        reconfigured.  See the discussin above in the paragraph entitled
        "Temperature Sensor".
+
+  ipv6:
+  ----
+    This is another version of the NuttShell configuration.  It is very
+    similar to the nsh configuration except that it has IPv6 enabled and
+    IPv4 disabled.  Several network utilities that are not yet available
+    under IPv6 are disabled.
+
+    NOTES:
+
+    1. As of 2015-01-23, this configuration was identical to the nsh
+       configuration other than using IPv6.  So all of the notes above
+       regarding the nsh configuration apply.
+
+       Telnet does not work with IPv6.
+
+    2. This configuration can be modified to that both IPv4 and IPv6
+       are support.  Here is a summary of the additional configuration
+       settings requird to support both IPv4 and IPv6:
+
+         CONFIG_NET_IPv4=y
+         CONFIG_NET_ARP=y
+         CONFIG_NET_ARP_SEND=y (optional)
+         CONFIG_NET_ICMP=y
+         CONFIG_NET_ICMP_PING=y
+
+         CONFIG_NETUTILS_DNSCLIENT=y
+         CONFIG_NETUTILS_DNSCLIENT_IPv4=y
+         CONFIG_NETUTILS_TELNETD=y
+
+         CONFIG_NSH_IPADDR=0x0a000002
+         CONFIG_NSH_DRIPADDR=0x0a000001
+         CONFIG_NSH_NETMASK=0xffffff00
+         CONFIG_NSH_TELNET=y
+
+       Then from NSH, you have both ping and ping6 commands:
+
+         nsh> ping 10.0.0.1
+         nsh> ping6 fc00::1
+
+       And from the host you can do similar:
+
+         ping 10.0.0.2
+         ping6 fc00::2   (Linux)
+         ping -6 fc00::2 (Windows cmd)
+
+       and Telnet again works from the host:
+
+         telnet 10.0.0.2
+
+    3. You can enable IPv6 autonomous address configuration with the
+       following changes to the configuration:
+
+       + CONFIG_NET_ICMPv6_AUTOCONF=y
+       + CONFIG_ICMPv6_AUTOCONF_DELAYMSEC=100
+       + CONFIG_ICMPv6_AUTOCONF_MAXTRIES=5
+
+       - CONFIG_NSH_DRIPv6ADDR_1=0xfc00
+       - CONFIG_NSH_DRIPv6ADDR_2=0x0000
+       - CONFIG_NSH_DRIPv6ADDR_3=0x0000
+       - CONFIG_NSH_DRIPv6ADDR_4=0x0000
+       - CONFIG_NSH_DRIPv6ADDR_5=0x0000
+       - CONFIG_NSH_DRIPv6ADDR_6=0x0000
+       - CONFIG_NSH_DRIPv6ADDR_7=0x0000
+       - CONFIG_NSH_DRIPv6ADDR_8=0x0001
+
+       - CONFIG_NSH_IPv6ADDR_1=0xfc00
+       - CONFIG_NSH_IPv6ADDR_2=0x0000
+       - CONFIG_NSH_IPv6ADDR_3=0x0000
+       - CONFIG_NSH_IPv6ADDR_4=0x0000
+       - CONFIG_NSH_IPv6ADDR_5=0x0000
+       - CONFIG_NSH_IPv6ADDR_6=0x0000
+       - CONFIG_NSH_IPv6ADDR_7=0x0000
+       - CONFIG_NSH_IPv6ADDR_8=0x0002
+       - CONFIG_NSH_IPv6NETMASK_1=0xffff
+       - CONFIG_NSH_IPv6NETMASK_2=0xffff
+       - CONFIG_NSH_IPv6NETMASK_3=0xffff
+       - CONFIG_NSH_IPv6NETMASK_4=0xffff
+       - CONFIG_NSH_IPv6NETMASK_5=0xffff
+       - CONFIG_NSH_IPv6NETMASK_6=0xffff
+       - CONFIG_NSH_IPv6NETMASK_7=0xffff
+       - CONFIG_NSH_IPv6NETMASK_8=0xff80

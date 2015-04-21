@@ -45,7 +45,7 @@
 #include <stdint.h>
 
 /******************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ******************************************************************************/
 
 /* Olimex-STM32-P405 GPIOs ****************************************************/
@@ -86,25 +86,6 @@
 
 #ifdef CONFIG_STM32_OTGFS
 void weak_function stm32_usbinitialize(void);
-#endif
-
-/************************************************************************************
- * Name: nsh_archinitialize
- *
- * Description:
- *   Perform architecture specific initialization for NSH.
- *
- *   CONFIG_NSH_ARCHINIT=y :
- *     Called from the NSH library
- *
- *   CONFIG_BOARD_INITIALIZE=y, CONFIG_NSH_LIBRARY=y, &&
- *   CONFIG_NSH_ARCHINIT=n :
- *     Called from board_initialize().
- *
- ************************************************************************************/
-
-#ifdef CONFIG_NSH_LIBRARY
-int nsh_archinitialize(void);
 #endif
 
 /************************************************************************************

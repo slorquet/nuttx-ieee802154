@@ -42,10 +42,12 @@
 #include <stdio.h>
 #include <syslog.h>
 
+#include <nuttx/board.h>
+
 #include "arduino-due.h"
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 #if defined(CONFIG_ARDUINO_ITHEAD_TFT) && defined(CONFIG_SPI_BITBANG) && \
@@ -71,14 +73,14 @@
  ****************************************************************************/
 
 /****************************************************************************
- * Name: nsh_archinitialize
+ * Name: board_app_initialize
  *
  * Description:
  *   Perform architecture specific initialization
  *
  ****************************************************************************/
 
-int nsh_archinitialize(void)
+int board_app_initialize(void)
 {
 #if defined(CONFIG_ARDUINO_ITHEAD_TFT) && defined(CONFIG_SPI_BITBANG) && \
     defined(CONFIG_MMCSD_SPI)
@@ -89,7 +91,7 @@ int nsh_archinitialize(void)
     if (ret < 0)
       {
         syslog(LOG_ERR,
-               "nsh_archinitialize: Failed to initialize MMC/SD slot: %d\n",
+               "board_app_initialize: Failed to initialize MMC/SD slot: %d\n",
                ret);
        return ret;
       }

@@ -25,7 +25,7 @@ Description
 This README file describes the contents of the build configurations available
 for the NuttX "sim" target.  The sim target is a NuttX port that runs as a
 user-space program under Linux or Cygwin.  It is a very "low fidelity" embedded
-system simulation: This environment does not support any kind of asynchonous
+system simulation: This environment does not support any kind of asynchronous
 events -- there are nothing like interrupts in this context.  Therefore, there
 can be no pre-empting events.
 
@@ -92,7 +92,8 @@ longjmp().  This context switching is available for 32-bit and 64-bit
 targets.  You must, however, set the correct target in the configuration
 before you build: HOST_X86_64 or HOST_X86 for 62- and 32-bit targets,
 respectively.  On a 64-bit machine, you can also force the 32-bit build
-with CONFIG_SIM_M32=y.
+with CONFIG_SIM_M32=y (which does not seem to be supported by more
+contemporary x86_64 compilers).
 
 There are other 64-bit issues as well.  For example, addresses are retained in
 32-bit unsigned integer types in a few places.  On a 64-bit machine, the 32-bit
@@ -196,7 +197,7 @@ BASIC
     CONFIG_LIBC_EXECFUNCS=y      : exec*() functions are required
     CONFIG_LIBM=y                : Some floating point library is required
     CONFIG_LIBC_FLOATINGPOINT=y  : Floating point printing support is required
-    CONFIG_LIBC_TMPDIR="/tmp"    : Writable temporary files needed for some commands
+    CONFIG_LIBC_TMPDIR="/tmp"    : Writeable temporary files needed for some commands
 
   Enable the BASIC interpreter.  Other default options should be okay:
     CONFIG_INTERPRETERS_BAS=y    : Enables the interpreter
@@ -489,7 +490,7 @@ nx11
        CONFIG_SIM_TOUCHSCREEN=y
 
      Then you must also have some application logic that will call
-     arch_tcinitialize(0) to register the touchscreen driver.  See
+     board_tsc_setup(0) to register the touchscreen driver.  See
      also configuration "touchscreen"
 
      NOTES:
@@ -681,4 +682,32 @@ traveler
 
        cd /usr/lib/
        sudo ln -s libXext.so.6.4.0 libXext.so
+
+udgram
+
+  This is the same as the nsh configuration except that it includes
+  two addition build in applications:  server and client.  These
+  applications are provided by the test at apps/examples/udgram.
+  This configuration enables local, Unix domain sockets and supports
+  the test of the datagram sockets.
+
+  To use the test:
+
+    nsh> mount -t binfs /bin
+    nsh> server &
+    nsh> client
+
+ustream
+
+  This is the same as the nsh configuration except that it includes
+  two addition build in applications:  server and client.  These
+  applications are provided by the test at apps/examples/ustream.
+  This configuration enables local, Unix domain sockets and supports
+  the test of the stream sockets.
+
+  To use the test:
+
+    nsh> mount -t binfs /bin
+    nsh> server &
+    nsh> client
 

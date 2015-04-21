@@ -1,7 +1,7 @@
 /****************************************************************************
  * include/nuttx/fs/fs.h
  *
- *   Copyright (C) 2007-2009, 2011-2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2007-2009, 2011-2013, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -73,8 +73,10 @@
  * system.  It is used to call back to perform device specific operations.
  */
 
-struct file;
-struct pollfd;
+struct file;   /* Forward reference */
+struct pollfd; /* Forward reference */
+struct inode;  /* Forward reference */
+
 struct file_operations
 {
   /* The device driver open method differs from the mountpoint open method */
@@ -91,11 +93,15 @@ struct file_operations
   ssize_t (*write)(FAR struct file *filep, FAR const char *buffer, size_t buflen);
   off_t   (*seek)(FAR struct file *filep, off_t offset, int whence);
   int     (*ioctl)(FAR struct file *filep, int cmd, unsigned long arg);
+
+  /* The two structures need not be common after this point */
+
 #ifndef CONFIG_DISABLE_POLL
   int     (*poll)(FAR struct file *filep, struct pollfd *fds, bool setup);
 #endif
-
-  /* The two structures need not be common after this point */
+#ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
+  int     (*unlink)(FAR struct inode *inode);
+#endif
 };
 
 /* This structure provides information about the state of a block driver */
@@ -103,7 +109,7 @@ struct file_operations
 #ifndef CONFIG_DISABLE_MOUNTPOINT
 struct geometry
 {
-  bool   geo_available;    /* true: The device is vailable */
+  bool   geo_available;    /* true: The device is available */
   bool   geo_mediachanged; /* true: The media has changed since last query */
   bool   geo_writeenabled; /* true: It is okay to write to this device */
   size_t geo_nsectors;     /* Number of sectors on the device */
@@ -127,6 +133,9 @@ struct block_operations
             size_t start_sector, unsigned int nsectors);
   int     (*geometry)(FAR struct inode *inode, FAR struct geometry *geometry);
   int     (*ioctl)(FAR struct inode *inode, int cmd, unsigned long arg);
+#ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
+  int     (*unlink)(FAR struct inode *inode);
+#endif
 };
 
 /* This structure is provided by a filesystem to describe a mount point.
@@ -187,7 +196,8 @@ struct mountpt_operations
 
   int     (*bind)(FAR struct inode *blkdriver, FAR const void *data,
             FAR void **handle);
-  int     (*unbind)(FAR void *handle, FAR struct inode **blkdriver);
+  int     (*unbind)(FAR void *handle, FAR struct inode **blkdriver,
+            unsigned int flags);
   int     (*statfs)(FAR struct inode *mountpt, FAR struct statfs *buf);
 
   /* Operations on paths */
@@ -234,7 +244,6 @@ union inode_ops_u
 #ifndef CONFIG_DISABLE_MQUEUE
   FAR struct mqueue_inode_s             *i_mqueue; /* POSIX message queue */
 #endif
-
 };
 
 /* This structure represents one inode in the Nuttx pseudo-file system */

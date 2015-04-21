@@ -1,7 +1,7 @@
 /****************************************************************************
  * examples/touchscreen/tc_main.c
  *
- *   Copyright (C) 2011, 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2011, 2014-2025 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,7 @@
 #include <nuttx/config.h>
 
 #include <sys/types.h>
+#include <sys/boardctl.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -130,10 +131,10 @@ int tc_main(int argc, char *argv[])
    */
 
   printf("tc_main: Initializing external touchscreen device\n");
-  ret = arch_tcinitialize(CONFIG_EXAMPLES_TOUCHSCREEN_MINOR);
+  ret = boardctl(BOARDIOC_TSCTEST_SETUP, CONFIG_EXAMPLES_TOUCHSCREEN_MINOR);
   if (ret != OK)
     {
-      printf("tc_main: arch_tcinitialize failed: %d\n", ret);
+      printf("tc_main: board_tsc_setup failed: %d\n", errno);
       errval = 1;
       goto errout;
     }
@@ -260,7 +261,7 @@ errout_with_dev:
 
 errout_with_tc:
 #ifdef CONFIG_EXAMPLES_TOUCHSCREEN_ARCHINIT
-  arch_tcuninitialize();
+  boardctl(BOARDIOC_TSCTEST_TEARDOWN, 0);
 
 errout:
 #endif

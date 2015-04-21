@@ -91,6 +91,8 @@ config ARCH_CHIP_TM4C123GH6PMI
 	select TIVA_HAVE_GPIOD_IRQS
 	select TIVA_HAVE_GPIOE_IRQS
 	select TIVA_HAVE_GPIOF_IRQS
+	select TIVA_HAVE_ADC0
+	select TIVA_HAVE_ADC1
 
 config ARCH_CHIP_TM4C1294NC
 	bool "TM4C1294NC"
@@ -173,6 +175,9 @@ config ARCH_CHIP_TM4C
 	bool
 	select ARCH_CORTEXM4
 	select ARCH_HAVE_FPU
+	select TIVA_HAVE_ADC0
+	select TIVA_HAVE_ADC1
+	select TIVA_HAVE_GPIOP_IRQS
 	select TIVA_HAVE_I2C1
 	select TIVA_HAVE_I2C2
 	select TIVA_HAVE_I2C3
@@ -185,6 +190,9 @@ config ARCH_CHIP_TM4C
 	select TIVA_HAVE_SSI1
 	select TIVA_HAVE_SSI2
 	select TIVA_HAVE_SSI3
+	select TIVA_HAVE_TIMER0
+	select TIVA_HAVE_TIMER1
+	select TIVA_HAVE_TIMER2
 	select TIVA_HAVE_TIMER3
 	select TIVA_HAVE_TIMER4
 	select TIVA_HAVE_TIMER5
@@ -202,6 +210,18 @@ config TIVA_BOARD_EARLYINIT
 	default n
 
 menu "Tiva/Stellaris Peripheral Support"
+
+config TIVA_ADC
+	bool
+	default n
+
+config TIVA_HAVE_ADC0
+	bool
+	default n
+
+config TIVA_HAVE_ADC1
+	bool
+	default n
 
 config TIVA_I2C
 	bool
@@ -291,6 +311,18 @@ config TIVA_TIMER
 	bool
 	default n
 
+config TIVA_HAVE_TIMER0
+	bool
+	default n
+
+config TIVA_HAVE_TIMER1
+	bool
+	default n
+
+config TIVA_HAVE_TIMER2
+	bool
+	default n
+
 config TIVA_HAVE_TIMER3
 	bool
 	default n
@@ -310,6 +342,17 @@ config TIVA_HAVE_TIMER6
 config TIVA_HAVE_TIMER7
 	bool
 	default n
+
+config TIVA_ADC0
+	bool "ADC0"
+	default n
+	select TIVA_ADC
+
+config TIVA_ADC1
+	bool "ADC1"
+	default n
+	depends on TIVA_HAVE_ADC0
+	select TIVA_ADC
 
 config TIVA_I2C0
 	bool "I2C0"
@@ -441,16 +484,19 @@ config TIVA_SSI3
 config TIVA_TIMER0
 	bool "16-/32-bit Timer 0"
 	default n
+	depends on TIVA_HAVE_TIMER0
 	select TIVA_TIMER
 
 config TIVA_TIMER1
 	bool "16-/32-bit Timer 1"
 	default n
+	depends on TIVA_HAVE_TIMER1
 	select TIVA_TIMER
 
 config TIVA_TIMER2
 	bool "16-/32-bit Timer 2"
 	default n
+	depends on TIVA_HAVE_TIMER2
 	select TIVA_TIMER
 
 config TIVA_TIMER3
@@ -744,7 +790,7 @@ endif # TIVA_I2C
 
 if TIVA_TIMER
 
-menu "Tiva Timer Configuration"
+menu "Timer Configuration"
 
 config TIVA_TIMER_32BIT
 	bool "32-bit timer support"
@@ -763,7 +809,7 @@ config TIVA_TIMER32_RTC
 endif # TIVA_TIMER_32BIT
 
 config TIVA_TIMER_16BIT
-	bool "16-bit Timers"
+	bool "16-bit timer support"
 	default n
 
 if TIVA_TIMER_16BIT
@@ -772,17 +818,17 @@ config TIVA_TIMER16_PERIODIC
 	bool "16-bit one-shot/periodic timer support"
 	default n
 
-config TIVA_TIMER32_EDGECOUNT
+config TIVA_TIMER16_EDGECOUNT
 	bool "16-bit input edge-count capture support"
 	default n
 	depends on EXPERIMENTAL
 
-config TIVA_TIMER32_TIMECAP
+config TIVA_TIMER16_TIMECAP
 	bool "16-bit input time capture support"
 	default n
 	depends on EXPERIMENTAL
 
-config TIVA_TIMER32_PWM
+config TIVA_TIMER16_PWM
 	bool "16-bit PWM output support"
 	default n
 	depends on EXPERIMENTAL
@@ -798,6 +844,19 @@ config TIVA_TIMER_REGDEBUG
 
 endmenu # Tiva Timer Configuration
 endif # TIVA_TIMER
+
+if TIVA_ADC
+menu "ADC Configuration"
+
+config TIVA_ADC_REGDEBUG
+	bool "Register level debug"
+	default n
+	depends on DEBUG
+	---help---
+		Enables extremely detailed register access debug output.
+
+endmenu # Tiva ADC Configuration
+endif # TIVA_ADC
 
 if TIVA_ETHERNET
 
@@ -858,7 +917,7 @@ config TIVA_DUMPPACKET
 
 endmenu # Stellaris Ethernet Configuration
 
-menu "Tiva Ethernet Configuration"
+menu "Ethernet Configuration"
 	depends on ARCH_CHIP_TM4C
 
 choice
@@ -1084,3 +1143,4 @@ config TIVA_FLASH_STARTPAGE
 
 endmenu
 endif
+

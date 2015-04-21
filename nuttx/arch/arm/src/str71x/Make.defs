@@ -54,7 +54,7 @@ ifeq ($(CONFIG_ELF),y)
 CMN_CSRCS += up_elf.c
 endif
 
-ifeq ($(CONFIG_DEBUG_STACK),y)
+ifeq ($(CONFIG_STACK_COLORATION),y)
 CMN_CSRCS += up_checkstack.c
 endif
 

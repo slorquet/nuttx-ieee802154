@@ -1,7 +1,7 @@
 /****************************************************************************
  * net/igmp/igmp_send.c
  *
- *   Copyright (C) 2010 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2010, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -122,7 +122,7 @@ static uint16_t igmp_chksum(FAR uint8_t *buffer, int buflen)
  ****************************************************************************/
 
 void igmp_send(FAR struct net_driver_s *dev, FAR struct igmp_group_s *group,
-               FAR net_ipaddr_t *destipaddr)
+               FAR in_addr_t *destipaddr)
 {
   nllvdbg("msgid: %02x destipaddr: %08x\n", group->msgid, (int)*destipaddr);
 
@@ -155,8 +155,8 @@ void igmp_send(FAR struct net_driver_s *dev, FAR struct igmp_group_s *group,
   IGMPBUF->ttl         = IGMP_TTL;
   IGMPBUF->proto       = IP_PROTO_IGMP;
 
-  net_ipaddr_hdrcopy(IGMPBUF->srcipaddr, &dev->d_ipaddr);
-  net_ipaddr_hdrcopy(IGMPBUF->destipaddr, destipaddr);
+  net_ipv4addr_hdrcopy(IGMPBUF->srcipaddr, &dev->d_ipaddr);
+  net_ipv4addr_hdrcopy(IGMPBUF->destipaddr, destipaddr);
 
   /* Calculate IP checksum. */
 
@@ -167,7 +167,7 @@ void igmp_send(FAR struct net_driver_s *dev, FAR struct igmp_group_s *group,
 
   IGMPBUF->type        = group->msgid;
   IGMPBUF->maxresp     = 0;
-  net_ipaddr_hdrcopy(IGMPBUF->grpaddr, &group->grpaddr);
+  net_ipv4addr_hdrcopy(IGMPBUF->grpaddr, &group->grpaddr);
 
   /* Calculate the IGMP checksum. */
 
@@ -175,7 +175,7 @@ void igmp_send(FAR struct net_driver_s *dev, FAR struct igmp_group_s *group,
   IGMPBUF->chksum      = ~igmp_chksum(&IGMPBUF->type, IPIGMP_HDRLEN);
 
   IGMP_STATINCR(g_netstats.igmp.poll_send);
-  IGMP_STATINCR(g_netstats.ip.sent);
+  IGMP_STATINCR(g_netstats.ipv4.sent);
 
   nllvdbg("Outgoing IGMP packet length: %d (%d)\n",
           dev->d_len, (IGMPBUF->len[0] << 8) | IGMPBUF->len[1]);

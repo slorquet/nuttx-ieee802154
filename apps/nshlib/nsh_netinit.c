@@ -1,7 +1,7 @@
 /****************************************************************************
  * apps/nshlib/nsh_netinit.c
  *
- *   Copyright (C) 2010-2012, 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2010-2012, 2014-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * This is influenced by similar logic from uIP:
@@ -107,8 +107,18 @@
 #  ifndef CONFIG_NSH_NOMAC
 #    error "CONFIG_NSH_NOMAC must be defined for SLIP"
 #  endif
-#else
+#elif !defined(CONFIG_NET_LOCAL)
 #  error ERROR: No link layer protocol defined
+#endif
+
+/* We need a valid IP domain (any domain) to create a socket that we can use
+ * to comunicate with the network device.
+ */
+
+#if defined(CONFIG_NET_IPv4)
+#  define AF_INETX AF_INET
+#elif defined(CONFIG_NET_IPv6)
+#  define AF_INETX AF_INET6
 #endif
 
 /* While the network is up, the network monitor really does nothing.  It
@@ -131,6 +141,50 @@
 static sem_t g_notify_sem;
 #endif
 
+#if defined(CONFIG_NET_IPv6) && !defined(CONFIG_NET_ICMPv6_AUTOCONF)
+/* Host IPv6 address */
+
+static const uint16_t g_ipv6_hostaddr[8] =
+{
+  HTONS(CONFIG_NSH_IPv6ADDR_1),
+  HTONS(CONFIG_NSH_IPv6ADDR_2),
+  HTONS(CONFIG_NSH_IPv6ADDR_3),
+  HTONS(CONFIG_NSH_IPv6ADDR_4),
+  HTONS(CONFIG_NSH_IPv6ADDR_5),
+  HTONS(CONFIG_NSH_IPv6ADDR_6),
+  HTONS(CONFIG_NSH_IPv6ADDR_7),
+  HTONS(CONFIG_NSH_IPv6ADDR_8),
+};
+
+/* Default routine IPv6 address */
+
+static const uint16_t g_ipv6_draddr[8] =
+{
+  HTONS(CONFIG_NSH_DRIPv6ADDR_1),
+  HTONS(CONFIG_NSH_DRIPv6ADDR_2),
+  HTONS(CONFIG_NSH_DRIPv6ADDR_3),
+  HTONS(CONFIG_NSH_DRIPv6ADDR_4),
+  HTONS(CONFIG_NSH_DRIPv6ADDR_5),
+  HTONS(CONFIG_NSH_DRIPv6ADDR_6),
+  HTONS(CONFIG_NSH_DRIPv6ADDR_7),
+  HTONS(CONFIG_NSH_DRIPv6ADDR_8),
+};
+
+/* IPv6 netmask */
+
+static const uint16_t g_ipv6_netmask[8] =
+{
+  HTONS(CONFIG_NSH_IPv6NETMASK_1),
+  HTONS(CONFIG_NSH_IPv6NETMASK_2),
+  HTONS(CONFIG_NSH_IPv6NETMASK_3),
+  HTONS(CONFIG_NSH_IPv6NETMASK_4),
+  HTONS(CONFIG_NSH_IPv6NETMASK_5),
+  HTONS(CONFIG_NSH_IPv6NETMASK_6),
+  HTONS(CONFIG_NSH_IPv6NETMASK_7),
+  HTONS(CONFIG_NSH_IPv6NETMASK_8),
+};
+#endif /* CONFIG_NET_IPv6 && !CONFIG_NET_ICMPv6_AUTOCONF*/
+
 /****************************************************************************
  * Private Function Prototypes
  ****************************************************************************/
@@ -149,7 +203,9 @@ static sem_t g_notify_sem;
 
 static void nsh_netinit_configure(void)
 {
+#ifdef CONFIG_NET_IPv4
   struct in_addr addr;
+#endif
 #if defined(CONFIG_NSH_DHCPC)
   FAR void *handle;
 #endif
@@ -163,12 +219,6 @@ static void nsh_netinit_configure(void)
   /* Many embedded network interfaces must have a software assigned MAC */
 
 #if defined(CONFIG_NSH_NOMAC) && defined(CONFIG_NET_ETHERNET)
-#ifdef CONFIG_NSH_ARCHMAC
-  /* Let platform-specific logic assign the MAC address. */
-
-  (void)nsh_arch_macaddress(mac);
-
-#else
   /* Use the configured, fixed MAC address */
 
   mac[0] = (CONFIG_NSH_MACADDR >> (8 * 5)) & 0xff;
@@ -177,13 +227,14 @@ static void nsh_netinit_configure(void)
   mac[3] = (CONFIG_NSH_MACADDR >> (8 * 2)) & 0xff;
   mac[4] = (CONFIG_NSH_MACADDR >> (8 * 1)) & 0xff;
   mac[5] = (CONFIG_NSH_MACADDR >> (8 * 0)) & 0xff;
-#endif
 
   /* Set the MAC address */
 
   netlib_setmacaddr(NET_DEVNAME, mac);
-#endif
 
+#endif /* CONFIG_NSH_NOMAC && CONFIG_NET_ETHERNET */
+
+#ifdef CONFIG_NET_IPv4
   /* Set up our host address */
 
 #if !defined(CONFIG_NSH_DHCPC)
@@ -191,17 +242,44 @@ static void nsh_netinit_configure(void)
 #else
   addr.s_addr = 0;
 #endif
-  netlib_sethostaddr(NET_DEVNAME, &addr);
+  netlib_set_ipv4addr(NET_DEVNAME, &addr);
 
   /* Set up the default router address */
 
   addr.s_addr = HTONL(CONFIG_NSH_DRIPADDR);
-  netlib_setdraddr(NET_DEVNAME, &addr);
+  netlib_set_dripv4addr(NET_DEVNAME, &addr);
 
   /* Setup the subnet mask */
 
   addr.s_addr = HTONL(CONFIG_NSH_NETMASK);
-  netlib_setnetmask(NET_DEVNAME, &addr);
+  netlib_set_ipv4netmask(NET_DEVNAME, &addr);
+#endif
+
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_ICMPv6_AUTOCONF
+  /* Perform ICMPv6 auto-configuration */
+
+  netlib_icmpv6_autoconfiguration(NET_DEVNAME);
+
+#else /* CONFIG_NET_ICMPv6_AUTOCONF */
+
+  /* Set up our fixed host address */
+
+  netlib_set_ipv6addr(NET_DEVNAME,
+                      (FAR const struct in6_addr *)g_ipv6_hostaddr);
+
+  /* Set up the default router address */
+
+  netlib_set_dripv6addr(NET_DEVNAME,
+                        (FAR const struct in6_addr *)g_ipv6_draddr);
+
+  /* Setup the subnet mask */
+
+  netlib_set_ipv6netmask(NET_DEVNAME,
+                        (FAR const struct in6_addr *)g_ipv6_netmask);
+
+#endif /* CONFIG_NET_ICMPv6_AUTOCONF */
+#endif /* CONFIG_NET_IPv6 */
 
 #if defined(CONFIG_NSH_DHCPC) || defined(CONFIG_NSH_DNS)
   /* Set up the resolver */
@@ -230,16 +308,16 @@ static void nsh_netinit_configure(void)
     {
         struct dhcpc_state ds;
         (void)dhcpc_request(handle, &ds);
-        netlib_sethostaddr(NET_DEVNAME, &ds.ipaddr);
+        netlib_set_ipv4addr(NET_DEVNAME, &ds.ipaddr);
 
         if (ds.netmask.s_addr != 0)
           {
-            netlib_setnetmask(NET_DEVNAME, &ds.netmask);
+            netlib_set_ipv4netmask(NET_DEVNAME, &ds.netmask);
           }
 
         if (ds.default_router.s_addr != 0)
           {
-            netlib_setdraddr(NET_DEVNAME, &ds.default_router);
+            netlib_set_dripv4addr(NET_DEVNAME, &ds.default_router);
           }
 
         if (ds.dnsaddr.s_addr != 0)
@@ -313,7 +391,7 @@ static int nsh_netinit_monitor(void)
    * interface driver.
    */
 
-  sd = socket(AF_INET, SOCK_DGRAM, 0);
+  sd = socket(AF_INETX, SOCK_DGRAM, 0);
   if (sd < 0)
     {
       ret = -errno;
@@ -487,7 +565,7 @@ static int nsh_netinit_monitor(void)
 
       abstime.tv_sec  += reltime.tv_sec;
       abstime.tv_nsec += reltime.tv_nsec;
-      if (abstime.tv_nsec > 1000000000)
+      if (abstime.tv_nsec >= 1000000000)
         {
           abstime.tv_sec++;
           abstime.tv_nsec -= 1000000000;

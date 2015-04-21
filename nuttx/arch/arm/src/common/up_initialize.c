@@ -1,7 +1,7 @@
 /****************************************************************************
  * arch/arm/src/common/up_initialize.c
  *
- *   Copyright (C) 2007-2010, 2012-2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2007-2010, 2012-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,8 +42,11 @@
 #include <debug.h>
 
 #include <nuttx/arch.h>
+#include <nuttx/board.h>
 #include <nuttx/fs/fs.h>
 #include <nuttx/syslog/ramlog.h>
+#include <nuttx/syslog/syslog_console.h>
+#include <nuttx/crypto/crypto.h>
 
 #include <arch/board/board.h>
 
@@ -96,7 +99,7 @@ static void up_calibratedelay(void)
  *
  ****************************************************************************/
 
-#if defined(CONFIG_DEBUG_STACK) && CONFIG_ARCH_INTERRUPTSTACK > 3
+#if defined(CONFIG_STACK_COLORATION) && CONFIG_ARCH_INTERRUPTSTACK > 3
 static inline void up_color_intstack(void)
 {
   uint32_t *ptr = (uint32_t *)&g_intstackalloc;
@@ -194,14 +197,6 @@ void up_initialize(void)
   devnull_register();   /* Standard /dev/null */
 #endif
 
-#if defined(CONFIG_CRYPTO)
-  up_cryptoinitialize();
-#endif
-
-#if defined(CONFIG_CRYPTO_CRYPTODEV)
-  devcrypto_register(); /* /dev/crypto */
-#endif
-
 #if defined(CONFIG_DEV_ZERO)
   devzero_register();   /* Standard /dev/zero */
 #endif
@@ -220,8 +215,22 @@ void up_initialize(void)
 
 #if defined(CONFIG_DEV_LOWCONSOLE)
   lowconsole_init();
+#elif defined(CONFIG_SYSLOG_CONSOLE)
+  syslog_console_init();
 #elif defined(CONFIG_RAMLOG_CONSOLE)
   ramlog_consoleinit();
+#endif
+
+  /* Initialize the HW crypto and /dev/crypto */
+
+#if defined(CONFIG_CRYPTO)
+  up_cryptoinitialize();
+#endif
+
+#if CONFIG_NFILE_DESCRIPTORS > 0
+#if defined(CONFIG_CRYPTO_CRYPTODEV)
+  devcrypto_register();
+#endif
 #endif
 
   /* Initialize the Random Number Generator (RNG)  */

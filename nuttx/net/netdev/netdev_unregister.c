@@ -1,7 +1,7 @@
 /****************************************************************************
  * net/netdev/netdev_unregister.c
  *
- *   Copyright (C) 2011 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2011, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -55,7 +55,7 @@
 #include "netdev/netdev.h"
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 #ifdef CONFIG_NET_SLIP
@@ -65,7 +65,7 @@
 #endif
 
 /****************************************************************************
- * Priviate Types
+ * Private Types
  ****************************************************************************/
 
 /****************************************************************************
@@ -81,7 +81,7 @@
  ****************************************************************************/
 
 /****************************************************************************
- * Global Functions
+ * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
@@ -133,7 +133,7 @@ int netdev_unregister(FAR struct net_driver_s *dev)
             {
                /* The entry was at the beginning of the list */
 
-               g_netdevices = curr;
+               g_netdevices = curr->flink;
             }
 
           curr->flink = NULL;

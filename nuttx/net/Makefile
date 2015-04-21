@@ -61,10 +61,12 @@ include iob/Make.defs
 include arp/Make.defs
 include icmp/Make.defs
 include icmpv6/Make.defs
+include neighbor/Make.defs
 include igmp/Make.defs
+include pkt/Make.defs
+include local/Make.defs
 include tcp/Make.defs
 include udp/Make.defs
-include pkt/Make.defs
 include devif/Make.defs
 include route/Make.defs
 include utils/Make.defs

@@ -1,7 +1,7 @@
 /****************************************************************************
  * NxWidgets/libnxwidgets/include/inxwindow.hxx
  *
- *   Copyright (C) 2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2012, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -83,6 +83,14 @@ namespace NXWidgets
   class INxWindow
   {
   public:
+    enum ELineCaps
+    {
+      LINECAP_NONE = NX_LINECAP_NONE, // No line caps
+      LINECAP_PT1  = NX_LINECAP_PT1,  // Line cap on pt1 of the vector only
+      LINECAP_PT2  = NX_LINECAP_PT2,  // Line cap on pt2 of the vector only
+      LINECAP_BOTH = NX_LINECAP_BOTH  // Line cap on both ends of the vector only
+    };
+
     /**
      * A virtual destructor is required in order to override the INxWindow
      * destructor.  We do this because if we delete INxWindow, we want the
@@ -249,13 +257,15 @@ namespace NXWidgets
      * @param vector - Describes the line to be drawn
      * @param width  - The width of the line
      * @param color  - The color to use to fill the line
+     * @param caps   - Draw a circular cap on the ends of the line to support
+     *                 better line joins
      *
      * @return True on success; false on failure.
      */
 
     virtual bool drawLine(FAR struct nxgl_vector_s *vector,
-                          nxgl_coord_t width,
-                          nxgl_mxpixel_t color) = 0;
+                          nxgl_coord_t width, nxgl_mxpixel_t color,
+                          enum ELineCaps caps) = 0;
 
     /**
      * Draw a filled circle at the specified position, size, and color.

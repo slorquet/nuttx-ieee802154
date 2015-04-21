@@ -202,8 +202,7 @@
 #define SYS_clock_getres               (__SYS_clock+1)
 #define SYS_clock_gettime              (__SYS_clock+2)
 #define SYS_clock_settime              (__SYS_clock+3)
-#define SYS_gettimeofday               (__SYS_clock+4)
-#define __SYS_timers                   (__SYS_clock+5)
+#define __SYS_timers                   (__SYS_clock+4)
 
 /* The following are defined only if POSIX timers are supported */
 
@@ -250,12 +249,21 @@
 #  ifndef CONFIG_DISABLE_POLL
 #    define SYS_poll                   __SYS_poll
 #    define SYS_select                 (__SYS_poll+1)
-#    define __SYS_filedesc             (__SYS_poll+2)
+#    define __SYS_boardctl             (__SYS_poll+2)
 #  else
-#    define __SYS_filedesc             __SYS_poll
+#    define __SYS_boardctl             __SYS_poll
 #  endif
 #else
-#  define __SYS_filedesc               __SYS_descriptors
+#  define __SYS_boardctl               __SYS_descriptors
+#endif
+
+/* Board support */
+
+#ifdef CONFIG_LIB_BOARDCTL
+#    define SYS_boardctl                __SYS_boardctl
+#  define __SYS_filedesc                (__SYS_boardctl+1)
+#else
+#  define __SYS_filedesc               __SYS_boardctl
 #endif
 
 /* The following are defined if file descriptors are enabled */
@@ -299,7 +307,7 @@
 #    define SYS_mount                  (__SYS_mountpoint+2)
 #    define SYS_rename                 (__SYS_mountpoint+3)
 #    define SYS_rmdir                  (__SYS_mountpoint+4)
-#    define SYS_umount                 (__SYS_mountpoint+5)
+#    define SYS_umount2                (__SYS_mountpoint+5)
 #    define SYS_unlink                 (__SYS_mountpoint+6)
 #    define __SYS_shm                  (__SYS_mountpoint+7)
 #  else

@@ -47,7 +47,7 @@
 #include "lpc31_ioconfig.h"
 
 /************************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ************************************************************************************/
 /* Configuration ************************************************************/
 
@@ -204,16 +204,6 @@ int lpc31_usbhost_initialize(void);
 #ifdef HAVE_MMCSD
 int lpc31_mmcsd_initialize(int slot, int minor)
 #endif
-
-/****************************************************************************
- * Name: board_led_initialize
- *
- * Description:
- *   Configure LEDs.  LEDs are left in the OFF state.
- *
- ****************************************************************************/
-
-void board_led_initialize(void);
 
 #endif /* __ASSEMBLY__ */
 #endif /* __CONFIGS_OLIMEX_LPC_H3131_SRC_LPC_H3131_H */

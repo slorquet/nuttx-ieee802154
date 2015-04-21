@@ -1,7 +1,7 @@
 /****************************************************************************
  * net/arp/arp_out.c
  *
- *   Copyright (C) 2007-2011, 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2007-2011, 2014-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Based on uIP which also has a BSD style license:
@@ -92,7 +92,7 @@ static const uint16_t g_broadcast_ipaddr[2] = {0xffff, 0xffff};
  * The following is the first three octects of the IGMP address:
  */
 
-#if defined(CONFIG_NET_IGMP) && !defined(CONFIG_NET_IPv6)
+#ifdef CONFIG_NET_IGMP
 static const uint8_t g_multicast_ethaddr[3] = {0x01, 0x00, 0x5e};
 #endif
 
@@ -144,11 +144,11 @@ void arp_out(FAR struct net_driver_s *dev)
    * written into a packet socket.
    */
 
-  if ((dev->d_flags & IFF_NOARP) != 0)
+  if (IFF_IS_NOARP(dev->d_flags))
     {
       /* Clear the indication and let the packet continue on its way. */
 
-      dev->d_flags &= ~IFF_NOARP;
+      IFF_CLR_NOARP(dev->d_flags);
       return;
     }
 #endif
@@ -163,12 +163,12 @@ void arp_out(FAR struct net_driver_s *dev)
 
   /* First check if destination is a local broadcast. */
 
-  if (net_ipaddr_hdrcmp(pip->eh_destipaddr, g_broadcast_ipaddr))
+  if (net_ipv4addr_hdrcmp(pip->eh_destipaddr, g_broadcast_ipaddr))
     {
       memcpy(peth->dest, g_broadcast_ethaddr.ether_addr_octet, ETHER_ADDR_LEN);
     }
 
-#if defined(CONFIG_NET_IGMP) && !defined(CONFIG_NET_IPv6)
+#ifdef CONFIG_NET_IGMP
   /* Check if the destination address is a multicast address
    *
    * - IPv4: multicast addresses lie in the class D group -- The address range
@@ -196,7 +196,7 @@ void arp_out(FAR struct net_driver_s *dev)
       /* Check if the destination address is on the local network. */
 
       destipaddr = net_ip4addr_conv32(pip->eh_destipaddr);
-      if (!net_ipaddr_maskcmp(destipaddr, dev->d_ipaddr, dev->d_netmask))
+      if (!net_ipv4addr_maskcmp(destipaddr, dev->d_ipaddr, dev->d_netmask))
         {
           /* Destination address is not on the local network */
 
@@ -207,20 +207,20 @@ void arp_out(FAR struct net_driver_s *dev)
            * destination address when determining the MAC address.
            */
 
-          netdev_router(dev, destipaddr, &ipaddr);
+          netdev_ipv4_router(dev, destipaddr, &ipaddr);
 #else
           /* Use the device's default router IP address instead of the
            * destination address when determining the MAC address.
            */
 
-          net_ipaddr_copy(ipaddr, dev->d_draddr);
+          net_ipv4addr_copy(ipaddr, dev->d_draddr);
 #endif
         }
       else
         {
           /* Else, we use the destination IP address. */
 
-          net_ipaddr_copy(ipaddr, destipaddr);
+          net_ipv4addr_copy(ipaddr, destipaddr);
         }
 
       /* Check if we already have this destination address in the ARP table */

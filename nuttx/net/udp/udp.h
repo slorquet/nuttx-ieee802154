@@ -1,7 +1,7 @@
 /****************************************************************************
  * net/udp/udp.h
  *
- *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2014-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,14 +43,27 @@
 #include <nuttx/config.h>
 
 #include <sys/types.h>
+#include <queue.h>
+
+#include <nuttx/net/ip.h>
+
+#ifdef CONFIG_NET_UDP_READAHEAD
+#  include <nuttx/net/iob.h>
+#endif
 
 #ifdef CONFIG_NET_UDP
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
+/* Conditions for support UDP poll/select operations */
 
-/* Allocate a new TCP data callback */
+#if !defined(CONFIG_DISABLE_POLL) && CONFIG_NSOCKET_DESCRIPTORS > 0 && \
+    defined(CONFIG_NET_UDP_READAHEAD)
+#  define HAVE_UDP_POLL
+#endif
+
+/* Allocate a new UDP data callback */
 
 #define udp_callback_alloc(conn)   devif_callback_alloc(&conn->list)
 #define udp_callback_free(conn,cb) devif_callback_free(cb, &conn->list)
@@ -62,22 +75,31 @@
 /* Representation of a uIP UDP connection */
 
 struct devif_callback_s;  /* Forward reference */
+struct udp_hdr_s;         /* Forward reference */
 
 struct udp_conn_s
 {
   dq_entry_t node;        /* Supports a doubly linked list */
-#ifdef CONFIG_NETDEV_MULTINIC
-  net_ipaddr_t lipaddr;   /* Bound local IP address (network byte order) */
-#endif
-  net_ipaddr_t ripaddr;   /* IP address of remote peer (network byte order) */
+  union ip_binding_u u;   /* IP address binding */
   uint16_t lport;         /* Bound local port number (network byte order) */
   uint16_t rport;         /* Remote port number (network byte order) */
+  uint8_t  domain;        /* IP domain: PF_INET or PF_INET6 */
   uint8_t  ttl;           /* Default time-to-live */
   uint8_t  crefs;         /* Reference counts on this instance */
 
+#ifdef CONFIG_NET_UDP_READAHEAD
+  /* Read-ahead buffering.
+   *
+   *   readahead - A singly linked list of type struct iob_qentry_s
+   *               where the UDP/IP read-ahead data is retained.
+   */
+
+  struct iob_queue_s readahead;   /* Read-ahead buffering */
+#endif
+
   /* Defines the list of UDP callbacks */
 
-  struct devif_callback_s *list;
+  FAR struct devif_callback_s *list;
 };
 
 /****************************************************************************
@@ -96,12 +118,13 @@ extern "C"
  * Public Function Prototypes
  ****************************************************************************/
 
-struct udp_iphdr_s; /* Forward reference */
-struct net_driver_s;      /* Forward reference */
+struct sockaddr;      /* Forward reference */
+struct socket;        /* Forward reference */
+struct net_driver_s;  /* Forward reference */
+struct pollfd;        /* Forward reference */
 
-/* Defined in udp_conn.c ****************************************************/
 /****************************************************************************
- * Name: udp_initialize()
+ * Name: udp_initialize
  *
  * Description:
  *   Initialize the UDP connection structures.  Called once and only from
@@ -112,7 +135,7 @@ struct net_driver_s;      /* Forward reference */
 void udp_initialize(void);
 
 /****************************************************************************
- * Name: udp_alloc()
+ * Name: udp_alloc
  *
  * Description:
  *   Allocate a new, uninitialized UDP connection structure.  This is
@@ -120,10 +143,10 @@ void udp_initialize(void);
  *
  ****************************************************************************/
 
-FAR struct udp_conn_s *udp_alloc(void);
+FAR struct udp_conn_s *udp_alloc(uint8_t domain);
 
 /****************************************************************************
- * Name: udp_free()
+ * Name: udp_free
  *
  * Description:
  *   Free a UDP connection structure that is no longer in use. This should be
@@ -134,53 +157,49 @@ FAR struct udp_conn_s *udp_alloc(void);
 void udp_free(FAR struct udp_conn_s *conn);
 
 /****************************************************************************
- * Name: udp_active()
+ * Name: udp_active
  *
  * Description:
  *   Find a connection structure that is the appropriate
- *   connection to be used within the provided TCP/IP header
+ *   connection to be used within the provided UDP/IP header
  *
  * Assumptions:
- *   This function is called from UIP logic at interrupt level
+ *   Called from network stack logic with the network stack locked
  *
  ****************************************************************************/
 
-FAR struct udp_conn_s *udp_active(FAR struct udp_iphdr_s *buf);
+FAR struct udp_conn_s *udp_active(FAR struct net_driver_s *dev,
+                                  FAR struct udp_hdr_s *udp);
 
 /****************************************************************************
- * Name: udp_nextconn()
+ * Name: udp_nextconn
  *
  * Description:
  *   Traverse the list of allocated UDP connections
  *
  * Assumptions:
- *   This function is called from UIP logic at interrupt level (or with
- *   interrupts disabled).
+ *   Called from network stack logic with the network stack locked
  *
  ****************************************************************************/
 
 FAR struct udp_conn_s *udp_nextconn(FAR struct udp_conn_s *conn);
 
 /****************************************************************************
- * Name: udp_bind()
+ * Name: udp_bind
  *
  * Description:
- *   This function implements the UIP specific parts of the standard UDP
- *   bind() operation.
+ *   This function implements the low-level parts of the standard UDP bind()
+ *   operation.
  *
  * Assumptions:
  *   This function is called from normal user level code.
  *
  ****************************************************************************/
 
-#ifdef CONFIG_NET_IPv6
-int udp_bind(FAR struct udp_conn_s *conn, FAR const struct sockaddr_in6 *addr);
-#else
-int udp_bind(FAR struct udp_conn_s *conn, FAR const struct sockaddr_in *addr);
-#endif
+int udp_bind(FAR struct udp_conn_s *conn, FAR const struct sockaddr *addr);
 
 /****************************************************************************
- * Name: udp_connect()
+ * Name: udp_connect
  *
  * Description:
  *   This function sets up a new UDP connection. The function will
@@ -201,15 +220,32 @@ int udp_bind(FAR struct udp_conn_s *conn, FAR const struct sockaddr_in *addr);
  *
  ****************************************************************************/
 
-#ifdef CONFIG_NET_IPv6
-int udp_connect(FAR struct udp_conn_s *conn,
-                FAR const struct sockaddr_in6 *addr);
-#else
-int udp_connect(FAR struct udp_conn_s *conn,
-                FAR const struct sockaddr_in *addr);
+int udp_connect(FAR struct udp_conn_s *conn, FAR const struct sockaddr *addr);
+
+/****************************************************************************
+ * Function: udp_ipv4_select
+ *
+ * Description:
+ *   Configure to send or receive an UDP IPv4 packet
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_IPv4
+void udp_ipv4_select(FAR struct net_driver_s *dev);
 #endif
 
-/* Defined in udp_poll.c ****************************************************/
+/****************************************************************************
+ * Function: udp_ipv6_select
+ *
+ * Description:
+ *   Configure to send or receive an UDP IPv6 packet
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_IPv6
+void udp_ipv6_select(FAR struct net_driver_s *dev);
+#endif
+
 /****************************************************************************
  * Name: udp_poll
  *
@@ -224,13 +260,12 @@ int udp_connect(FAR struct udp_conn_s *conn,
  *   None
  *
  * Assumptions:
- *   Called from the interrupt level or with interrupts disabled.
+ *   Called from network stack logic with the network stack locked
  *
  ****************************************************************************/
 
 void udp_poll(FAR struct net_driver_s *dev, FAR struct udp_conn_s *conn);
 
-/* Defined in udp_send.c ****************************************************/
 /****************************************************************************
  * Name: udp_send
  *
@@ -245,18 +280,17 @@ void udp_poll(FAR struct net_driver_s *dev, FAR struct udp_conn_s *conn);
  *   None
  *
  * Assumptions:
- *   Called from the interrupt level or with interrupts disabled.
+ *   Called from network stack logic with the network stack locked
  *
  ****************************************************************************/
 
 void udp_send(FAR struct net_driver_s *dev, FAR struct udp_conn_s *conn);
 
-/* Defined in udp_input.c ***************************************************/
 /****************************************************************************
- * Name: udp_input
+ * Name: udp_ipv4_input
  *
  * Description:
- *   Handle incoming UDP input
+ *   Handle incoming UDP input in an IPv4 packet
  *
  * Parameters:
  *   dev - The device driver structure containing the received UDP packet
@@ -267,13 +301,37 @@ void udp_send(FAR struct net_driver_s *dev, FAR struct udp_conn_s *conn);
  *         but no receive in place to catch the packet yet.
  *
  * Assumptions:
- *   Called from the interrupt level or with interrupts disabled.
+ *   Called from network stack logic with the network stack locked
  *
  ****************************************************************************/
 
-int udp_input(FAR struct net_driver_s *dev);
+#ifdef CONFIG_NET_IPv4
+int udp_ipv4_input(FAR struct net_driver_s *dev);
+#endif
 
-/* Defined in udp_callback.c ************************************************/
+/****************************************************************************
+ * Name: udp_ipv6_input
+ *
+ * Description:
+ *   Handle incoming UDP input in an IPv6 packet
+ *
+ * Parameters:
+ *   dev - The device driver structure containing the received UDP packet
+ *
+ * Return:
+ *   OK  The packet has been processed  and can be deleted
+ *   ERROR Hold the packet and try again later. There is a listening socket
+ *         but no receive in place to catch the packet yet.
+ *
+ * Assumptions:
+ *   Called from network stack logic with the network stack locked
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_IPv6
+int udp_ipv6_input(FAR struct net_driver_s *dev);
+#endif
+
 /****************************************************************************
  * Function: udp_callback
  *
@@ -284,12 +342,81 @@ int udp_input(FAR struct net_driver_s *dev);
  *   OK if packet has been processed, otherwise ERROR.
  *
  * Assumptions:
- *   This function is called at the interrupt level with interrupts disabled.
+ *   Called from network stack logic with the network stack locked
  *
  ****************************************************************************/
 
 uint16_t udp_callback(FAR struct net_driver_s *dev,
                       FAR struct udp_conn_s *conn, uint16_t flags);
+
+/****************************************************************************
+ * Function: psock_udp_sendto
+ *
+ * Description:
+ *   This function implements the UDP-specific logic of the standard
+ *   sendto() socket operation.
+ *
+ * Input Parameters:
+ *   psock    A pointer to a NuttX-specific, internal socket structure
+ *   buf      Data to send
+ *   len      Length of data to send
+ *   flags    Send flags
+ *   to       Address of recipient
+ *   tolen    The length of the address structure
+ *
+ *   NOTE: All input parameters were verified by sendto() before this
+ *   function was called.
+ *
+ * Returned Value:
+ *   On success, returns the number of characters sent.  On  error,
+ *   a negated errno value is returned.  See the description in
+ *   net/socket/sendto.c for the list of appropriate return value.
+ *
+ ****************************************************************************/
+
+ssize_t psock_udp_sendto(FAR struct socket *psock, FAR const void *buf,
+                         size_t len, int flags, FAR const struct sockaddr *to,
+                         socklen_t tolen);
+
+/****************************************************************************
+ * Function: udp_pollsetup
+ *
+ * Description:
+ *   Setup to monitor events on one UDP/IP socket
+ *
+ * Input Parameters:
+ *   psock - The UDP/IP socket of interest
+ *   fds   - The structure describing the events to be monitored, OR NULL if
+ *           this is a request to stop monitoring events.
+ *
+ * Returned Value:
+ *  0: Success; Negated errno on failure
+ *
+ ****************************************************************************/
+
+#ifdef HAVE_UDP_POLL
+int udp_pollsetup(FAR struct socket *psock, FAR struct pollfd *fds);
+#endif
+
+/****************************************************************************
+ * Function: udp_pollteardown
+ *
+ * Description:
+ *   Teardown monitoring of events on an UDP/IP socket
+ *
+ * Input Parameters:
+ *   psock - The TCP/IP socket of interest
+ *   fds   - The structure describing the events to be monitored, OR NULL if
+ *           this is a request to stop monitoring events.
+ *
+ * Returned Value:
+ *  0: Success; Negated errno on failure
+ *
+ ****************************************************************************/
+
+#ifdef HAVE_UDP_POLL
+int udp_pollteardown(FAR struct socket *psock, FAR struct pollfd *fds);
+#endif
 
 #undef EXTERN
 #ifdef __cplusplus

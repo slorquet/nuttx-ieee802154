@@ -44,9 +44,8 @@
 #include "tm4c123g-launchpad.h"
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
-
 
 /****************************************************************************
  * Public Functions
@@ -62,19 +61,29 @@
 
 int tm4c_bringup(void)
 {
-#ifdef HAVE_AT24
-  int ret;
+  int ret = OK;
 
+#ifdef HAVE_AT24
   /* Initialize the AT24 driver */
 
   ret = tm4c_at24_automount(AT24_MINOR);
   if (ret < 0)
     {
       syslog(LOG_ERR, "ERROR: tm4c_at24_automount failed: %d\n", ret);
+      return ret;
     }
+#endif /* HAVE_AT24 */
+
+#ifdef CONFIG_TIVA_TIMER
+  /* Initialize the timer driver */
+
+  ret = tiva_timer_initialize();
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "ERROR: tiva_timer_initialize failed: %d\n", ret);
+      return ret;
+    }
+#endif /* CONFIG_TIVA_TIMER */
 
   return ret;
-#else
-  return OK;
-#endif /* HAVE_AT24 */
 }

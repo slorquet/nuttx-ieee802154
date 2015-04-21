@@ -67,7 +67,7 @@
 #ifndef CONFIG_ARCH_LEDS
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /* CONFIG_DEBUG_LEDS enables debug output from this file (needs CONFIG_DEBUG
@@ -103,10 +103,10 @@
  ****************************************************************************/
 
 /****************************************************************************
- * Name: sam_ledinit
+ * Name: efm32_ledinit
  ****************************************************************************/
 
-void sam_ledinit(void)
+void efm32_ledinit(void)
 {
   /* Configure LED PIOs for output */
 
@@ -115,10 +115,10 @@ void sam_ledinit(void)
 }
 
 /****************************************************************************
- * Name: sam_setled
+ * Name: efm32_setled
  ****************************************************************************/
 
-void sam_setled(int led, bool ledon)
+void efm32_setled(int led, bool ledon)
 {
   uint32_t ledcfg;
 
@@ -139,10 +139,10 @@ void sam_setled(int led, bool ledon)
 }
 
 /****************************************************************************
- * Name: sam_setleds
+ * Name: efm32_setleds
  ****************************************************************************/
 
-void sam_setleds(uint8_t ledset)
+void efm32_setleds(uint8_t ledset)
 {
   /* Hight illuminates */
 

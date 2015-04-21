@@ -66,10 +66,14 @@
 #include <nuttx/net/arp.h>
 #include <nuttx/net/netdev.h>
 
+#ifdef CONFIG_NET_PKT
+#  include <nuttx/net/pkt.h>
+#endif
+
 #include "enc28j60.h"
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /* Configuration ************************************************************/
@@ -1200,7 +1204,30 @@ static int enc_txpoll(struct net_driver_s *dev)
   nllvdbg("Poll result: d_len=%d\n", priv->dev.d_len);
   if (priv->dev.d_len > 0)
     {
-      arp_out(&priv->dev);
+      /* Look up the destination MAC address and add it to the Ethernet
+       * header.
+       */
+
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+      if (IFF_IS_IPv4(priv->dev.d_flags))
+#endif
+        {
+          arp_out(&priv->dev);
+        }
+#endif /* CONFIG_NET_IPv4 */
+
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+      else
+#endif
+        {
+          neighbor_out(&priv->dev);
+        }
+#endif /* CONFIG_NET_IPv6 */
+
+      /* Send the packet */
+
       enc_transmit(priv);
 
       /* Stop the poll now because we can queue only one packet */
@@ -1374,17 +1401,25 @@ static void enc_rxerif(FAR struct enc_driver_s *priv)
 
 static void enc_rxdispatch(FAR struct enc_driver_s *priv)
 {
- /* We only accept IP packets of the configured type and ARP packets */
+#ifdef CONFIG_NET_PKT
+  /* When packet sockets are enabled, feed the frame into the packet tap */
 
-#ifdef CONFIG_NET_IPv6
-  if (BUF->type == HTONS(ETHTYPE_IP6))
-#else
-  if (BUF->type == HTONS(ETHTYPE_IP))
+   pkt_input(&priv->dev);
 #endif
+
+  /* We only accept IP packets of the configured type and ARP packets */
+
+#ifdef CONFIG_NET_IPv4
+  if (BUF->type == HTONS(ETHTYPE_IP))
     {
-      nllvdbg("IP packet received (%02x)\n", BUF->type);
+      nllvdbg("IPv4 frame\n");
+
+      /* Handle ARP on input then give the IPv4 packet to the network
+       * layer
+       */
+
       arp_ipin(&priv->dev);
-      devif_input(&priv->dev);
+      ipv4_input(&priv->dev);
 
       /* If the above function invocation resulted in data that should be
        * sent out on the network, the field  d_len will set to a value > 0.
@@ -1392,11 +1427,67 @@ static void enc_rxdispatch(FAR struct enc_driver_s *priv)
 
       if (priv->dev.d_len > 0)
         {
-          arp_out(&priv->dev);
+          /* Update the Ethernet header with the correct MAC address */
+
+#ifdef CONFIG_NET_IPv6
+          if (IFF_IS_IPv4(priv->dev.d_flags))
+#endif
+            {
+              arp_out(&priv->dev);
+            }
+#ifdef CONFIG_NET_IPv6
+          else
+            {
+              neighbor_out(&priv->dev);
+            }
+#endif
+
+          /* And send the packet */
+
           enc_transmit(priv);
         }
     }
-  else if (BUF->type == htons(ETHTYPE_ARP))
+  else
+#endif
+#ifdef CONFIG_NET_IPv6
+  if (BUF->type == HTONS(ETHTYPE_IP6))
+    {
+      nllvdbg("Iv6 frame\n");
+
+      /* Give the IPv6 packet to the network layer */
+
+      ipv6_input(&priv->dev);
+
+      /* If the above function invocation resulted in data that should be
+       * sent out on the network, the field  d_len will set to a value > 0.
+       */
+
+      if (priv->dev.d_len > 0)
+        {
+          /* Update the Ethernet header with the correct MAC address */
+
+#ifdef CONFIG_NET_IPv4
+          if (IFF_IS_IPv4(priv->dev.d_flags))
+            {
+              arp_out(&priv->dev);
+            }
+          else
+#endif
+#ifdef CONFIG_NET_IPv6
+            {
+              neighbor_out(&priv->dev);
+            }
+#endif
+
+          /* And send the packet */
+
+          enc_transmit(priv);
+        }
+    }
+  else
+#endif
+#ifdef CONFIG_NET_ARP
+  if (BUF->type == htons(ETHTYPE_ARP))
     {
       nllvdbg("ARP packet received (%02x)\n", BUF->type);
       arp_arpin(&priv->dev);
@@ -1411,6 +1502,7 @@ static void enc_rxdispatch(FAR struct enc_driver_s *priv)
          }
      }
   else
+#endif
     {
       nlldbg("Unsupported packet type dropped (%02x)\n", htons(BUF->type));
     }

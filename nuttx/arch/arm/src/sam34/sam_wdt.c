@@ -47,7 +47,7 @@
 #include <errno.h>
 #include <debug.h>
 
-#include <nuttx/watchdog.h>
+#include <nuttx/timers/watchdog.h>
 #include <arch/board/board.h>
 
 #include "up_arch.h"
@@ -56,7 +56,7 @@
 #if defined(CONFIG_WATCHDOG) && defined(CONFIG_SAM34_WDT)
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 /* Clocking *****************************************************************/
 /* The minimum frequency of the WWDG clock is:
@@ -384,10 +384,7 @@ static int sam34_stop(FAR struct watchdog_lowerhalf_s *lower)
 
 static int sam34_keepalive(FAR struct watchdog_lowerhalf_s *lower)
 {
-  FAR struct sam34_lowerhalf_s *priv = (FAR struct sam34_lowerhalf_s *)lower;
-
   wdvdbg("Entry\n");
-  DEBUGASSERT(priv);
   
   sam34_putreg((WDT_CR_KEY | WDT_CR_WDRSTT), SAM_WDT_CR);
   return OK;

@@ -38,17 +38,19 @@
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#if defined(CONFIG_NET) && defined(CONFIG_NET_TCP)
+#if defined(CONFIG_NET_TCP) || defined(CONFIG_NET_LOCAL_STREAM)
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <errno.h>
 
 #include "tcp/tcp.h"
 #include "pkt/pkt.h"
+#include "local/local.h"
 #include "socket/socket.h"
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /****************************************************************************
@@ -138,22 +140,43 @@ ssize_t psock_send(FAR struct socket *psock, FAR const void *buf, size_t len,
       case SOCK_RAW:
         {
           ret = psock_pkt_send(psock, buf, len);
-          break;
         }
+        break;
 #endif
 
-#if defined(CONFIG_NET_TCP)
+#if defined(CONFIG_NET_TCP) || defined(CONFIG_NET_LOCAL_STREAM)
       case SOCK_STREAM:
         {
-          ret = psock_tcp_send(psock, buf, len);
-          break;
-        }
+#ifdef CONFIG_NET_LOCAL_STREAM
+#ifdef CONFIG_NET_TCP
+          if (psock->s_domain == PF_LOCAL)
 #endif
+            {
+              ret = psock_local_send(psock, buf, len, flags);
+            }
+#endif /* CONFIG_NET_LOCAL_STREAM */
+
+#ifdef CONFIG_NET_TCP
+#ifdef CONFIG_NET_LOCAL_STREAM
+          else
+#endif
+            {
+              ret = psock_tcp_send(psock, buf, len);
+            }
+#endif /* CONFIG_NET_TCP */
+        }
+        break;
+#endif /* CONFIG_NET_TCP || CONFIG_NET_LOCAL_STREAM */
 
       default:
         {
-          ret = ERROR;
+          /* EDESTADDRREQ.  Signifies that the socket is not connection-mode
+           * and no peer address is set.
+           */
+
+          ret = -EDESTADDRREQ;
         }
+        break;
     }
 
   return ret;
@@ -228,4 +251,4 @@ ssize_t send(int sockfd, FAR const void *buf, size_t len, int flags)
   return psock_send(sockfd_socket(sockfd), buf, len, flags);
 }
 
-#endif /* CONFIG_NET && CONFIG_NET_TCP */
+#endif /* CONFIG_NET_TCP || CONFIG_NET_LOCAL_STREAM */

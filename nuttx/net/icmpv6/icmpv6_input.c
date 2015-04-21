@@ -43,23 +43,19 @@
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#ifdef CONFIG_NET
 
 #include <stdint.h>
 #include <string.h>
 #include <debug.h>
 
-#include <net/if.h>
-#include <arpa/inet.h>
-
 #include <nuttx/net/netconfig.h>
 #include <nuttx/net/netdev.h>
 #include <nuttx/net/netstats.h>
-#include <nuttx/net/ip.h>
+#include <nuttx/net/icmpv6.h>
 
 #include "devif/devif.h"
+#include "neighbor/neighbor.h"
 #include "utils/utils.h"
-#include "ipv6/ipv6.h"
 #include "icmpv6/icmpv6.h"
 
 #ifdef CONFIG_NET_ICMPv6
@@ -68,23 +64,25 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
+#define ETHBUF    ((struct eth_hdr_s *)&dev->d_buf[0])
 #define ICMPv6BUF ((struct icmpv6_iphdr_s *)&dev->d_buf[NET_LL_HDRLEN(dev)])
 
-/****************************************************************************
- * Public Variables
- ****************************************************************************/
+#define ICMPv6SOLICIT \
+  ((struct icmpv6_neighbor_solicit_s *)&dev->d_buf[NET_LL_HDRLEN(dev) + IPv6_HDRLEN])
+#define ICMPv6ADVERTISE \
+  ((struct icmpv6_neighbor_advertise_s *)&dev->d_buf[NET_LL_HDRLEN(dev) + IPv6_HDRLEN])
+#define ICMPv6RADVERTISE \
+  ((struct icmpv6_router_advertise_s *)&dev->d_buf[NET_LL_HDRLEN(dev) + IPv6_HDRLEN])
 
 /****************************************************************************
- * Private Variables
+ * Public Data
  ****************************************************************************/
 
-#ifdef CONFIG_NET_ICMPv6v6_PING
-FAR struct devif_callback_s *g_echocallback = NULL;
+#if defined(CONFIG_NET_ICMPv6_PING) || defined(CONFIG_NET_ICMPv6_NEIGHBOR)
+/* This is the singleton "connection" structure for TX polls and echo replies */
+
+struct icmpv6_conn_s g_icmpv6_conn;
 #endif
-
-/****************************************************************************
- * Private Functions
- ****************************************************************************/
 
 /****************************************************************************
  * Public Functions
@@ -110,121 +108,237 @@ FAR struct devif_callback_s *g_echocallback = NULL;
 
 void icmpv6_input(FAR struct net_driver_s *dev)
 {
-  FAR struct icmpv6_iphdr_s *picmp = ICMPv6BUF;
+  FAR struct icmpv6_iphdr_s *icmp = ICMPv6BUF;
 
 #ifdef CONFIG_NET_STATISTICS
   g_netstats.icmpv6.recv++;
 #endif
 
-  /* If we get a neighbor solicitation for our address we should send
-   * a neighbor advertisement message back.
-   */
+  /* Handle the ICMPv6 message by its type */
 
-  if (picmp->type == ICMPv6_NEIGHBOR_SOLICITATION)
+  switch (icmp->type)
     {
-      if (net_ipaddr_cmp(picmp->icmpv6data, dev->d_ipaddr))
-        {
-          if (picmp->options[0] == ICMPv6_OPTION_SOURCE_LINK_ADDRESS)
-            {
-              /* Save the sender's address in our neighbor list. */
+    /* If we get a neighbor solicitation for our address we should send
+     * a neighbor advertisement message back.
+     */
 
-              net_neighbor_add(picmp->srcipaddr,
-                               (FAR struct net_neighbor_addr_s *)&(picmp->options[2]));
-            }
+    case ICMPv6_NEIGHBOR_SOLICIT:
+      {
+        FAR struct icmpv6_neighbor_solicit_s *sol;
 
-          /* We should now send a neighbor advertisement back to where the
-           * neighbor solicitation came from.
-           */
+        /* Check if we are the target of the solicitation */
 
-          picmp->type = ICMPv6_NEIGHBOR_ADVERTISEMENT;
-          picmp->flags = ICMPv6_FLAG_S; /* Solicited flag. */
+        sol = ICMPv6SOLICIT;
+        if (net_ipv6addr_cmp(sol->tgtaddr, dev->d_ipv6addr))
+          {
+            /* Yes..  Send a neighbor advertisement back to where the neighbor
+             * solicitation came from.
+             */
 
-          picmp->reserved1 = picmp->reserved2 = picmp->reserved3 = 0;
+            icmpv6_advertise(dev, icmp->srcipaddr);
 
-          net_ipv6addr_copy(picmp->destipaddr, picmp->srcipaddr);
-          net_ipv6addr_copy(picmp->srcipaddr, dev->d_ipaddr);
+            /* All statistics have been updated.  Nothing to do but exit. */
 
-          picmp->options[0]   = ICMPv6_OPTION_TARGET_LINK_ADDRESS;
-          picmp->options[1]   = 1;  /* Options length, 1 = 8 bytes. */
-          memcpy(&(picmp->options[2]), &dev->d_mac, IFHWADDRLEN);
+            return;
+          }
+        else
+          {
+            goto icmpv6_drop_packet;
+          }
+      }
+      break;
 
-          picmp->icmpv6chksum = 0;
-          picmp->icmpv6chksum = ~icmpv6_chksum(dev);
-        }
-      else
-        {
-          goto drop;
-        }
-    }
-  else if (picmp->type == ICMPv6_ECHO_REQUEST)
-    {
-      /* ICMPv6 echo (i.e., ping) processing. This is simple, we only
-       * change the ICMPv6 type from ECHO to ECHO_REPLY and update the
-       * ICMPv6 checksum before we return the packet.
-       */
+    /* Check if we received a Neighbor Advertisement */
 
-      picmp->type = ICMPv6_ECHO_REPLY;
+    case ICMPv6_NEIGHBOR_ADVERTISE:
+      {
+        FAR struct icmpv6_neighbor_advertise_s *adv;
 
-      net_ipv6addr_copy(picmp->destipaddr, picmp->srcipaddr);
-      net_ipv6addr_copy(picmp->srcipaddr, dev->d_ipaddr);
+        /* If the IPv6 destination address matches our address, and if so,
+         * add the neighbor address mapping to the list of neighbors.
+         *
+         * Missing checks:
+         *   optlen = 1 (8 octets)
+         *   Should only update Neighbor Table if [O]verride bit is set in flags
+         */
 
-      picmp->icmpv6chksum = 0;
-      picmp->icmpv6chksum = ~icmpv6_chksum(dev);
-    }
+        adv = ICMPv6ADVERTISE;
+        if (net_ipv6addr_cmp(icmp->destipaddr, dev->d_ipv6addr))
+          {
+            /* This message is required to support the Target link-layer
+             * address option.
+             */
 
-  /* If an ICMPv6 echo reply is received then there should also be
-   * a thread waiting to received the echo response.
-   */
+            if (adv->opttype == ICMPv6_OPT_TGTLLADDR)
+              {
+                /* Save the sender's address mapping in our Neighbor Table. */
 
-#ifdef CONFIG_NET_ICMPv6v6_PING
-  else if (picmp->type == ICMPv6_ECHO_REPLY && g_echocallback)
-    {
-      uint16_t flags = ICMPv6_ECHOREPLY;
+                neighbor_add(icmp->srcipaddr,
+                             (FAR struct neighbor_addr_s *)adv->tgtlladdr);
 
-      if (g_echocallback)
-        {
-          /* Dispatch the ECHO reply to the waiting thread */
+#ifdef CONFIG_NET_ICMPv6_NEIGHBOR
+                /* Then notify any logic waiting for the Neighbor Advertisement */
 
-          flags = devif_callback_execute(dev, picmp, flags, g_echocallback);
-        }
-
-      /* If the ECHO reply was not handled, then drop the packet */
-
-      if (flags == ICMPv6_ECHOREPLY)
-        {
-          /* The ECHO reply was not handled */
-
-          goto drop;
-        }
-    }
+                icmpv6_notify(icmp->srcipaddr);
 #endif
 
-  else
-    {
-      nlldbg("Unknown ICMPv6 cmd: %d\n", picmp->type);
-      goto typeerr;
+                /* We consumed the packet but we don't send anything in
+                 * response.
+                 */
+
+                goto icmpv_send_nothing;
+              }
+          }
+
+        goto icmpv6_drop_packet;
+      }
+      break;
+
+#ifdef CONFIG_NET_ICMPv6_ROUTER
+    /* Check if we received a Router Solicitation */
+
+    case ICMPV6_ROUTER_SOLICIT:
+      {
+        /* Just give a knee-jerk Router Advertisement in respond with no
+         * further examination of the Router Solicitation.
+         */
+
+        icmpv6_radvertise(dev);
+
+        /* All statistics have been updated.  Nothing to do but exit. */
+
+        return;
+      }
+#endif
+
+#ifdef CONFIG_NET_ICMPv6_AUTOCONF
+    /* Check if we received a Router Advertisement */
+
+    case ICMPV6_ROUTER_ADVERTISE:
+      {
+        FAR struct icmpv6_router_advertise_s *adv;
+        uint16_t pktlen;
+        uint16_t optlen;
+        int ndx;
+
+        /* Get the length of the option data */
+
+        pktlen = (uint16_t)icmp->len[0] << 8 | icmp->len[1];
+        if (pktlen <= ICMPv6_RADV_MINLEN)
+          {
+            /* Too small to contain any options */
+
+            goto icmpv6_drop_packet;
+          }
+
+        optlen = ICMPv6_RADV_OPTLEN(pktlen);
+
+        /* We need to have a valid router advertisement with a Prefix and
+         * with the "A" bit set in the flags.
+         */
+
+        adv = ICMPv6RADVERTISE;
+        for (ndx = 0; ndx + sizeof(struct icmpv6_prefixinfo_s) <= optlen; )
+          {
+            FAR struct icmpv6_prefixinfo_s *opt =
+              (FAR struct icmpv6_prefixinfo_s *)&adv->options[ndx];
+
+            /* Is this the sought for prefix? Is it the correct size? Is
+             * the "A" flag set?
+             */
+
+            if (opt->opttype &&
+                opt->optlen == 4 &&
+               (opt->flags & ICMPv6_PRFX_FLAG_A) != 0)
+              {
+                /* Yes.. Notify any waiting threads */
+
+                icmpv6_rnotify(dev, icmp->srcipaddr, opt->prefix, opt->preflen);
+                goto icmpv_send_nothing;
+              }
+
+            /* Skip to the next option (units of octets) */
+
+            ndx += (opt->optlen << 3);
+          }
+
+        goto icmpv6_drop_packet;
+      }
+      break;
+#endif
+
+    /* Handle the ICMPv6 Echo Request */
+
+    case ICMPv6_ECHO_REQUEST:
+      {
+        /* ICMPv6 echo (i.e., ping) processing. This is simple, we only
+         * change the ICMPv6 type from ECHO to ECHO_REPLY and update the
+         * ICMPv6 checksum before we return the packet.
+         */
+
+        icmp->type = ICMPv6_ECHO_REPLY;
+
+        net_ipv6addr_copy(icmp->destipaddr, icmp->srcipaddr);
+        net_ipv6addr_copy(icmp->srcipaddr, dev->d_ipv6addr);
+
+        icmp->chksum = 0;
+        icmp->chksum = ~icmpv6_chksum(dev);
+      }
+      break;
+
+#ifdef CONFIG_NET_ICMPv6_PING
+    /* If an ICMPv6 echo reply is received then there should also be
+     * a thread waiting to received the echo response.
+     */
+
+    case ICMPv6_ECHO_REPLY:
+      {
+        uint16_t flags = ICMPv6_ECHOREPLY;
+
+        /* Dispatch the ECHO reply to the waiting thread */
+
+        flags = devif_callback_execute(dev, icmp, flags, g_icmpv6_conn.list);
+
+        /* If the ECHO reply was not handled, then drop the packet */
+
+        if (flags == ICMPv6_ECHOREPLY)
+          {
+            /* The ECHO reply was not handled */
+
+            goto icmpv6_drop_packet;
+          }
+      }
+      break;
+#endif
+
+    default:
+      {
+        nlldbg("Unknown ICMPv6 type: %d\n", icmp->type);
+        goto icmpv6_type_error;
+      }
     }
 
   nllvdbg("Outgoing ICMPv6 packet length: %d (%d)\n",
-          dev->d_len, (picmp->len[0] << 8) | picmp->len[1]);
+          dev->d_len, (icmp->len[0] << 8) | icmp->len[1]);
 
 #ifdef CONFIG_NET_STATISTICS
   g_netstats.icmpv6.sent++;
-  g_netstats.ip.sent++;
+  g_netstats.ipv6.sent++;
 #endif
   return;
 
-typeerr:
+icmpv6_type_error:
 #ifdef CONFIG_NET_STATISTICS
   g_netstats.icmpv6.typeerr++;
 #endif
 
-drop:
+icmpv6_drop_packet:
 #ifdef CONFIG_NET_STATISTICS
   g_netstats.icmpv6.drop++;
 #endif
+
+icmpv_send_nothing:
   dev->d_len = 0;
 }
 
 #endif /* CONFIG_NET_ICMPv6 */
-#endif /* CONFIG_NET */

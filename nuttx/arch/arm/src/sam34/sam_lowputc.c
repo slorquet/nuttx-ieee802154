@@ -64,7 +64,7 @@
 #include "chip/sam_pinmap.h"
 
 /**************************************************************************
- * Private Definitions
+ * Pre-processor Definitions
  **************************************************************************/
 
 /* Configuration **********************************************************/
@@ -299,8 +299,6 @@ void up_lowputc(char ch)
           /* Send the character */
 
           putreg32((uint32_t)ch, SAM_CONSOLE_BASE + SAM_UART_THR_OFFSET);
-          irqrestore(flags);
-          return;
         }
 
       irqrestore(flags);

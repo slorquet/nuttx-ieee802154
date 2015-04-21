@@ -1,7 +1,7 @@
 /****************************************************************************
  * net/socket/sendto.c
  *
- *   Copyright (C) 2007-2009, 2011-2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2007-2009, 2011-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,193 +43,17 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdint.h>
-#include <string.h>
 #include <errno.h>
 #include <debug.h>
-#include <arch/irq.h>
 
-#include <nuttx/clock.h>
 #include <nuttx/net/net.h>
-#include <nuttx/net/netdev.h>
-#include <nuttx/net/udp.h>
 
-#include "netdev/netdev.h"
-#include "devif/devif.h"
-#include "arp/arp.h"
 #include "udp/udp.h"
+#include "local/local.h"
 #include "socket/socket.h"
 
 /****************************************************************************
- * Pre-processor Definitions
- ****************************************************************************/
-/* Timeouts on sendto() do not make sense.  Each polling cycle from the
- * driver is an opportunity to send a packet.  If the driver is not polling,
- * then the network is not up (and there are no polling cycles to drive
- * the timeout).
- *
- * There is a remote possibility that if there is a lot of other network
- * traffic that a UDP sendto could get delayed, but I would not expect this
- * generate a timeout.
- */
-
-#undef CONFIG_NET_SENDTO_TIMEOUT
-
-/* If supported, the sendto timeout function would depend on socket options
- * and a system clock.
- */
-
-#ifndef CONFIG_NET_SOCKOPTS
-#  undef CONFIG_NET_SENDTO_TIMEOUT
-#endif
-
-/****************************************************************************
- * Private Types
- ****************************************************************************/
-
-struct sendto_s
-{
-#ifdef CONFIG_NET_SENDTO_TIMEOUT
-  FAR struct socket *st_sock;         /* Points to the parent socket structure */
-  uint32_t st_time;                   /* Last send time for determining timeout */
-#endif
-  FAR struct devif_callback_s *st_cb; /* Reference to callback instance */
-  sem_t st_sem;                       /* Semaphore signals sendto completion */
-  uint16_t st_buflen;                 /* Length of send buffer (error if <0) */
-  const char *st_buffer;              /* Pointer to send buffer */
-  int st_sndlen;                      /* Result of the send (length sent or negated errno) */
-};
-
-/****************************************************************************
- * Private Functions
- ****************************************************************************/
-
-/****************************************************************************
- * Function: send_timeout
- *
- * Description:
- *   Check for send timeout.
- *
- * Parameters:
- *   pstate   send state structure
- *
- * Returned Value:
- *   TRUE:timeout FALSE:no timeout
- *
- * Assumptions:
- *   Running at the interrupt level
- *
- ****************************************************************************/
-
-#ifdef CONFIG_NET_SENDTO_TIMEOUT
-static inline int send_timeout(FAR struct sendto_s *pstate)
-{
-  FAR struct socket *psock = 0;
-
-  /* Check for a timeout configured via setsockopts(SO_SNDTIMEO).
-   * If none... we well let the send wait forever.
-   */
-
-  psock = pstate->st_sock;
-  if (psock && psock->s_sndtimeo != 0)
-    {
-      /* Check if the configured timeout has elapsed */
-
-      return net_timeo(pstate->st_time, psock->s_sndtimeo);
-    }
-
-  /* No timeout */
-
-  return FALSE;
-}
-#endif /* CONFIG_NET_SENDTO_TIMEOUT */
-
-/****************************************************************************
- * Function: sendto_interrupt
- *
- * Description:
- *   This function is called from the interrupt level to perform the actual
- *   send operation when polled by the lower, device interfacing layer.
- *
- * Parameters:
- *   dev        The sructure of the network driver that caused the interrupt
- *   conn       An instance of the UDP connection structure cast to void *
- *   pvpriv     An instance of struct sendto_s cast to void*
- *   flags      Set of events describing why the callback was invoked
- *
- * Returned Value:
- *   Modified value of the input flags
- *
- * Assumptions:
- *   Running at the interrupt level
- *
- ****************************************************************************/
-
-#ifdef CONFIG_NET_UDP
-static uint16_t sendto_interrupt(struct net_driver_s *dev, void *conn,
-                                 void *pvpriv, uint16_t flags)
-{
-  FAR struct sendto_s *pstate = (FAR struct sendto_s *)pvpriv;
-
-  nllvdbg("flags: %04x\n", flags);
-  if (pstate)
-    {
-      /* Check if the outgoing packet is available.  It may have been claimed
-       * by a sendto interrupt serving a different thread -OR- if the output
-       * buffer currently contains unprocessed incoming data.  In these cases
-       * we will just have to wait for the next polling cycle.
-       */
-
-      if (dev->d_sndlen > 0 || (flags & UDP_NEWDATA) != 0)
-        {
-           /* Another thread has beat us sending data or the buffer is busy,
-            * Check for a timeout.  If not timed out, wait for the next
-            * polling cycle and check again.
-            */
-
-#ifdef CONFIG_NET_SENDTO_TIMEOUT
-          if (send_timeout(pstate))
-            {
-              /* Yes.. report the timeout */
-
-              nlldbg("SEND timeout\n");
-              pstate->st_sndlen = -ETIMEDOUT;
-            }
-          else
-#endif /* CONFIG_NET_SENDTO_TIMEOUT */
-            {
-               /* No timeout.  Just wait for the next polling cycle */
-
-               return flags;
-            }
-        }
-
-      /* It looks like we are good to send the data */
-
-      else
-        {
-          /* Copy the user data into d_snddata and send it */
-
-          devif_send(dev, pstate->st_buffer, pstate->st_buflen);
-          pstate->st_sndlen = pstate->st_buflen;
-        }
-
-      /* Don't allow any further call backs. */
-
-      pstate->st_cb->flags   = 0;
-      pstate->st_cb->priv    = NULL;
-      pstate->st_cb->event   = NULL;
-
-      /* Wake up the waiting thread */
-
-      sem_post(&pstate->st_sem);
-    }
-
-  return flags;
-}
-#endif
-
-/****************************************************************************
- * Global Functions
+ * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
@@ -301,16 +125,9 @@ ssize_t psock_sendto(FAR struct socket *psock, FAR const void *buf,
                      size_t len, int flags, FAR const struct sockaddr *to,
                      socklen_t tolen)
 {
-#ifdef CONFIG_NET_UDP
-  FAR struct udp_conn_s *conn;
-#ifdef CONFIG_NET_IPv6
-  FAR const struct sockaddr_in6 *into = (const struct sockaddr_in6 *)to;
-#else
-  FAR const struct sockaddr_in *into = (const struct sockaddr_in *)to;
-#endif
-  struct sendto_s state;
-  net_lock_t save;
-  int ret;
+  socklen_t minlen;
+#if defined(CONFIG_NET_UDP) || defined(CONFIG_NET_LOCAL_DGRAM)
+  ssize_t nsent;
 #endif
   int err;
 
@@ -320,10 +137,10 @@ ssize_t psock_sendto(FAR struct socket *psock, FAR const void *buf,
 
   if (!to || !tolen)
     {
-#ifdef CONFIG_NET_TCP
+#if defined(CONFIG_NET_TCP) || defined(CONFIG_NET_LOCAL_STREAM)
       return psock_send(psock, buf, len, flags);
 #else
-      ndbg("ERROR: No to address\n");
+      ndbg("ERROR: No 'to' address\n");
       err = EINVAL;
       goto errout;
 #endif
@@ -331,16 +148,38 @@ ssize_t psock_sendto(FAR struct socket *psock, FAR const void *buf,
 
   /* Verify that a valid address has been provided */
 
-#ifdef CONFIG_NET_IPv6
-  if (to->sa_family != AF_INET6 || tolen < sizeof(struct sockaddr_in6))
-#else
-  if (to->sa_family != AF_INET || tolen < sizeof(struct sockaddr_in))
+  switch (to->sa_family)
+    {
+#ifdef CONFIG_NET_IPv4
+    case AF_INET:
+      minlen = sizeof(struct sockaddr_in);
+      break;
 #endif
-  {
-      ndbg("ERROR: Invalid address\n");
+
+#ifdef CONFIG_NET_IPv6
+    case AF_INET6:
+      minlen = sizeof(struct sockaddr_in6);
+      break;
+#endif
+
+#ifdef CONFIG_NET_LOCAL_DGRAM
+    case AF_LOCAL:
+      minlen = sizeof(sa_family_t);
+      break;
+#endif
+
+    default:
+      ndbg("ERROR: Unrecognized address family: %d\n", to->sa_family);
+      err = EAFNOSUPPORT;
+      goto errout;
+    }
+
+  if (tolen < minlen)
+    {
+      ndbg("ERROR: Invalid address length: %d < %d\n", tolen, minlen);
       err = EBADF;
       goto errout;
-  }
+    }
 
   /* Verify that the psock corresponds to valid, allocated socket */
 
@@ -360,105 +199,42 @@ ssize_t psock_sendto(FAR struct socket *psock, FAR const void *buf,
       goto errout;
     }
 
-  /* Make sure that the IP address mapping is in the ARP table */
-
-#ifdef CONFIG_NET_ARP_SEND
-  ret = arp_send(into->sin_addr.s_addr);
-  if (ret < 0)
-    {
-      ndbg("ERROR: Not reachable\n");
-      err = ENETUNREACH;
-      goto errout;
-    }
-#endif
-
-  /* Perform the UDP sendto operation */
-
-#ifdef CONFIG_NET_UDP
-  /* Set the socket state to sending */
-
-  psock->s_flags = _SS_SETSTATE(psock->s_flags, _SF_SEND);
-
-  /* Initialize the state structure.  This is done with interrupts
-   * disabled because we don't want anything to happen until we
-   * are ready.
+#if defined(CONFIG_NET_UDP) || defined(CONFIG_NET_LOCAL_DGRAM)
+  /* Now handle the sendto() operation according to the socket domain,
+   * currently either IP or Unix domains.
    */
 
-  save = net_lock();
-  memset(&state, 0, sizeof(struct sendto_s));
-  sem_init(&state.st_sem, 0, 0);
-  state.st_buflen = len;
-  state.st_buffer = buf;
-
-  /* Set the initial time for calculating timeouts */
-
-#ifdef CONFIG_NET_SENDTO_TIMEOUT
-  state.st_sock = psock;
-  state.st_time = clock_systimer();
+#ifdef CONFIG_NET_LOCAL_DGRAM
+#ifdef CONFIG_NET_UDP
+  if (psock->s_domain == PF_LOCAL)
 #endif
-
-  /* Setup the UDP socket */
-
-  conn = (FAR struct udp_conn_s *)psock->s_conn;
-  ret = udp_connect(conn, into);
-  if (ret < 0)
     {
-      net_unlock(save);
-      err = -ret;
+      nsent = psock_local_sendto(psock, buf, len, flags, to, tolen);
+    }
+#endif /* CONFIG_NET_LOCAL_DGRAM */
+
+#ifdef CONFIG_NET_UDP
+#ifdef CONFIG_NET_LOCAL_DGRAM
+  else
+#endif
+    {
+      nsent = psock_udp_sendto(psock, buf, len, flags, to, tolen);
+    }
+#endif /* CONFIG_NET_UDP */
+
+  /* Check if the domain-specific sendto() logic failed */
+
+  if (nsent < 0)
+    {
+      ndbg("ERROR: Unix domain sendto() failed: %ld\n", (long)nsent);
+      err = -nsent;
       goto errout;
     }
 
-  /* Set up the callback in the connection */
-
-  state.st_cb = udp_callback_alloc(conn);
-  if (state.st_cb)
-    {
-      state.st_cb->flags   = UDP_POLL;
-      state.st_cb->priv    = (void*)&state;
-      state.st_cb->event   = sendto_interrupt;
-
-      /* Notify the device driver of the availability of TX data */
-
-#ifdef CONFIG_NET_MULTILINK
-      netdev_txnotify(conn->lipaddr, conn->ripaddr);
-#else
-      netdev_txnotify(conn->ripaddr);
-#endif
-
-      /* Wait for either the receive to complete or for an error/timeout to occur.
-       * NOTES:  (1) net_lockedwait will also terminate if a signal is received, (2)
-       * interrupts may be disabled!  They will be re-enabled while the task sleeps
-       * and automatically re-enabled when the task restarts.
-       */
-
-      net_lockedwait(&state.st_sem);
-
-      /* Make sure that no further interrupts are processed */
-
-      udp_callback_free(conn, state.st_cb);
-    }
-
-  net_unlock(save);
-  sem_destroy(&state.st_sem);
-
-  /* Set the socket state to idle */
-
-  psock->s_flags = _SS_SETSTATE(psock->s_flags, _SF_IDLE);
-
-  /* Check for errors */
-
-  if (state.st_sndlen < 0)
-    {
-      err = -state.st_sndlen;
-      goto errout;
-    }
-
-  /* Success */
-
-  return state.st_sndlen;
+  return nsent;
 #else
   err = ENOSYS;
-#endif
+#endif /* CONFIG_NET_UDP || CONFIG_NET_LOCAL_DGRAM */
 
 errout:
   set_errno(err);

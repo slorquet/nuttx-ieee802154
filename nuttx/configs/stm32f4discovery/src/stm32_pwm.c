@@ -51,7 +51,7 @@
 #include "stm32f4discovery.h"
 
 /************************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ************************************************************************************/
 /* Configuration *******************************************************************/
 /* PWM
@@ -94,7 +94,7 @@
  ************************************************************************************/
 
 /************************************************************************************
- * Name: pwm_devinit
+ * Name: board_pwm_setup
  *
  * Description:
  *   All STM32 architectures must provide the following interface to work with
@@ -102,7 +102,7 @@
  *
  ************************************************************************************/
 
-int pwm_devinit(void)
+int board_pwm_setup(void)
 {
   static bool initialized = false;
   struct pwm_lowerhalf_s *pwm;
@@ -117,7 +117,7 @@ int pwm_devinit(void)
       pwm = stm32_pwminitialize(STM32F4DISCOVERY_PWMTIMER);
       if (!pwm)
         {
-          dbg("Failed to get the STM32 PWM lower half\n");
+          adbg("Failed to get the STM32 PWM lower half\n");
           return -ENODEV;
         }
 

@@ -1,7 +1,7 @@
 /****************************************************************************
  * arch/arm/src/armv7-m/up_assert.c
  *
- *   Copyright (C) 2009-2010, 2012-2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2009-2010, 2012-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -57,6 +57,7 @@
 
 #include <nuttx/irq.h>
 #include <nuttx/arch.h>
+#include <nuttx/board.h>
 #include <nuttx/usb/usbdev_trace.h>
 
 #include <arch/board/board.h>
@@ -72,12 +73,6 @@
 
 #ifndef CONFIG_USBDEV_TRACE
 #  undef CONFIG_ARCH_USBDUMP
-#endif
-
-/* Check if we can dump stack usage information */
-
-#ifndef CONFIG_DEBUG
-#  undef CONFIG_DEBUG_STACK
 #endif
 
 /* The following is just intended to keep some ugliness out of the mainline
@@ -137,6 +132,42 @@ static void up_stackdump(uint32_t sp, uint32_t stack_base)
 }
 #else
 #  define up_stackdump(sp,stack_base)
+#endif
+
+/****************************************************************************
+ * Name: up_taskdump
+ ****************************************************************************/
+
+#ifdef CONFIG_STACK_COLORATION
+static void up_taskdump(FAR struct tcb_s *tcb, FAR void *arg)
+{
+  /* Dump interesting properties of this task */
+
+#ifdef CONFIG_PRINT_TASKNAME
+  lldbg("%s: PID=%d Stack Used=%lu of %lu\n",
+        tcb->name, tcb->pid, (unsigned long)up_check_tcbstack(tcb),
+        (unsigned long)tcb->adj_stack_size);
+#else
+  lldbg("PID: %d Stack Used=%lu of %lu\n",
+        tcb->pid, (unsigned long)up_check_tcbstack(tcb),
+        (unsigned long)tcb->adj_stack_size);
+#endif
+}
+#endif
+
+/****************************************************************************
+ * Name: up_showtasks
+ ****************************************************************************/
+
+#ifdef CONFIG_STACK_COLORATION
+static inline void up_showtasks(void)
+{
+  /* Dump interesting properties of each task in the crash environment */
+
+  sched_foreach(up_taskdump, NULL);
+}
+#else
+#  define up_showtasks()
 #endif
 
 /****************************************************************************
@@ -248,7 +279,7 @@ static void up_dumpstate(void)
   lldbg("IRQ stack:\n");
   lldbg("  base: %08x\n", istackbase);
   lldbg("  size: %08x\n", istacksize);
-#ifdef CONFIG_DEBUG_STACK
+#ifdef CONFIG_STACK_COLORATION
   lldbg("  used: %08x\n", up_check_intstack());
 #endif
 
@@ -277,7 +308,7 @@ static void up_dumpstate(void)
   lldbg("User stack:\n");
   lldbg("  base: %08x\n", ustackbase);
   lldbg("  size: %08x\n", ustacksize);
-#ifdef CONFIG_DEBUG_STACK
+#ifdef CONFIG_STACK_COLORATION
   lldbg("  used: %08x\n", up_check_tcbstack(rtcb));
 #endif
 
@@ -297,7 +328,7 @@ static void up_dumpstate(void)
   lldbg("sp:         %08x\n", sp);
   lldbg("stack base: %08x\n", ustackbase);
   lldbg("stack size: %08x\n", ustacksize);
-#ifdef CONFIG_DEBUG_STACK
+#ifdef CONFIG_STACK_COLORATION
   lldbg("stack used: %08x\n", up_check_tcbstack(rtcb));
 #endif
 
@@ -319,6 +350,10 @@ static void up_dumpstate(void)
   /* Then dump the registers (if available) */
 
   up_registerdump();
+
+  /* Dump the state of all tasks (if available) */
+
+  up_showtasks();
 
 #ifdef CONFIG_ARCH_USBDUMP
   /* Dump USB trace data */
@@ -383,5 +418,10 @@ void up_assert(const uint8_t *filename, int lineno)
 #endif
 
   up_dumpstate();
+
+#ifdef CONFIG_BOARD_CRASHDUMP
+  board_crashdump(up_getsp(), g_readytorun.head, filename, lineno);
+#endif
+
   _up_assert(EXIT_FAILURE);
 }

@@ -1,7 +1,7 @@
 /**************************************************************************
  * arch/avr/src/atmega/atmega_lowinit.c
  *
- *   Copyright (C) 2011-2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2011-2012, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -46,7 +46,7 @@
 #include "atmega_internal.h"
 
 /**************************************************************************
- * Private Definitions
+ * Pre-processor Definitions
  **************************************************************************/
 
 #if defined(CONFIG_WDTO_15MS)
@@ -128,7 +128,12 @@ void up_lowinit(void)
 
   /* Set the system clock divider to 1 */
 
+#ifdef CONFIG_ARCH_CHIP_ATMEGA1284P
+  CLKPR = 0x80;
+  CLKPR = 0;
+#else
   XDIV = 0;
+#endif
 
   /* Initialize the watchdog timer */
 
@@ -148,7 +153,7 @@ void up_lowinit(void)
 
   /* Perform board-level initialization */
 
-  up_boardinitialize();
+  atmega_boardinitialize();
 }
 
 

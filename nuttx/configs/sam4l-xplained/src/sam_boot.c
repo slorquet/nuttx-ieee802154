@@ -1,7 +1,7 @@
 /************************************************************************************
  * configs/sam4l-xplained/src/sam_boot.c
  *
- *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2013, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,10 +41,12 @@
 
 #include <debug.h>
 
+#include <nuttx/board.h>
+
 #include "sam4l-xplained.h"
 
 /************************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ************************************************************************************/
 
 /************************************************************************************

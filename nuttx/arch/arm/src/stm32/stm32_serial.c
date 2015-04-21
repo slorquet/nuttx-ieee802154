@@ -68,7 +68,7 @@
 #include "up_internal.h"
 
 /****************************************************************************
- * Preprocessor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 /* Some sanity checks *******************************************************/
 /* DMA configuration */
@@ -150,7 +150,7 @@
 #    endif
 
 #  elif defined(CONFIG_STM32_STM32L15XX) || defined(CONFIG_STM32_STM32F10XX) || \
-        defined(CONFIG_STM32_STM32F30XX)
+        defined(CONFIG_STM32_STM32F30XX) || defined(CONFIG_STM32_STM32F30XX)
 
 #    if defined(CONFIG_USART1_RXDMA) || defined(CONFIG_USART2_RXDMA) || \
       defined(CONFIG_USART3_RXDMA)
@@ -159,9 +159,9 @@
 #      endif
 #    endif
 
-#    if defined(CONFIG_UART4_RXDMA)
+#    if defined(CONFIG_UART4_RXDMA) || defined(CONFIG_UART5_RXDMA)
 #      ifndef CONFIG_STM32_DMA2
-#        error STM32 UART4 receive DMA requires CONFIG_STM32_DMA2
+#        error STM32 UART4/5 receive DMA requires CONFIG_STM32_DMA2
 #      endif
 #    endif
 
@@ -171,6 +171,7 @@
 #    define DMAMAP_USART2_RX  DMACHAN_USART2_RX
 #    define DMAMAP_USART3_RX  DMACHAN_USART3_RX
 #    define DMAMAP_UART4_RX   DMACHAN_UART4_RX
+#    define DMAMAP_UART5_RX   DMACHAN_UART5_RX
 
 #  endif
 
@@ -186,7 +187,7 @@
 
 #  ifndef CONFIG_USART_DMAPRIO
 #    if defined(CONFIG_STM32_STM32L15XX) || defined(CONFIG_STM32_STM32F10XX) || \
-        defined(CONFIG_STM32_STM32F30XX)
+        defined(CONFIG_STM32_STM32F30XX) || defined(CONFIG_STM32_STM32F37XX)
 #      define CONFIG_USART_DMAPRIO  DMA_CCR_PRIMED
 #    elif defined(CONFIG_STM32_STM32F20XX) || defined(CONFIG_STM32_STM32F40XX)
 #      define CONFIG_USART_DMAPRIO  DMA_SCR_PRIMED
@@ -195,7 +196,7 @@
 #    endif
 #  endif
 #    if defined(CONFIG_STM32_STM32L15XX) || defined(CONFIG_STM32_STM32F10XX) || \
-        defined(CONFIG_STM32_STM32F30XX)
+        defined(CONFIG_STM32_STM32F30XX) || defined(CONFIG_STM32_STM32F37XX)
 #    if (CONFIG_USART_DMAPRIO & ~DMA_CCR_PL_MASK) != 0
 #      error "Illegal value for CONFIG_USART_DMAPRIO"
 #    endif
@@ -207,7 +208,7 @@
 #    error "Unknown STM32 DMA"
 #  endif
 
-/* DMA control word */
+/* DMA control words */
 
 #  if defined(CONFIG_STM32_STM32F20XX) || defined(CONFIG_STM32_STM32F40XX)
 #    define SERIAL_DMA_CONTROL_WORD      \
@@ -219,6 +220,16 @@
                  CONFIG_USART_DMAPRIO  | \
                  DMA_SCR_PBURST_SINGLE | \
                  DMA_SCR_MBURST_SINGLE)
+#    ifdef CONFIG_SERIAL_IFLOWCONTROL
+#      define SERIAL_DMA_IFLOW_CONTROL_WORD \
+                (DMA_SCR_DIR_P2M       | \
+                 DMA_SCR_MINC          | \
+                 DMA_SCR_PSIZE_8BITS   | \
+                 DMA_SCR_MSIZE_8BITS   | \
+                 CONFIG_USART_DMAPRIO  | \
+                 DMA_SCR_PBURST_SINGLE | \
+                 DMA_SCR_MBURST_SINGLE)
+#    endif
 #  else
 #    define SERIAL_DMA_CONTROL_WORD      \
                 (DMA_CCR_CIRC          | \
@@ -226,6 +237,13 @@
                  DMA_CCR_PSIZE_8BITS   | \
                  DMA_CCR_MSIZE_8BITS   | \
                  CONFIG_USART_DMAPRIO)
+#    ifdef CONFIG_SERIAL_IFLOWCONTROL
+#      define SERIAL_DMA_IFLOW_CONTROL_WORD \
+                (DMA_CCR_MINC          | \
+                 DMA_CCR_PSIZE_8BITS   | \
+                 DMA_CCR_MSIZE_8BITS   | \
+                 CONFIG_USART_DMAPRIO)
+#    endif
 # endif
 
 #endif
@@ -322,7 +340,7 @@ static void up_detach(struct uart_dev_s *dev);
 static int  up_interrupt_common(struct up_dev_s *dev);
 static int  up_ioctl(struct file *filep, int cmd, unsigned long arg);
 #ifndef SERIAL_HAVE_ONLY_DMA
-static int  up_receive(struct uart_dev_s *dev, uint32_t *status);
+static int  up_receive(struct uart_dev_s *dev, unsigned int *status);
 static void up_rxint(struct uart_dev_s *dev, bool enable);
 static bool up_rxavailable(struct uart_dev_s *dev);
 #endif
@@ -337,7 +355,7 @@ static bool up_txready(struct uart_dev_s *dev);
 #ifdef SERIAL_HAVE_DMA
 static int  up_dma_setup(struct uart_dev_s *dev);
 static void up_dma_shutdown(struct uart_dev_s *dev);
-static int  up_dma_receive(struct uart_dev_s *dev, uint32_t *status);
+static int  up_dma_receive(struct uart_dev_s *dev, unsigned int *status);
 static void up_dma_rxint(struct uart_dev_s *dev, bool enable);
 static bool up_dma_rxavailable(struct uart_dev_s *dev);
 
@@ -1154,7 +1172,7 @@ static void up_set_format(struct uart_dev_s *dev)
   struct up_dev_s *priv = (struct up_dev_s *)dev->priv;
   uint32_t regval;
 
-#ifdef CONFIG_STM32_STM32F30XX
+#if defined(CONFIG_STM32_STM32F30XX) || defined(CONFIG_STM32_STM32F37XX)
   /* This first implementation is for U[S]ARTs that support oversampling
    * by 8 in additional to the standard oversampling by 16.
    */
@@ -1540,13 +1558,28 @@ static int up_dma_setup(struct uart_dev_s *dev)
 
   priv->rxdma = stm32_dmachannel(priv->rxdma_channel);
 
-  /* Configure for circular DMA reception into the RX fifo */
+#ifdef CONFIG_SERIAL_IFLOWCONTROL
+  if (priv->iflow)
+    {
+      /* Configure for non-circular DMA reception into the RX FIFO */
 
-  stm32_dmasetup(priv->rxdma,
-                 priv->usartbase + STM32_USART_RDR_OFFSET,
-                 (uint32_t)priv->rxfifo,
-                 RXDMA_BUFFER_SIZE,
-                 SERIAL_DMA_CONTROL_WORD);
+      stm32_dmasetup(priv->rxdma,
+                     priv->usartbase + STM32_USART_RDR_OFFSET,
+                     (uint32_t)priv->rxfifo,
+                     RXDMA_BUFFER_SIZE,
+                     SERIAL_DMA_IFLOW_CONTROL_WORD);
+    }
+  else
+#endif
+    {
+      /* Configure for circular DMA reception into the RX FIFO */
+
+      stm32_dmasetup(priv->rxdma,
+                     priv->usartbase + STM32_USART_RDR_OFFSET,
+                     (uint32_t)priv->rxfifo,
+                     RXDMA_BUFFER_SIZE,
+                     SERIAL_DMA_CONTROL_WORD);
+    }
 
   /* Reset our DMA shadow pointer to match the address just
    * programmed above.
@@ -1560,12 +1593,26 @@ static int up_dma_setup(struct uart_dev_s *dev)
   regval |= USART_CR3_DMAR;
   up_serialout(priv, STM32_USART_CR3_OFFSET, regval);
 
-  /* Start the DMA channel, and arrange for callbacks at the half and
-   * full points in the FIFO.  This ensures that we have half a FIFO
-   * worth of time to claim bytes before they are overwritten.
-   */
+#ifdef CONFIG_SERIAL_IFLOWCONTROL
+  if (priv->iflow)
+    {
+      /* Start the DMA channel, and arrange for callbacks at the full point
+       * in the FIFO. After buffer gets full, hardware flow-control kicks
+       * in and DMA transfer is stopped.
+       */
 
-  stm32_dmastart(priv->rxdma, up_dma_rxcallback, (void *)priv, true);
+      stm32_dmastart(priv->rxdma, up_dma_rxcallback, (void *)priv, false);
+    }
+  else
+#endif
+    {
+      /* Start the DMA channel, and arrange for callbacks at the half and
+       * full points in the FIFO.  This ensures that we have half a FIFO
+       * worth of time to claim bytes before they are overwritten.
+       */
+
+      stm32_dmastart(priv->rxdma, up_dma_rxcallback, (void *)priv, true);
+    }
 
   return OK;
 }
@@ -1720,7 +1767,7 @@ static void up_detach(struct uart_dev_s *dev)
  *   interrupt received on the 'irq'  It should call uart_transmitchars or
  *   uart_receivechar to perform the appropriate data transfers.  The
  *   interrupt handling logic must be able to map the 'irq' number into the
- *   approprite uart_dev_s structure in order to call these functions.
+ *   appropriate uart_dev_s structure in order to call these functions.
  *
  ****************************************************************************/
 
@@ -1803,7 +1850,7 @@ static int up_interrupt_common(struct up_dev_s *priv)
 
       else if ((priv->sr & (USART_SR_ORE | USART_SR_NE | USART_SR_FE)) != 0)
         {
-#ifdef CONFIG_STM32_STM32F30XX
+#if defined(CONFIG_STM32_STM32F30XX) || defined(CONFIG_STM32_STM32F37XX)
           /* These errors are cleared by writing the corresponding bit to the
            * interrupt clear register (ICR).
            */
@@ -1998,7 +2045,7 @@ static int up_ioctl(struct file *filep, int cmd, unsigned long arg)
 
         priv->baud = cfgetispeed(termiosp);
 
-        /* effect the changes immediately - note that we do not implement
+        /* Effect the changes immediately - note that we do not implement
          * TCSADRAIN / TCSAFLUSH
          */
 
@@ -2047,7 +2094,7 @@ static int up_ioctl(struct file *filep, int cmd, unsigned long arg)
  ****************************************************************************/
 
 #ifndef SERIAL_HAVE_ONLY_DMA
-static int up_receive(struct uart_dev_s *dev, uint32_t *status)
+static int up_receive(struct uart_dev_s *dev, unsigned int *status)
 {
   struct up_dev_s *priv = (struct up_dev_s *)dev->priv;
   uint32_t rdr;
@@ -2169,9 +2216,9 @@ static bool up_rxflowcontrol(struct uart_dev_s *dev,
                              unsigned int nbuffered, bool upper)
 {
   struct up_dev_s *priv = (struct up_dev_s*)dev->priv;
-  uint16_t ie;
 
-#if defined(CONFIG_SERIAL_IFLOWCONTROL_WATERMARKS) && defined(CONFIG_STM32_FLOWCONTROL_BROKEN)
+#if defined(CONFIG_SERIAL_IFLOWCONTROL_WATERMARKS) && \
+    defined(CONFIG_STM32_FLOWCONTROL_BROKEN)
   if (priv->iflow && (priv->rts_gpio != 0))
     {
       /* Assert/de-assert nRTS set it high resume/stop sending */
@@ -2199,9 +2246,7 @@ static bool up_rxflowcontrol(struct uart_dev_s *dev,
            * enable Rx interrupts.
            */
 
-          ie = priv->ie;
-          ie &= ~USART_CR1_RXNEIE;
-          up_restoreusartint(priv, ie);
+          uart_disablerxint(dev);
           return true;
         }
 
@@ -2214,7 +2259,7 @@ static bool up_rxflowcontrol(struct uart_dev_s *dev,
            * received.
            */
 
-          up_rxint(dev, true);
+          uart_enablerxint(dev);
         }
     }
 #endif
@@ -2234,7 +2279,7 @@ static bool up_rxflowcontrol(struct uart_dev_s *dev,
  ****************************************************************************/
 
 #ifdef SERIAL_HAVE_DMA
-static int up_dma_receive(struct uart_dev_s *dev, uint32_t *status)
+static int up_dma_receive(struct uart_dev_s *dev, unsigned int *status)
 {
   struct up_dev_s *priv = (struct up_dev_s *)dev->priv;
   int c = 0;
@@ -2246,11 +2291,56 @@ static int up_dma_receive(struct uart_dev_s *dev, uint32_t *status)
       priv->rxdmanext++;
       if (priv->rxdmanext == RXDMA_BUFFER_SIZE)
         {
-          priv->rxdmanext = 0;
+#ifdef CONFIG_SERIAL_IFLOWCONTROL
+          if (priv->iflow)
+            {
+              /* RX DMA buffer full. RX paused, RTS line pulled up to prevent
+               * more input data from other end.
+               */
+            }
+          else
+#endif
+            {
+              priv->rxdmanext = 0;
+            }
         }
     }
 
   return c;
+}
+#endif
+
+/****************************************************************************
+ * Name: up_dma_reenable
+ *
+ * Description:
+ *   Call to re-enable RX DMA.
+ *
+ ****************************************************************************/
+
+#if defined(SERIAL_HAVE_DMA) && defined(CONFIG_SERIAL_IFLOWCONTROL)
+static void up_dma_reenable(struct up_dev_s *priv)
+{
+  /* Configure for non-circular DMA reception into the RX fifo */
+
+  stm32_dmasetup(priv->rxdma,
+                 priv->usartbase + STM32_USART_RDR_OFFSET,
+                 (uint32_t)priv->rxfifo,
+                 RXDMA_BUFFER_SIZE,
+                 SERIAL_DMA_IFLOW_CONTROL_WORD);
+
+  /* Reset our DMA shadow pointer to match the address just
+   * programmed above.
+   */
+
+  priv->rxdmanext = 0;
+
+  /* Start the DMA channel, and arrange for callbacks at the full point in
+   * the FIFO. After buffer gets full, hardware flow-control kicks in and
+   * DMA transfer is stopped.
+   */
+
+  stm32_dmastart(priv->rxdma, up_dma_rxcallback, (void *)priv, false);
 }
 #endif
 
@@ -2276,6 +2366,15 @@ static void up_dma_rxint(struct uart_dev_s *dev, bool enable)
    */
 
   priv->rxenable = enable;
+
+#ifdef CONFIG_SERIAL_IFLOWCONTROL
+  if (priv->iflow && priv->rxenable && (priv->rxdmanext == RXDMA_BUFFER_SIZE))
+    {
+      /* Re-enable RX DMA. */
+
+      up_dma_reenable(priv);
+    }
+#endif
 }
 #endif
 
@@ -2311,10 +2410,14 @@ static bool up_dma_rxavailable(struct uart_dev_s *dev)
 static void up_send(struct uart_dev_s *dev, int ch)
 {
   struct up_dev_s *priv = (struct up_dev_s *)dev->priv;
+
 #ifdef HAVE_RS485
   if (priv->rs485_dir_gpio != 0)
-    stm32_gpiowrite(priv->rs485_dir_gpio, priv->rs485_dir_polarity);
+    {
+      stm32_gpiowrite(priv->rs485_dir_gpio, priv->rs485_dir_polarity);
+    }
 #endif
+
   up_serialout(priv, STM32_USART_TDR_OFFSET, (uint32_t)ch);
 }
 
@@ -2473,6 +2576,16 @@ static void up_dma_rxcallback(DMA_HANDLE handle, uint8_t status, void *arg)
   if (priv->rxenable && up_dma_rxavailable(&priv->dev))
     {
       uart_recvchars(&priv->dev);
+
+#ifdef CONFIG_SERIAL_IFLOWCONTROL
+      if (priv->iflow && priv->rxenable &&
+          (priv->rxdmanext == RXDMA_BUFFER_SIZE))
+        {
+          /* Re-enable RX DMA. */
+
+          up_dma_reenable(priv);
+        }
+#endif
     }
 }
 #endif
@@ -2487,7 +2600,7 @@ static void up_dma_rxcallback(DMA_HANDLE handle, uint8_t status, void *arg)
  * Input Parameters:
  *
  *    cb - Returned to the driver. The driver version of the callback
- *         strucure may include additional, driver-specific state data at
+ *         structure may include additional, driver-specific state data at
  *         the end of the structure.
  *
  *    pmstate - Identifies the new PM state
@@ -2552,7 +2665,7 @@ static void up_pm_notify(struct pm_callback_s *cb, enum pm_state_e pmstate)
  * Input Parameters:
  *
  *    cb - Returned to the driver. The driver version of the callback
- *         strucure may include additional, driver-specific state data at
+ *         structure may include additional, driver-specific state data at
  *         the end of the structure.
  *
  *    pmstate - Identifies the new PM state
@@ -2569,7 +2682,6 @@ static void up_pm_notify(struct pm_callback_s *cb, enum pm_state_e pmstate)
  *              lower power state change). Drivers are not permitted to
  *              return non-zero values when reverting back to higher power
  *              consumption modes!
- *
  *
  ****************************************************************************/
 

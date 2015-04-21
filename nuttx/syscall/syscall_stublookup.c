@@ -144,7 +144,6 @@ uintptr_t STUB_clock_systimer(int nbr);
 uintptr_t STUB_clock_getres(int nbr, uintptr_t parm1, uintptr_t parm2);
 uintptr_t STUB_clock_gettime(int nbr, uintptr_t parm1, uintptr_t parm2);
 uintptr_t STUB_clock_settime(int nbr, uintptr_t parm1, uintptr_t parm2);
-uintptr_t STUB_gettimeofday(int nbr, uintptr_t parm1, uintptr_t parm2);
 
 /* The following are defined only if POSIX timers are supported */
 
@@ -186,6 +185,10 @@ uintptr_t STUB_aio_write(int nbr, uintptr_t parm1);
 uintptr_t STUB_aio_fsync(int nbr, uintptr_t parm1, uintptr_t parm2);
 uintptr_t STUB_aio_cancel(int nbr, uintptr_t parm1, uintptr_t parm2);
 
+/* Board support */
+
+uintptr_t STUB_boardctl(int nbr, uintptr_t parm1, uintptr_t parm2);
+
 /* The following are defined if file descriptors are enabled */
 
 uintptr_t STUB_closedir(int nbr, uintptr_t parm1);
@@ -224,7 +227,7 @@ uintptr_t STUB_mount(int nbr, uintptr_t parm1, uintptr_t parm2,
             uintptr_t parm3, uintptr_t parm4, uintptr_t parm5);
 uintptr_t STUB_rename(int nbr, uintptr_t parm1, uintptr_t parm2);
 uintptr_t STUB_rmdir(int nbr, uintptr_t parm1);
-uintptr_t STUB_umount(int nbr, uintptr_t parm1);
+uintptr_t STUB_umount2(int nbr, uintptr_t parm1, uintptr_tparm2);
 uintptr_t STUB_unlink(int nbr, uintptr_t parm1);
 
 /* Shared memory interfaces */

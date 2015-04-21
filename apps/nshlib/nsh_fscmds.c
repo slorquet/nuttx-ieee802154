@@ -168,7 +168,8 @@ static char *nsh_getdirpath(const char *path, const char *file)
  ****************************************************************************/
 
 #if CONFIG_NFILE_DESCRIPTORS > 0
-static int foreach_direntry(FAR struct nsh_vtbl_s *vtbl, const char *cmd, const char *dirpath,
+static int foreach_direntry(FAR struct nsh_vtbl_s *vtbl, FAR const char *cmd,
+                            FAR const char *dirpath,
                             direntry_handler_t handler, void *pvarg)
 {
   DIR *dirp;
@@ -196,7 +197,7 @@ static int foreach_direntry(FAR struct nsh_vtbl_s *vtbl, const char *cmd, const 
 
   for (;;)
     {
-      struct dirent *entryp = readdir(dirp);
+      FAR struct dirent *entryp = readdir(dirp);
       if (!entryp)
         {
           /* Finished with this directory */
@@ -239,12 +240,12 @@ static inline int ls_specialdir(const char *dir)
 static int ls_handler(FAR struct nsh_vtbl_s *vtbl, FAR const char *dirpath,
                       FAR struct dirent *entryp, FAR void *pvarg)
 {
-  unsigned int lsflags = (unsigned int)pvarg;
+  unsigned int lsflags = (unsigned int)((uintptr_t)pvarg);
   int ret;
 
   /* Check if any options will require that we stat the file */
 
-  if ((lsflags & (LSFLAGS_SIZE|LSFLAGS_LONG)) != 0)
+  if ((lsflags & (LSFLAGS_SIZE | LSFLAGS_LONG)) != 0)
     {
       struct stat buf;
 
@@ -389,7 +390,7 @@ static int ls_recursive(FAR struct nsh_vtbl_s *vtbl, const char *dirpath,
     {
       /* Yes.. */
 
-      char *newpath;
+      FAR char *newpath;
       newpath = nsh_getdirpath(dirpath, entryp->d_name);
 
       /* List the directory contents */
@@ -407,6 +408,7 @@ static int ls_recursive(FAR struct nsh_vtbl_s *vtbl, const char *dirpath,
           free(newpath);
         }
     }
+
   return ret;
 }
 
@@ -993,19 +995,22 @@ int cmd_ls(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
        * file
        */
 
-      ret = ls_handler(vtbl, fullpath, NULL, (void*)lsflags);
+      ret = ls_handler(vtbl, fullpath, NULL, (FAR void *)((uintptr_t)lsflags));
     }
   else
     {
       /* List the directory contents */
 
       nsh_output(vtbl, "%s:\n", fullpath);
-      ret = foreach_direntry(vtbl, "ls", fullpath, ls_handler, (void*)lsflags);
+
+      ret = foreach_direntry(vtbl, "ls", fullpath, ls_handler,
+                             (FAR void*)((uintptr_t)lsflags));
       if (ret == OK && (lsflags & LSFLAGS_RECURSIVE) != 0)
         {
           /* Then recurse to list each directory within the directory */
 
-          ret = foreach_direntry(vtbl, "ls", fullpath, ls_recursive, (void*)lsflags);
+          ret = foreach_direntry(vtbl, "ls", fullpath, ls_recursive,
+                                 (FAR void *)((uintptr_t)lsflags));
         }
     }
 
@@ -1250,7 +1255,8 @@ int cmd_mkrd(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
 
   /* Then register the ramdisk */
 
-  ret = ramdisk_register(minor, buffer, nsectors, sectsize, true);
+  ret = ramdisk_register(minor, buffer, nsectors, sectsize,
+                         RDFLAG_WRENABLED | RDFLAG_FUNLINK);
   if (ret < 0)
     {
       nsh_output(vtbl, g_fmtcmdfailed, argv[0], "ramdisk_register", NSH_ERRNO_OF(-ret));

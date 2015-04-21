@@ -222,6 +222,10 @@ ifeq ($(CONFIG_EXAMPLES_POLL),y)
 CONFIGURED_APPS += examples/poll
 endif
 
+ifeq ($(CONFIG_EXAMPLES_PPPD),y)
+CONFIGURED_APPS += examples/pppd
+endif
+
 ifeq ($(CONFIG_EXAMPLES_PWM),y)
 CONFIGURED_APPS += examples/pwm
 endif
@@ -316,6 +320,14 @@ endif
 
 ifeq ($(CONFIG_EXAMPLES_USBTERM),y)
 CONFIGURED_APPS += examples/usbterm
+endif
+
+ifeq ($(CONFIG_EXAMPLES_UDGRAM),y)
+CONFIGURED_APPS += examples/udgram
+endif
+
+ifeq ($(CONFIG_EXAMPLES_USTREAM),y)
+CONFIGURED_APPS += examples/ustream
 endif
 
 ifeq ($(CONFIG_EXAMPLES_WATCHDOG),y)

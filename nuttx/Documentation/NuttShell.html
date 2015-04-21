@@ -8,7 +8,7 @@
   <tr align="center" bgcolor="#e4e4e4">
     <td>
       <h1><big><font color="#3c34ec"><i>NuttShell (NSH)</i></font></big></h1>
-      <p>Last Updated: August 7, 2014</p>
+      <p>Last Updated: April 11, 2015</p>
     </td>
   </tr>
 </table>
@@ -305,7 +305,7 @@
 <tr>
   <td><br></td>
   <td>
-    <a href="#cmdping">2.37 Check Network Peer (ping)</a>
+    <a href="#cmdping">2.37 Check Network Peer (ping/ping6)</a>
   </td>
 </tr>
 <tr>
@@ -1181,7 +1181,6 @@ date [-s &quot;MMM DD HH:MM:SS YYYY&quot;]
 <p>
   <b>Synopsis</b>.
   Show or set the current date and time.
-  This command is only supported if the platform supported RTC hardware (<code>CONFIG_RTC=y</code>).
 </p>
 <p>
   Only one format is used both on display and when setting the date/time:
@@ -2092,14 +2091,15 @@ nfsmount &lt;server-address&gt; &lt;mount-point&gt; &lt;remote-path&gt;
 <table width ="100%">
   <tr bgcolor="#e4e4e4">
   <td>
-    <a name="cmdping"><h2>2.37 Check Network Peer (ping)</h2></a>
+    <a name="cmdping"><h2>2.37 Check Network Peer (ping/ping6)</h2></a>
   </td>
   </tr>
 </table>
 
 <p><b>Command Syntax:</b></p>
 <ul><pre>
-ping [-c &lt;count&gt;] [-i &lt;interval&gt;] &lt;ip-address&gt;
+ping  [-c &lt;count&gt;] [-i &lt;interval&gt;] &lt;ip-address&gt;
+ping6 [-c &lt;count&gt;] [-i &lt;interval&gt;] &lt;ip-address&gt;
 </pre></ul>
 <p>
   <b>Synopsis</b>.
@@ -2121,6 +2121,9 @@ PING 10.0.0.1 56 bytes of data
 10 packets transmitted, 10 received, 0% packet loss, time 10190 ms
 nsh&gt;
 </pre></ul>
+<p>
+  <code>ping6</code> differs from <code>ping</code> in that it uses IPv6 addressing.
+</p>
 
 <table width ="100%">
   <tr bgcolor="#e4e4e4">
@@ -2564,7 +2567,7 @@ nsh>
   </tr>
   <tr>
     <td><b><code>date</code></b></td>
-    <td><code>CONFIG_RTC</code></td>
+    <td><br></td>
     <td><code>CONFIG_NSH_DISABLE_DATE</code></td>
   </tr>
   <tr>
@@ -2702,6 +2705,12 @@ nsh>
     <td><code>CONFIG_NET</code> &amp;&amp; <code>CONFIG_NET_ICMP</code> &amp;&amp;
         <code>CONFIG_NET_ICMP_PING</code> &amp;&amp; !<code>CONFIG_DISABLE_SIGNALS</code></td>
     <td><code>CONFIG_NSH_DISABLE_PING</code></td>
+  </tr>
+  <tr>
+    <td><b><code>ping6</code></b></td>
+    <td><code>CONFIG_NET</code> &amp;&amp; <code>CONFIG_NET_ICMPv6</code> &amp;&amp;
+        <code>CONFIG_NET_ICMPv6_PING</code> &amp;&amp; !<code>CONFIG_DISABLE_SIGNALS</code></td>
+    <td><code>CONFIG_NSH_DISABLE_PING6</code></td>
   </tr>
   <tr>
     <td><b><code>ps</code></b></td>
@@ -3090,7 +3099,7 @@ set FOOBAR ABC_${FOO}_${BAR}
     <td valign="top"><b><code>CONFIG_NSH_ARCHINIT</code></b></td>
     <td>
       Set <code>CONFIG_NSH_ARCHINIT</code> if your board provides architecture
-      specific initialization  via the board-specific function <code>nsh_archinitialize()</code>.
+      specific initialization  via the board-specific function <code>board_app_initialize()</code>.
       This function will be called early in NSH initialization to allow board logic to
       do such things as configure MMC/SD slots.
     </td>
@@ -3488,7 +3497,7 @@ mount -t vfat /dev/ram1 /tmp
     </p>
   <li>
     <p>
-      <code>nsh_archinitialize()</code>:
+      <code>board_app_initialize()</code>:
       Next any architecture-specific NSH initialization will be performed (if any).
       For the STM3240G-EVAL, this architecture specific initialization can be found at <code>configs/stm3240g-eval/src/up_nsh.c</code>.
       This it does things like:  (1) Initialize SPI devices, (2) Initialize SDIO, and (3) mount any SD cards that may be inserted.
@@ -4134,6 +4143,7 @@ mount -t vfat /dev/ram1 /tmp
   <li><a href="#cmdoverview">Background commands</a></li>
   <li><a href="#cmdoverview">Background command priority</a></li>
   <li><a href="#custapps"><code>binfs</code></a></li>
+  <li><a href="#custonshlib"><code>board_app_initialize()</code></a></li>
   <li><a href="#cmdbreak"><code>break</code></a></li>
   <li><a href="#custapps">Built-In applications</a></li>
   <li><a href="#custapps">Built-In application start-up <code>main()</code></a></li>
@@ -4183,10 +4193,10 @@ mount -t vfat /dev/ram1 /tmp
   <li><a href="#nshconfiguration"><code>CONFIG_NSH_NETMASK</code></a></li>
   <li><a href="#nshconfiguration"><code>CONFIG_NSH_NOMAC</code></a></li>
   <li><a href="#nshconfiguration"><code>CONFIG_NSH_READLINE</code></a></li>
+  <li><a href="#nshconfiguration"><code>CONFIG_NSH_ROMFSDEVNO</code></a></li>
 </ul></td>
 <td width="33%" valign="top">
 <ul>
-  <li><a href="#nshconfiguration"><code>CONFIG_NSH_ROMFSDEVNO</code></a></li>
   <li><a href="#nshconfiguration"><code>CONFIG_NSH_ROMFSETC</code></a></li>
   <li><a href="#custinit"><code>CONFIG_NSH_ROMFSETC</code></a></li>
   <li><a href="#nshconfiguration"><code>CONFIG_NSH_ARCHROMFS</code></a></li>
@@ -4243,11 +4253,11 @@ mount -t vfat /dev/ram1 /tmp
   <li><a href="#cmdmbhw"><code>mb</code></a></li>
   <li><a href="#cmdmd5">md5</a></li>
   <li><a href="#cmdmbhw"><code>mh</code></a></li>
+  <li><a href="#cmdmbhw"><code>mw</code></a></li>
+  <li><a href="#cmdmkdir"><code>mkdir</code></a></li>
 </ul></td>
 <td width="34%" valign="top">
 <ul>
-  <li><a href="#cmdmbhw"><code>mw</code></a></li>
-  <li><a href="#cmdmkdir"><code>mkdir</code></a></li>
   <li><a href="#cmdmkfatfs"><code>mkfatfs</code></a></li>
   <li><a href="#cmdmkfifo"><code>mkfifo</code></a></li>
   <li><a href="#cmdmkrd"><code>mkrd</code></a></li>
@@ -4258,7 +4268,6 @@ mount -t vfat /dev/ram1 /tmp
   <li><a href="#cmdoverview"><code>nice</code></a></li>
   <li><a href="#custonshlib">NSH library (<code>nshlib</code>)</a></li>
   <li><a href="#nshlibrary">NSH library (<code>nshlib</code>)</a></li>
-  <li><a href="#custonshlib"><code>nsh_archinitialize()</code></a></li>
   <li><a href="#custonshlib"><code>nsh_consolemain()</code></a></li>
   <li><a href="#custonshlib"><code>nsh_initialize()</code></a></li>
   <li><a href="#custonshlib"><code>nsh_main()</code></a></li>
@@ -4271,6 +4280,7 @@ mount -t vfat /dev/ram1 /tmp
   <li><a href="#environvars"><code>OLDPWD</code></a></li>
   <li><a href="#overview">Overview</a></li>
   <li><a href="#cmdping"><code>ping</code></a></li>
+  <li><a href="#cmdping"><code>ping6</code></a></li>
   <li><a href="#nshprompt">Prompt</a></li>
   <li><a href="#cmdps"><code>ps</code></a></li>
   <li><a href="#cmdput"><code>put</code></a></li>

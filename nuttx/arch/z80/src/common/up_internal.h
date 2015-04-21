@@ -88,6 +88,9 @@
 #  if defined(CONFIG_RAMLOG_CONSOLE)
 #    undef  USE_SERIALDRIVER
 #    undef  CONFIG_DEV_LOWCONSOLE
+#  elif defined(CONFIG_SYSLOG_CONSOLE)
+#    undef  USE_SERIALDRIVER
+#    undef  CONFIG_DEV_LOWCONSOLE
 #  elif defined(CONFIG_DEV_LOWCONSOLE)
 #    undef  USE_SERIALDRIVER
 #  else
@@ -168,6 +171,14 @@ void lowconsole_init(void);
 # define lowconsole_init()
 #endif
 
+/* Defined in drivers/syslog_console.c */
+
+#ifdef defined(CONFIG_SYSLOG_CONSOLE)
+  syslog_console_init();
+#else
+# define syslog_console_init()
+#endif
+
 /* Defined in drivers/ramlog.c */
 
 #ifdef CONFIG_RAMLOG_CONSOLE
@@ -183,18 +194,6 @@ extern void up_puts(const char *str);
 /* Defined in up_timerisr.c */
 
 void up_timer_initialize(void);
-
-/* Defined in board/up_leds.c */
-
-#ifdef CONFIG_ARCH_LEDS
-void board_led_initialize(void);
-void board_led_on(int led);
-void board_led_off(int led);
-#else
-# define board_led_initialize()
-# define board_led_on(led)
-# define board_led_off(led)
-#endif
 
 /* Architecture specific hook into the timer interrupt handler */
 

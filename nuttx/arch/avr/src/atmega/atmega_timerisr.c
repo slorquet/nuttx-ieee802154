@@ -52,7 +52,7 @@
 #include "atmega_internal.h"
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /* The CPU frequency is given by BOARD_CPU_CLOCK (defined in board.h).  The
@@ -177,5 +177,9 @@ void up_timer_initialize(void)
 
   /* Enable the interrupt on compare match A */
 
+#ifdef CONFIG_ARCH_CHIP_ATMEGA1284P
+  TIMSK1 |= (1 << OCIE1A);
+#else
   TIMSK |= (1 << OCIE1A);
+#endif
 }

@@ -58,6 +58,10 @@
 #include <nuttx/net/arp.h>
 #include <nuttx/net/netdev.h>
 
+#ifdef CONFIG_NET_PKT
+#  include <nuttx/net/pkt.h>
+#endif
+
 #include "up_arch.h"
 #include "chip.h"
 #include "chip/lpc17_syscon.h"
@@ -230,7 +234,12 @@ struct lpc17_statistics_s
   uint32_t rx_ovrerrors;   /* Number of Rx overrun error interrupts */
   uint32_t rx_errors;      /* Number of Rx error interrupts (OR of other errors) */
   uint32_t rx_packets;     /* Number of packets received (sum of the following): */
-  uint32_t rx_ip;          /*   Number of Rx IP packets received */
+#ifdef CONFIG_NET_IPv4
+  uint32_t rx_ip;          /*   Number of Rx IPv4 packets received */
+#endif
+#ifdef CONFIG_NET_IPv6
+  uint32_t rx_ipv6;        /*   Number of Rx IPv6 packets received */
+#endif
   uint32_t rx_arp;         /*   Number of Rx ARP packets received */
   uint32_t rx_dropped;     /*   Number of dropped, unsupported Rx packets */
   uint32_t rx_pkterr;      /*   Number of dropped, error in Rx descriptor */
@@ -352,11 +361,17 @@ static void lpc17_txtimeout(int argc, uint32_t arg, ...);
 
 /* NuttX callback functions */
 
+#ifdef CONFIG_NET_ICMPv6
+static void lpc17_ipv6multicast(FAR struct lpc17_driver_s *priv);
+#endif
 static int lpc17_ifup(struct net_driver_s *dev);
 static int lpc17_ifdown(struct net_driver_s *dev);
 static int lpc17_txavail(struct net_driver_s *dev);
-#ifdef CONFIG_NET_IGMP
+#if defined(CONFIG_NET_IGMP) || defined(CONFIG_NET_ICMPv6)
+static uint32_t lpc17_calcethcrc(const uint8_t *data, size_t length);
 static int lpc17_addmac(struct net_driver_s *dev, const uint8_t *mac);
+#endif
+#ifdef CONFIG_NET_IGMP
 static int lpc17_rmmac(struct net_driver_s *dev, const uint8_t *mac);
 #endif
 
@@ -688,11 +703,32 @@ static int lpc17_txpoll(struct net_driver_s *dev)
 
   if (priv->lp_dev.d_len > 0)
     {
+      /* Look up the destination MAC address and add it to the Ethernet
+       * header.
+       */
+
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+      if (IFF_IS_IPv4(priv->lp_dev.d_flags))
+#endif
+        {
+          arp_out(&priv->lp_dev);
+        }
+#endif /* CONFIG_NET_IPv4 */
+
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+      else
+#endif
+        {
+          neighbor_out(&priv->lp_dev);
+        }
+#endif /* CONFIG_NET_IPv6 */
+
       /* Send this packet.  In this context, we know that there is space for
        * at least one more packet in the descriptor list.
        */
 
-      arp_out(&priv->lp_dev);
       lpc17_transmit(priv);
 
       /* Check if there is room in the device to hold another packet. If not,
@@ -867,19 +903,28 @@ static void lpc17_rxdone(struct lpc17_driver_s *priv)
           lpc17_dumppacket("Received packet",
                            priv->lp_dev.d_buf, priv->lp_dev.d_len);
 
+#ifdef CONFIG_NET_PKT
+          /* When packet sockets are enabled, feed the frame into the packet
+           * tap.
+           */
+
+           pkt_input(&priv->lp_dev);
+#endif
+
           /* We only accept IP packets of the configured type and ARP packets */
 
-#ifdef CONFIG_NET_IPv6
-          if (BUF->type == HTONS(ETHTYPE_IP6))
-#else
+#ifdef CONFIG_NET_IPv4
           if (BUF->type == HTONS(ETHTYPE_IP))
-#endif
             {
-              /* Handle the incoming Rx packet */
+              nllvdbg("IPv4 frame\n");
+
+              /* Handle ARP on input then give the IPv4 packet to the
+               * network layer
+               */
 
               EMAC_STAT(priv, rx_ip);
               arp_ipin(&priv->lp_dev);
-              devif_input(&priv->lp_dev);
+              ipv4_input(&priv->lp_dev);
 
               /* If the above function invocation resulted in data that
                * should be sent out on the network, the field  d_len will
@@ -888,11 +933,69 @@ static void lpc17_rxdone(struct lpc17_driver_s *priv)
 
               if (priv->lp_dev.d_len > 0)
                 {
-                  arp_out(&priv->lp_dev);
+                  /* Update the Ethernet header with the correct MAC address */
+
+#ifdef CONFIG_NET_IPv6
+                  if (IFF_IS_IPv4(priv->lp_dev.d_flags))
+#endif
+                    {
+                      arp_out(&priv->lp_dev);
+                    }
+#ifdef CONFIG_NET_IPv6
+                  else
+                    {
+                      neighbor_out(&priv->lp_dev);
+                    }
+#endif
+
+                  /* And send the packet */
+
                   lpc17_response(priv);
                 }
             }
-          else if (BUF->type == htons(ETHTYPE_ARP))
+          else
+#endif
+#ifdef CONFIG_NET_IPv6
+          if (BUF->type == HTONS(ETHTYPE_IP6))
+            {
+              nllvdbg("Iv6 frame\n");
+
+              /* Give the IPv6 packet to the network layer */
+
+              EMAC_STAT(priv, rx_ipv6);
+              ipv6_input(&priv->lp_dev);
+
+              /* If the above function invocation resulted in data that
+               * should be sent out on the network, the field  d_len will
+               * set to a value > 0.
+               */
+
+              if (priv->lp_dev.d_len > 0)
+               {
+                  /* Update the Ethernet header with the correct MAC address */
+
+#ifdef CONFIG_NET_IPv4
+                  if (IFF_IS_IPv4(priv->lp_dev.d_flags))
+                    {
+                      arp_out(&priv->lp_dev);
+                    }
+                  else
+#endif
+#ifdef CONFIG_NET_IPv6
+                    {
+                      neighbor_out(&priv->lp_dev);
+                    }
+#endif
+
+                  /* And send the packet */
+
+                  lpc17_response(priv);
+                }
+            }
+          else
+#endif
+#ifdef CONFIG_NET_ARP
+          if (BUF->type == htons(ETHTYPE_ARP))
             {
               EMAC_STAT(priv, rx_arp);
               arp_arpin(&priv->lp_dev);
@@ -908,6 +1011,7 @@ static void lpc17_rxdone(struct lpc17_driver_s *priv)
                 }
             }
           else
+#endif
             {
               /* Unrecognized... drop it. */
 
@@ -1325,6 +1429,79 @@ static void lpc17_polltimer(int argc, uint32_t arg, ...)
 }
 
 /****************************************************************************
+ * Function: lpc17_ipv6multicast
+ *
+ * Description:
+ *   Configure the IPv6 multicast MAC address.
+ *
+ * Parameters:
+ *   priv - A reference to the private driver state structure
+ *
+ * Returned Value:
+ *   OK on success; Negated errno on failure.
+ *
+ * Assumptions:
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_ICMPv6
+static void lpc17_ipv6multicast(FAR struct lpc17_driver_s *priv)
+{
+  struct net_driver_s *dev;
+  uint16_t tmp16;
+  uint8_t mac[6];
+
+  /* For ICMPv6, we need to add the IPv6 multicast address
+   *
+   * For IPv6 multicast addresses, the Ethernet MAC is derived by
+   * the four low-order octets OR'ed with the MAC 33:33:00:00:00:00,
+   * so for example the IPv6 address FF02:DEAD:BEEF::1:3 would map
+   * to the Ethernet MAC address 33:33:00:01:00:03.
+   *
+   * NOTES:  This appears correct for the ICMPv6 Router Solicitation
+   * Message, but the ICMPv6 Neighbor Solicitation message seems to
+   * use 33:33:ff:01:00:03.
+   */
+
+  mac[0] = 0x33;
+  mac[1] = 0x33;
+
+  dev    = &priv->lp_dev;
+  tmp16  = dev->d_ipv6addr[6];
+  mac[2] = 0xff;
+  mac[3] = tmp16 >> 8;
+
+  tmp16  = dev->d_ipv6addr[7];
+  mac[4] = tmp16 & 0xff;
+  mac[5] = tmp16 >> 8;
+
+  nvdbg("IPv6 Multicast: %02x:%02x:%02x:%02x:%02x:%02x\n",
+        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+  (void)lpc17_addmac(dev, mac);
+
+#ifdef CONFIG_NET_ICMPv6_AUTOCONF
+  /* Add the IPv6 all link-local nodes Ethernet address.  This is the
+   * address that we expect to receive ICMPv6 Router Advertisement
+   * packets.
+   */
+
+  (void)lpc17_addmac(dev, g_ipv6_ethallnodes.ether_addr_octet);
+
+#endif /* CONFIG_NET_ICMPv6_AUTOCONF */
+#ifdef CONFIG_NET_ICMPv6_ROUTER
+  /* Add the IPv6 all link-local routers Ethernet address.  This is the
+   * address that we expect to receive ICMPv6 Router Solicitation
+   * packets.
+   */
+
+  (void)lpc17_addmac(dev, g_ipv6_ethallrouters.ether_addr_octet);
+
+#endif /* CONFIG_NET_ICMPv6_ROUTER */
+}
+#endif /* CONFIG_NET_ICMPv6 */
+
+/****************************************************************************
  * Function: lpc17_ifup
  *
  * Description:
@@ -1377,6 +1554,12 @@ static int lpc17_ifup(struct net_driver_s *dev)
   regval = (uint32_t)priv->lp_dev.d_mac.ether_addr_octet[1] << 8 |
            (uint32_t)priv->lp_dev.d_mac.ether_addr_octet[0];
   lpc17_putreg(regval, LPC17_ETH_SA2);
+
+#ifdef CONFIG_NET_ICMPv6
+  /* Set up the IPv6 multicast address */
+
+  lpc17_ipv6multicast(priv);
+#endif
 
   /* Initialize Ethernet interface for the PHY setup */
 
@@ -1588,6 +1771,99 @@ static int lpc17_txavail(struct net_driver_s *dev)
 }
 
 /****************************************************************************
+ * Function: lpc17_calcethcrc
+ *
+ * Description:
+ *   Function to calculate the CRC used by LPC17 to check an Ethernet frame
+ *
+ *   Algorithm adapted from LPC17xx sample code that contains this notice:
+ *
+ *     Software that is described herein is for illustrative purposes only
+ *     which provides customers with programming information regarding the
+ *     products. This software is supplied "AS IS" without any warranties.
+ *     NXP Semiconductors assumes no responsibility or liability for the
+ *     use of the software, conveys no license or title under any patent,
+ *     copyright, or mask work right to the product. NXP Semiconductors
+ *     reserves the right to make changes in the software without
+ *     notification. NXP Semiconductors also make no representation or
+ *     warranty that such application will be suitable for the specified
+ *     use without further testing or modification.
+ *
+ * Parameters:
+ *   data   - the data to be checked
+ *   length - length of the data
+ *
+ * Returned Value:
+ *   None
+ *
+ * Assumptions:
+ *
+ ****************************************************************************/
+
+#if defined(CONFIG_NET_IGMP) || defined(CONFIG_NET_ICMPv6)
+static uint32_t lpc17_calcethcrc(const uint8_t *data, size_t length)
+{
+  char byte;
+  int crc;
+  int q0;
+  int q1;
+  int q2;
+  int q3;
+  int i;
+  int j;
+
+  crc = 0xffffffff;
+  for (i = 0; i < length; i++)
+    {
+      byte = *data++;
+      for (j = 0; j < 2; j++)
+        {
+          if (((crc >> 28) ^ (byte >> 3)) & 0x00000001)
+            {
+              q3 = 0x04c11db7;
+            }
+          else
+            {
+              q3 = 0x00000000;
+            }
+
+          if (((crc >> 29) ^ (byte >> 2)) & 0x00000001)
+            {
+              q2 = 0x09823b6e;
+            }
+          else
+            {
+              q2 = 0x00000000;
+            }
+
+          if (((crc >> 30) ^ (byte >> 1)) & 0x00000001)
+            {
+              q1 = 0x130476dc;
+            }
+          else
+            {
+              q1 = 0x00000000;
+            }
+
+          if (((crc >> 31) ^ (byte >> 0)) & 0x00000001)
+            {
+              q0 = 0x2608EDB8;
+            }
+          else
+            {
+              q0 = 0x00000000;
+            }
+
+          crc = (crc << 4) ^ q3 ^ q2 ^ q1 ^ q0;
+          byte >>= 4;
+        }
+    }
+
+  return crc;
+}
+#endif /* CONFIG_NET_IGMP || CONFIG_NET_ICMPv6 */
+
+/****************************************************************************
  * Function: lpc17_addmac
  *
  * Description:
@@ -1605,17 +1881,62 @@ static int lpc17_txavail(struct net_driver_s *dev)
  *
  ****************************************************************************/
 
-#ifdef CONFIG_NET_IGMP
+#if defined(CONFIG_NET_IGMP) || defined(CONFIG_NET_ICMPv6)
 static int lpc17_addmac(struct net_driver_s *dev, const uint8_t *mac)
 {
-  struct lpc17_driver_s *priv = (struct lpc17_driver_s *)dev->d_private;
+  uintptr_t regaddr;
+  uint32_t regval;
+  uint32_t crc;
+  unsigned int ndx;
 
-  /* Add the MAC address to the hardware multicast routing table */
+  nllvdbg("MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
+          mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
-#warning "Not implemented"
+  /* Hash function:
+   *
+   * The standard Ethernet cyclic redundancy check (CRC) function is
+   * calculated from the 6 byte MAC address.  Bits [28:23] out of the 32-bit
+   * CRC result are taken to form the hash. The 6-bit hash is used to access
+   * the hash table: it is used as an index in the 64-bit HashFilter register
+   * that has been programmed with accept values. If the selected accept value
+   * is 1, the frame is accepted.
+   */
+
+  crc = lpc17_calcethcrc(mac, 6);
+  ndx = (crc >> 23) & 0x3f;
+
+  /* Add the MAC address to the hardware multicast hash table */
+
+  if (ndx > 31)
+    {
+      regaddr = LPC17_ETH_HASHFLH; /* Hash filter table MSBs register */
+      ndx -= 32;
+    }
+  else
+    {
+      regaddr = LPC17_ETH_HASHFLL;  /* Hash filter table LSBs register */
+    }
+
+  regval = lpc17_getreg(regaddr);
+  regval |= 1 << ndx;
+  lpc17_putreg(regval, regaddr);
+
+  /* Enabled multicast address filtering in the RxFilterControl register:
+   *
+   *   AcceptUnicastHashEn: When set to ’1’, unicast frames that pass the
+   *     imperfect hash filter are accepted.
+   *   AcceptMulticastHashEn When set to ’1’, multicast frames that pass the
+   *     imperfect hash filter are accepted.
+   */
+
+  regval = lpc17_getreg(LPC17_ETH_RXFLCTRL);
+  regval &= ~ETH_RXFLCTRL_UCASTHASHEN;
+  regval |= ETH_RXFLCTRL_MCASTHASHEN;
+  lpc17_putreg(regval, LPC17_ETH_RXFLCTRL);
+
   return OK;
 }
-#endif
+#endif /* CONFIG_NET_IGMP || CONFIG_NET_ICMPv6 */
 
 /****************************************************************************
  * Function: lpc17_rmmac
@@ -1638,11 +1959,63 @@ static int lpc17_addmac(struct net_driver_s *dev, const uint8_t *mac)
 #ifdef CONFIG_NET_IGMP
 static int lpc17_rmmac(struct net_driver_s *dev, const uint8_t *mac)
 {
-  struct lpc17_driver_s *priv = (struct lpc17_driver_s *)dev->d_private;
+  uintptr_t regaddr1;
+  uintptr_t regaddr2;
+  uint32_t regval;
+  uint32_t crc;
+  unsigned int ndx;
 
-  /* Add the MAC address to the hardware multicast routing table */
+  nllvdbg("MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
+          mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
-#warning "Not implemented"
+  /* Hash function:
+   *
+   * The standard Ethernet cyclic redundancy check (CRC) function is
+   * calculated from the 6 byte MAC address.  Bits [28:23] out of the 32-bit
+   * CRC result are taken to form the hash. The 6-bit hash is used to access
+   * the hash table: it is used as an index in the 64-bit HashFilter register
+   * that has been programmed with accept values. If the selected accept value
+   * is 1, the frame is accepted.
+   */
+
+  crc = lpc17_calcethcrc(mac, 6);
+  ndx = (crc >> 23) & 0x3f;
+
+  /* Remove the MAC address to the hardware multicast hash table */
+
+  if (ndx > 31)
+    {
+      regaddr1 = LPC17_ETH_HASHFLH; /* Hash filter table MSBs register */
+      regaddr2 = LPC17_ETH_HASHFLL; /* Hash filter table LSBs register */
+      ndx     -= 32;
+    }
+  else
+    {
+      regaddr1 = LPC17_ETH_HASHFLL;  /* Hash filter table LSBs register */
+      regaddr2 = LPC17_ETH_HASHFLH;  /* Hash filter table MSBs register */
+    }
+
+  regval  = lpc17_getreg(regaddr1);
+  regval &= ~(1 << ndx);
+  lpc17_putreg(regval, regaddr1);
+
+  /* If there are no longer addresses being filtered , disable multicast
+   * filtering.
+   */
+
+  if (regval == 0 && lpc17_getreg(regaddr2) == 0)
+    {
+      /*   AcceptUnicastHashEn: When set to ’1’, unicast frames that pass the
+       *     imperfect hash filter are accepted.
+       *   AcceptMulticastHashEn When set to ’1’, multicast frames that pass the
+       *     imperfect hash filter are accepted.
+       */
+
+      regval = lpc17_getreg(LPC17_ETH_RXFLCTRL);
+      regval &= ~(ETH_RXFLCTRL_UCASTHASHEN | ETH_RXFLCTRL_MCASTHASHEN);
+      lpc17_putreg(regval, LPC17_ETH_RXFLCTRL);
+    }
+
   return OK;
 }
 #endif

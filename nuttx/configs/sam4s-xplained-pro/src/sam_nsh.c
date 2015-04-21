@@ -49,6 +49,7 @@
 #include <unistd.h>
 
 #include <nuttx/arch.h>
+#include <nuttx/board.h>
 
 #ifdef CONFIG_CDCACM
 #  include <nuttx/usb/cdcacm.h>
@@ -59,7 +60,7 @@
 #endif
 
 #ifdef CONFIG_TIMER
-#  include <nuttx/timer.h>
+#  include <nuttx/timers/timer.h>
 #endif
 
 #ifdef CONFIG_SYSTEM_USBMONITOR
@@ -69,7 +70,7 @@
 #include "sam4s-xplained-pro.h"
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /****************************************************************************
@@ -77,14 +78,14 @@
  ****************************************************************************/
 
 /****************************************************************************
- * Name: nsh_archinitialize
+ * Name: board_app_initialize
  *
  * Description:
  *   Perform architecture specific initialization
  *
  ****************************************************************************/
 
-int nsh_archinitialize(void)
+int board_app_initialize(void)
 {
 #if defined (HAVE_USBDEV) || defined(HAVE_HSMCI) || defined (HAVE_PROC) || \
     defined(HAVE_USBMONITOR)

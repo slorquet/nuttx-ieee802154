@@ -142,7 +142,6 @@ SYSCALL_LOOKUP(up_assert,                 2, STUB_up_assert)
   SYSCALL_LOOKUP(clock_getres,            2, STUB_clock_getres)
   SYSCALL_LOOKUP(clock_gettime,           2, STUB_clock_gettime)
   SYSCALL_LOOKUP(clock_settime,           2, STUB_clock_settime)
-  SYSCALL_LOOKUP(gettimeofday,            2, STUB_gettimeofday)
 
 /* The following are defined only if POSIX timers are supported */
 
@@ -181,6 +180,12 @@ SYSCALL_LOOKUP(up_assert,                 2, STUB_up_assert)
 #  endif
 #endif
 
+/* Board support */
+
+#ifdef CONFIG_LIB_BOARDCTL
+  SYSCALL_LOOKUP(boardctl,                2, STUB_boardctl)
+#endif
+
 /* The following are defined if file descriptors are enabled */
 
 #if CONFIG_NFILE_DESCRIPTORS > 0
@@ -216,7 +221,7 @@ SYSCALL_LOOKUP(up_assert,                 2, STUB_up_assert)
   SYSCALL_LOOKUP(mount,                   5, STUB_mount)
   SYSCALL_LOOKUP(rename,                  2, STUB_rename)
   SYSCALL_LOOKUP(rmdir,                   1, STUB_rmdir)
-  SYSCALL_LOOKUP(umount,                  1, STUB_umount)
+  SYSCALL_LOOKUP(umount2,                 2, STUB_umount2)
   SYSCALL_LOOKUP(unlink,                  1, STUB_unlink)
 #  endif
 #endif

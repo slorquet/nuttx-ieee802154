@@ -45,6 +45,7 @@
 #include <errno.h>
 #include <debug.h>
 
+#include <nuttx/board.h>
 #include <nuttx/kthread.h>
 #include <nuttx/nx/nx.h>
 
@@ -53,7 +54,7 @@
 #ifdef CONFIG_NX_NXSTART
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /****************************************************************************
@@ -96,29 +97,29 @@ int nx_server(int argc, char *argv[])
 #if defined(CONFIG_NXSTART_EXTERNINIT)
   /* Use external graphics driver initialization */
 
-  dev = up_nxdrvinit(CONFIG_NXSTART_DEVNO);
+  dev = board_graphics_setup(CONFIG_NXSTART_DEVNO);
   if (!dev)
     {
-      gdbg("ERROR: up_nxdrvinit failed, devno=%d\n", CONFIG_NXSTART_DEVNO);
+      gdbg("ERROR: board_graphics_setup failed, devno=%d\n", CONFIG_NXSTART_DEVNO);
       return EXIT_FAILURE;
     }
 
 #elif defined(CONFIG_NX_LCDDRIVER)
   /* Initialize the LCD device */
 
-  ret = up_lcdinitialize();
+  ret = board_lcd_initialize();
   if (ret < 0)
     {
-      gdbg("ERROR: up_lcdinitialize failed: %d\n", ret);
+      gdbg("ERROR: board_lcd_initialize failed: %d\n", ret);
       return EXIT_FAILURE;
     }
 
   /* Get the device instance */
 
-  dev = up_lcdgetdev(CONFIG_NXSTART_DEVNO);
+  dev = board_lcd_getdev(CONFIG_NXSTART_DEVNO);
   if (!dev)
     {
-      gdbg("ERROR: up_lcdgetdev failed, devno=%d\n", CONFIG_NXSTART_DEVNO);
+      gdbg("ERROR: board_lcd_getdev failed, devno=%d\n", CONFIG_NXSTART_DEVNO);
       return EXIT_FAILURE;
     }
 

@@ -1,7 +1,7 @@
 /************************************************************************************
  * configs/tm4c123g-launchpad/src/tm4c123g-launchpad.h
  *
- *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2014-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,6 +42,7 @@
 
 #include <nuttx/config.h>
 #include <nuttx/compiler.h>
+#include <nuttx/irq.h>
 
 #include "chip.h"
 #include "tiva_gpio.h"
@@ -163,16 +164,16 @@
 
 /* The TM4C123G LaunchPad has a two buttons:
  *
- *   BOARD_SW1    -- Connected to PF4
- *   BOARD_SW2    -- Connected to PF0
+ *   BOARD_SW1    -- Connected to PF0
+ *   BOARD_SW2    -- Connected to PF4
  */
 
 #define GPIO_SW1     (GPIO_FUNC_INTERRUPT | GPIO_INT_BOTHEDGES | \
-                      GPIO_STRENGTH_2MA | GPIO_PADTYPE_STDWPU | GPIO_PORTF | \
-                      GPIO_PIN_4)
+                      GPIO_STRENGTH_2MA | GPIO_PADTYPE_STDWPU | \
+                      GPIO_PORTF | GPIO_PIN_4)
 #define GPIO_SW2     (GPIO_FUNC_INTERRUPT | GPIO_INT_BOTHEDGES | \
-                      GPIO_STRENGTH_2MA | GPIO_PADTYPE_STDWPU | GPIO_PORTF | \
-                      GPIO_PIN_0)
+                      GPIO_STRENGTH_2MA | GPIO_PADTYPE_STDWPU | \
+                      GPIO_PORTF | GPIO_PIN_0)
 
 /************************************************************************************
  * Public Functions
@@ -223,6 +224,30 @@ int tm4c_bringup(void);
 #ifdef HAVE_AT24
 int tm4c_at24_automount(int minor);
 #endif
+
+/****************************************************************************
+ * Name: tiva_timer_initialize
+ *
+ * Description:
+ *   Configure the timer driver
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_TIVA_TIMER
+int tiva_timer_initialize(void);
+#endif
+
+/************************************************************************************
+ * Name: board_adc_initialize
+ *
+ * Description:
+ *   Initialize and register the ADC driver
+ *
+ ************************************************************************************/
+
+#ifdef CONFIG_TIVA_ADC
+int board_adc_initialize(void);
+#endif
+
 #endif /* __ASSEMBLY__ */
 #endif /* __CONFIGS_TM4C123G_LAUNCHPAD_TM4C123G_LAUNCHPAD_H */
-

@@ -50,7 +50,7 @@
  ************************************************************************************/
 
 /************************************************************************************
- * Preprocessor Definitions
+ * Pre-processor Definitions
  ************************************************************************************/
 /* Configuration ********************************************************************/
 
@@ -163,6 +163,7 @@ _vectors:
 
 /* External Interrupts */
 
+#if !defined(CONFIG_STM32_NOEXT_VECTORS)
 #undef VECTOR
 #define VECTOR(l,i) .word l
 
@@ -177,11 +178,14 @@ _vectors:
 #  include "chip/stm32f20xxx_vectors.h"
 #elif defined(CONFIG_STM32_STM32F30XX)
 #  include "chip/stm32f30xxx_vectors.h"
+#elif defined(CONFIG_STM32_STM32F37XX)
+#  include "chip/stm32f37xxx_vectors.h"
 #elif defined(CONFIG_STM32_STM32F40XX)
 #  include "chip/stm32f40xxx_vectors.h"
 #else
 #  error "No vectors for STM32 chip"
 #endif
+#endif /* CONFIG_STM32_NOEXT_VECTORS */
 	.size	_vectors, .-_vectors
 
 /************************************************************************************
@@ -203,6 +207,8 @@ handlers:
 	HANDLER	stm32_pendsv, STM32_IRQ_PENDSV			/* Vector 14: Penable system service request */
 	HANDLER	stm32_systick, STM32_IRQ_SYSTICK		/* Vector 15: System tick */
 
+#if !defined(CONFIG_STM32_NOEXT_VECTORS)
+
 #undef VECTOR
 #define VECTOR(l,i) HANDLER l, i
 
@@ -217,11 +223,15 @@ handlers:
 #  include "chip/stm32f20xxx_vectors.h"
 #elif defined(CONFIG_STM32_STM32F30XX)
 #  include "chip/stm32f30xxx_vectors.h"
+#elif defined(CONFIG_STM32_STM32F37XX)
+#  include "chip/stm32f37xxx_vectors.h"
 #elif defined(CONFIG_STM32_STM32F40XX)
 #  include "chip/stm32f40xxx_vectors.h"
 #else
 #  error "No handlers for STM32 chip"
 #endif
+
+#endif /* CONFIG_STM32_NOEXT_VECTORS */
 
 /* Common IRQ handling logic.  On entry here, the return stack is on either
  * the PSP or the MSP and looks like the following:
@@ -359,7 +369,7 @@ exception_common:
 	 *
 	 * Here:
 	 *   r0 = Address of the register save area
-	
+	 *
 	 * NOTE: It is a requirement that up_restorefpu() preserve the value of
 	 * r0!
 	 */

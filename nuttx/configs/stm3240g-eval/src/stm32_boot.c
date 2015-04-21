@@ -1,7 +1,7 @@
 /************************************************************************************
  * configs/stm3240g-eval/src/stm32_boot.c
  *
- *   Copyright (C) 2011-2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2011-2013, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,8 @@
 #include <nuttx/config.h>
 
 #include <debug.h>
+
+#include <nuttx/board.h>
 
 #include "stm3240g-eval.h"
 
@@ -159,10 +161,10 @@ static int board_initthread(int argc, char *argv[])
    */
 
 #if defined(CONFIG_NSH_LIBRARY) && !defined(CONFIG_NSH_ARCHINIT)
-  ret = nsh_archinitialize();
+  ret = board_app_initialize();
   if (ret < 0)
     {
-      gdbg("ERROR: nsh_archinitialize failed: %d\n", ret);
+      gdbg("ERROR: board_app_initialize failed: %d\n", ret);
     }
 #endif
 
@@ -179,10 +181,10 @@ static int board_initthread(int argc, char *argv[])
   /* Initialize the touchscreen */
 
 #ifdef HAVE_TCINIT
-  ret = arch_tcinitialize(CONFIG_NXWM_TOUCHSCREEN_DEVNO);
+  ret = board_tsc_setup(CONFIG_NXWM_TOUCHSCREEN_DEVNO);
   if (ret < 0)
     {
-      gdbg("ERROR: arch_tcinitialize failed: %d\n", ret);
+      gdbg("ERROR: board_tsc_setup failed: %d\n", ret);
     }
 #endif
 

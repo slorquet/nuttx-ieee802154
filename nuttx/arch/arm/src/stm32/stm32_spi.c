@@ -86,7 +86,7 @@
     defined(CONFIG_STM32_SPI4) || defined(CONFIG_STM32_SPI5) || defined(CONFIG_STM32_SPI6)
 
 /************************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ************************************************************************************/
 /* Configuration ********************************************************************/
 /* SPI interrupts */
@@ -285,7 +285,11 @@ static const struct spi_ops_s g_sp1iops =
   .sndblock          = spi_sndblock,
   .recvblock         = spi_recvblock,
 #endif
-  .registercallback  = 0,
+#ifdef CONFIG_SPI_CALLBACK
+  .registercallback  = stm32_spi1register,  /* provided externally */
+#else
+  .registercallback  = 0,  /* not implemented */
+#endif
 };
 
 static struct stm32_spidev_s g_spi1dev =
@@ -324,7 +328,11 @@ static const struct spi_ops_s g_sp2iops =
   .sndblock          = spi_sndblock,
   .recvblock         = spi_recvblock,
 #endif
-  .registercallback  = 0,
+#ifdef CONFIG_SPI_CALLBACK
+  .registercallback  = stm32_spi2register,  /* provided externally */
+#else
+  .registercallback  = 0,  /* not implemented */
+#endif
 };
 
 static struct stm32_spidev_s g_spi2dev =
@@ -363,7 +371,11 @@ static const struct spi_ops_s g_sp3iops =
   .sndblock          = spi_sndblock,
   .recvblock         = spi_recvblock,
 #endif
-  .registercallback  = 0,
+#ifdef CONFIG_SPI_CALLBACK
+  .registercallback  = stm32_spi3register,  /* provided externally */
+#else
+  .registercallback  = 0,  /* not implemented */
+#endif
 };
 
 static struct stm32_spidev_s g_spi3dev =
@@ -402,14 +414,18 @@ static const struct spi_ops_s g_sp4iops =
   .sndblock          = spi_sndblock,
   .recvblock         = spi_recvblock,
 #endif
-  .registercallback  = 0,
+#ifdef CONFIG_SPI_CALLBACK
+  .registercallback  = stm32_spi4register,  /* provided externally */
+#else
+  .registercallback  = 0,  /* not implemented */
+#endif
 };
 
 static struct stm32_spidev_s g_spi4dev =
 {
   .spidev   = { &g_sp4iops },
   .spibase  = STM32_SPI4_BASE,
-  .spiclock = STM32_PCLK1_FREQUENCY,
+  .spiclock = STM32_PCLK2_FREQUENCY,
 #ifdef CONFIG_STM32_SPI_INTERRUPTS
   .spiirq   = STM32_IRQ_SPI4,
 #endif
@@ -441,14 +457,18 @@ static const struct spi_ops_s g_sp5iops =
   .sndblock          = spi_sndblock,
   .recvblock         = spi_recvblock,
 #endif
-  .registercallback  = 0,
+#ifdef CONFIG_SPI_CALLBACK
+  .registercallback  = stm32_spi5register,  /* provided externally */
+#else
+  .registercallback  = 0,  /* not implemented */
+#endif
 };
 
 static struct stm32_spidev_s g_spi5dev =
 {
   .spidev   = { &g_sp5iops },
   .spibase  = STM32_SPI5_BASE,
-  .spiclock = STM32_PCLK1_FREQUENCY,
+  .spiclock = STM32_PCLK2_FREQUENCY,
 #ifdef CONFIG_STM32_SPI_INTERRUPTS
   .spiirq   = STM32_IRQ_SPI5,
 #endif
@@ -480,14 +500,18 @@ static const struct spi_ops_s g_sp6iops =
   .sndblock          = spi_sndblock,
   .recvblock         = spi_recvblock,
 #endif
-  .registercallback  = 0,
+#ifdef CONFIG_SPI_CALLBACK
+  .registercallback  = stm32_spi6register,  /* provided externally */
+#else
+  .registercallback  = 0,  /* not implemented */
+#endif
 };
 
 static struct stm32_spidev_s g_spi6dev =
 {
   .spidev   = { &g_sp6iops },
   .spibase  = STM32_SPI6_BASE,
-  .spiclock = STM32_PCLK1_FREQUENCY,
+  .spiclock = STM32_PCLK2_FREQUENCY,
 #ifdef CONFIG_STM32_SPI_INTERRUPTS
   .spiirq   = STM32_IRQ_SPI6,
 #endif

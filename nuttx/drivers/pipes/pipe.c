@@ -1,7 +1,7 @@
 /****************************************************************************
  * drivers/pipes/pipe.c
  *
- *   Copyright (C) 2008-2009 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2008-2009, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -56,7 +56,7 @@
 #if CONFIG_DEV_PIPE_SIZE > 0
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 #define MAX_PIPES 32
@@ -82,9 +82,12 @@ static const struct file_operations pipe_fops =
   pipecommon_read,   /* read */
   pipecommon_write,  /* write */
   0,                 /* seek */
-  0                  /* ioctl */
+  pipecommon_ioctl,  /* ioctl */
 #ifndef CONFIG_DISABLE_POLL
-  , pipecommon_poll  /* poll */
+  pipecommon_poll,   /* poll */
+#endif
+#ifndef CONFIG_DISABLE_PSEUDOFS_OPERATIONS
+  pipecommon_unlink  /* unlink */
 #endif
 };
 
@@ -124,7 +127,9 @@ static inline int pipe_allocate(void)
 
 static inline void pipe_free(int pipeno)
 {
-  int ret = sem_wait(&g_pipesem);
+  int ret;
+
+  ret = sem_wait(&g_pipesem);
   if (ret == 0)
     {
       g_pipeset &= ~(1 << pipeno);
@@ -138,17 +143,11 @@ static inline void pipe_free(int pipeno)
 
 static int pipe_close(FAR struct file *filep)
 {
-  struct inode      *inode = filep->f_inode;
-  struct pipe_dev_s *dev   = inode->i_private;
-  int                ret;
+  FAR struct inode *inode    = filep->f_inode;
+  FAR struct pipe_dev_s *dev = inode->i_private;
+  int ret;
 
-  /* Some sanity checking */
-#if CONFIG_DEBUG
-  if (!dev)
-    {
-      return -EBADF;
-    }
-#endif
+  DEBUGASSERT(dev);
 
   /* Perform common close operations */
 
@@ -171,8 +170,8 @@ static int pipe_close(FAR struct file *filep)
  * Name: pipe
  *
  * Description:
- *   pipe() creates a pair of file descriptors, pointing to a pipe inode, and
- *   places them in the array pointed to by 'fd'. fd[0] is for reading,
+ *   pipe() creates a pair of file descriptors, pointing to a pipe inode,
+ *   and  places them in the array pointed to by 'fd'. fd[0] is for reading,
  *   fd[1] is for writing.
  *
  * Inputs:
@@ -187,7 +186,7 @@ static int pipe_close(FAR struct file *filep)
 
 int pipe(int fd[2])
 {
-  struct pipe_dev_s *dev = NULL;
+  FAR struct pipe_dev_s *dev = NULL;
   char devname[16];
   int pipeno;
   int err;
@@ -272,12 +271,19 @@ int pipe(int fd[2])
 
 errout_with_wrfd:
   close(fd[1]);
+
 errout_with_driver:
   unregister_driver(devname);
+
 errout_with_dev:
-  pipecommon_freedev(dev);
+  if (dev)
+    {
+      pipecommon_freedev(dev);
+    }
+
 errout_with_pipe:
   pipe_free(pipeno);
+
 errout:
   set_errno(err);
   return ERROR;

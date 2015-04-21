@@ -39,16 +39,7 @@
 
 #include <nuttx/config.h>
 
-#include <sys/time.h>
 #include <time.h>
-
-/****************************************************************************
- * Pre-processor Definitions
- ****************************************************************************/
-
-/****************************************************************************
- * Private Data
- ****************************************************************************/
 
 /****************************************************************************
  * Public Functions
@@ -62,13 +53,13 @@
  *   this value, and if the argument is not a null pointer, the value is also
  *   set to the object pointed by tloc.
  *
- *   Note that this function is just a thin wrapper around gettimeofday()
- *   and is provided for compatibility.  gettimeofday() is the preffered way
+ *   Note that this function is just a thin wrapper around clock_gettime()
+ *   and is provided for compatibility.  clock_gettime() is the preferred way
  *   to obtain system time.
  *
  * Parameters:
  *   Pointer to an object of type time_t, where the time value is stored.
- *   Alternativelly, this parameter can be a null pointer, in which case the
+ *   Alternatively, this parameter can be a null pointer, in which case the
  *   parameter is not used, but a time_t object is still returned by the
  *   function.
  *
@@ -84,22 +75,22 @@
 
 time_t time(time_t *tloc)
 {
-  struct timeval tp;
+  struct timespec ts;
   int ret;
 
   /* Get the current time from the system */
 
-  ret = gettimeofday(&tp, NULL);
+  ret = clock_gettime(CLOCK_REALTIME, &ts);
   if (ret == OK)
     {
       /* Return the seconds since the epoch */
 
       if (tloc)
         {
-          *tloc = tp.tv_sec;
+          *tloc = ts.tv_sec;
         }
 
-      return tp.tv_sec;
+      return ts.tv_sec;
     }
 
   return (time_t)ERROR;

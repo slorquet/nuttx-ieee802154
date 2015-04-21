@@ -1,7 +1,7 @@
 /****************************************************************************
  * net/socket/net_close.c
  *
- *   Copyright (C) 2007-2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2007-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -63,6 +63,7 @@
 #include "tcp/tcp.h"
 #include "udp/udp.h"
 #include "pkt/pkt.h"
+#include "local/local.h"
 #include "socket/socket.h"
 
 /****************************************************************************
@@ -258,6 +259,63 @@ end_wait:
 #endif /* CONFIG_NET_TCP */
 
 /****************************************************************************
+ * Function: netclose_txnotify
+ *
+ * Description:
+ *   Notify the appropriate device driver that we are have data ready to
+ *   be send (TCP)
+ *
+ * Parameters:
+ *   psock - Socket state structure
+ *   conn  - The TCP connection structure
+ *
+ * Returned Value:
+ *   None
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_TCP
+static inline void netclose_txnotify(FAR struct socket *psock,
+                                     FAR struct tcp_conn_s *conn)
+{
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+  /* If both IPv4 and IPv6 support are enabled, then we will need to select
+   * the device driver using the appropriate IP domain.
+   */
+
+  if (psock->s_domain == PF_INET)
+#endif
+    {
+      /* Notify the device driver that send data is available */
+
+#ifdef CONFIG_NETDEV_MULTINIC
+      netdev_ipv4_txnotify(conn->u.ipv4.laddr, conn->u.ipv4.raddr);
+#else
+      netdev_ipv4_txnotify(conn->u.ipv4.raddr);
+#endif
+    }
+#endif /* CONFIG_NET_IPv4 */
+
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+  else /* if (psock->s_domain == PF_INET6) */
+#endif /* CONFIG_NET_IPv4 */
+    {
+      /* Notify the device driver that send data is available */
+
+      DEBUGASSERT(psock->s_domain == PF_INET6);
+#ifdef CONFIG_NETDEV_MULTINIC
+      netdev_ipv6_txnotify(conn->u.ipv6.laddr, conn->u.ipv6.raddr);
+#else
+      netdev_ipv6_txnotify(conn->u.ipv6.raddr);
+#endif
+    }
+#endif /* CONFIG_NET_IPv6 */
+}
+#endif /* CONFIG_NET_TCP */
+
+/****************************************************************************
  * Function: netclose_disconnect
  *
  * Description:
@@ -357,11 +415,7 @@ static inline int netclose_disconnect(FAR struct socket *psock)
 
       /* Notify the device driver of the availability of TX data */
 
-#ifdef CONFIG_NET_MULTILINK
-      netdev_txnotify(conn->lipaddr, conn->ripaddr);
-#else
-      netdev_txnotify(conn->ripaddr);
-#endif
+      netclose_txnotify(psock, conn);
 
 #ifdef CONFIG_NET_SOLINGER
       /* Wait only if we are lingering */
@@ -397,6 +451,45 @@ static inline int netclose_disconnect(FAR struct socket *psock)
   return ret;
 }
 #endif /* CONFIG_NET_TCP */
+
+/****************************************************************************
+ * Function: local_close
+ *
+ * Description:
+ *   Performs the close operation on a local socket instance
+ *
+ * Parameters:
+ *   psock   Socket instance
+ *
+ * Returned Value:
+ *   0 on success; -1 on error with errno set appropriately.
+ *
+ * Assumptions:
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_LOCAL
+static void local_close(FAR struct socket *psock)
+{
+  FAR struct local_conn_s *conn = psock->s_conn;
+
+  /* Is this the last reference to the connection structure (there could
+   * be more if the socket was dup'ed).
+   */
+
+  if (conn->lc_crefs <= 1)
+    {
+      conn->lc_crefs = 0;
+      local_release(conn);
+    }
+  else
+    {
+      /* No.. Just decrement the reference count */
+
+      conn->lc_crefs--;
+    }
+}
+#endif /* CONFIG_NET_LOCAL */
 
 /****************************************************************************
  * Public Functions
@@ -440,6 +533,106 @@ int psock_close(FAR struct socket *psock)
 
       switch (psock->s_type)
         {
+#if defined(CONFIG_NET_TCP) || defined(CONFIG_NET_LOCAL_STREAM)
+          case SOCK_STREAM:
+            {
+#ifdef CONFIG_NET_LOCAL_STREAM
+#ifdef CONFIG_NET_TCP
+              if (psock->s_domain == PF_LOCAL)
+#endif
+                {
+                  /* Release our reference to the local connection structure */
+
+                  local_close(psock);
+                }
+#endif /* CONFIG_NET_LOCAL_STREAM */
+
+#ifdef CONFIG_NET_TCP
+#ifdef CONFIG_NET_LOCAL_STREAM
+              else
+#endif
+                {
+                  FAR struct tcp_conn_s *conn = psock->s_conn;
+
+                  /* Is this the last reference to the connection structure
+                   * (there could be more if the socket was dup'ed).
+                   */
+
+                  if (conn->crefs <= 1)
+                    {
+                      /* Yes... then perform the disconnection now */
+
+                      tcp_unlisten(conn); /* No longer accepting connections */
+                      conn->crefs = 0;    /* Discard our reference to the connection */
+
+                      /* Break any current connections */
+
+                      err = netclose_disconnect(psock);
+                      if (err < 0)
+                        {
+                          /* This would normally occur only if there is a
+                           * timeout from a lingering close.
+                           */
+
+                          goto errout_with_psock;
+                        }
+                    }
+                  else
+                    {
+                      /* No.. Just decrement the reference count */
+
+                      conn->crefs--;
+                    }
+                }
+#endif /* CONFIG_NET_TCP || CONFIG_NET_LOCAL_STREAM */
+            }
+            break;
+#endif
+
+#if defined(CONFIG_NET_UDP) || defined(CONFIG_NET_LOCAL_DGRAM)
+          case SOCK_DGRAM:
+            {
+#ifdef CONFIG_NET_LOCAL_DGRAM
+#ifdef CONFIG_NET_UDP
+              if (psock->s_domain == PF_LOCAL)
+#endif
+                {
+                  /* Release our reference to the local connection structure */
+
+                  local_close(psock);
+                }
+#endif /* CONFIG_NET_LOCAL_DGRAM */
+
+#ifdef CONFIG_NET_UDP
+#ifdef CONFIG_NET_LOCAL_DGRAM
+              else
+#endif
+                {
+                  FAR struct udp_conn_s *conn = psock->s_conn;
+
+                  /* Is this the last reference to the connection structure
+                   * (there could be more if the socket was dup'ed).
+                   */
+
+                  if (conn->crefs <= 1)
+                    {
+                      /* Yes... free the connection structure */
+
+                      conn->crefs = 0;
+                      udp_free(psock->s_conn);
+                    }
+                  else
+                    {
+                      /* No.. Just decrement the reference count */
+
+                      conn->crefs--;
+                    }
+                }
+#endif /* CONFIG_NET_UDP || CONFIG_NET_LOCAL_DGRAM */
+            }
+            break;
+#endif
+
 #ifdef CONFIG_NET_PKT
           case SOCK_RAW:
             {
@@ -455,67 +648,6 @@ int psock_close(FAR struct socket *psock)
 
                   conn->crefs = 0;          /* No more references on the connection */
                   pkt_free(psock->s_conn);  /* Free uIP resources */
-                }
-              else
-                {
-                  /* No.. Just decrement the reference count */
-
-                  conn->crefs--;
-                }
-            }
-            break;
-#endif
-
-#ifdef CONFIG_NET_TCP
-          case SOCK_STREAM:
-            {
-              FAR struct tcp_conn_s *conn = psock->s_conn;
-
-              /* Is this the last reference to the connection structure (there
-               * could be more if the socket was dup'ed).
-               */
-
-              if (conn->crefs <= 1)
-                {
-                  /* Yes... then perform the disconnection now */
-
-                  tcp_unlisten(conn);                /* No longer accepting connections */
-                  conn->crefs = 0;                   /* Discard our reference to the connection */
-                  err = netclose_disconnect(psock);  /* Break any current connections */
-                  if (err < 0)
-                    {
-                      /* This would normally occur only if there is a timeout
-                       * from a lingering close.
-                       */
-
-                      goto errout_with_psock;
-                    }
-                }
-              else
-                {
-                  /* No.. Just decrement the reference count */
-
-                  conn->crefs--;
-                }
-            }
-            break;
-#endif
-
-#ifdef CONFIG_NET_UDP
-          case SOCK_DGRAM:
-            {
-              FAR struct udp_conn_s *conn = psock->s_conn;
-
-              /* Is this the last reference to the connection structure (there
-               * could be more if the socket was dup'ed).
-               */
-
-              if (conn->crefs <= 1)
-                {
-                  /* Yes... free the connection structure */
-
-                  conn->crefs = 0;          /* No more references on the connection */
-                  udp_free(psock->s_conn);  /* Free uIP resources */
                 }
               else
                 {

@@ -1,4 +1,4 @@
-NuttX TODO List (Last updated December 29, 2014)
+NuttX TODO List (Last updated April 6, 2015)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This file summarizes known NuttX bugs, limitations, inconsistencies with
@@ -9,19 +9,18 @@ board port.
 nuttx/
 
  (11)  Task/Scheduler (sched/)
-  (1)  Memory Managment (mm/)
-  (3)  Signals (sched/, arch/)
-  (2)  pthreads (sched/)
-  (8)  Kernel/Protected Builds
+  (1)  Memory Management (mm/)
+  (3)  Signals (sched/signal, arch/)
+  (2)  pthreads (sched/pthread)
+  (0)  Message Queues (sched/mqueue)
   (4)  C++ Support
   (6)  Binary loaders (binfmt/)
- (14)  Network (net/, drivers/net)
+ (12)  Network (net/, drivers/net)
   (4)  USB (drivers/usbdev, drivers/usbhost)
- (11)  Libraries (libc/, libm/)
+ (12)  Libraries (libc/, libm/)
  (11)  File system/Generic drivers (fs/, drivers/)
-  (9)  Graphics subystem (graphics/)
+  (8)  Graphics subsystem (graphics/)
   (1)  Pascal add-on (pcode/)
-  (1)  Documentation (Documentation/)
   (2)  Build system / Toolchains
   (3)  Linux/Cywgin simulation (arch/sim)
   (5)  ARM (arch/arm/)
@@ -34,7 +33,8 @@ nuttx/
   (0)  ARM/LPC43x (arch/arm/src/lpc43xx/)
   (2)  ARM/STR71x (arch/arm/src/str71x/)
   (2)  ARM/LM3S6918 (arch/arm/src/tiva/)
-  (x)  ARM/SAMA5D3 ((arch/arm/src/sama5/)
+  (x)  ARM/SAMA5D3/4 ((arch/arm/src/sama5/)
+  (x)  ARM/SAMV7 ((arch/arm/src/samv7/)
   (5)  ARM/STM32 (arch/arm/src/stm32/)
   (3)  AVR (arch/avr)
   (0)  Intel x86 (arch/x86)
@@ -47,8 +47,8 @@ nuttx/
 
 apps/
 
-  (6)  Network Utilities (apps/netutils/)
-  (2)  NuttShell (NSH) (apps/nshlib)
+  (4)  Network Utilities (apps/netutils/)
+  (3)  NuttShell (NSH) (apps/nshlib)
   (1)  System libraries apps/system (apps/system)
   (4)  Other Applications & Tests (apps/examples/)
 
@@ -298,7 +298,7 @@ o Memory Managment (mm/)
   Priority:    Medium/Low, a good feature to prevent memory leaks but would
                have negative impact on memory usage and code size.
 
-o Signals (sched/, arch/)
+o Signals (sched/signal, arch/)
   ^^^^^^^^^^^^^^^^^^^^^^^
 
   Title:       STANDARD SIGNALS
@@ -306,7 +306,7 @@ o Signals (sched/, arch/)
                (e.g., SIGINT, SIGSEGV, etc).
 
                Update:  SIGCHLD is supported if so configured.
-  Status:      Open.  No changes are planned.
+  Status:      Open.  No further changes are planned.
   Priority:    Low, required by standards but not so critical for an
                embedded system.
 
@@ -326,7 +326,7 @@ o Signals (sched/, arch/)
   Status:      Open
   Priority:    Low. Even if there are only 31 usable signals, that is still a lot.
 
-o pthreads (sched/)
+o pthreads (sched/pthreads)
   ^^^^^^^^^^^^^^^^^
 
   Title:       CANCELLATION POINTS
@@ -336,7 +336,7 @@ o pthreads (sched/)
   Priority:    Low, probably not that useful
 
   Title:       PTHREAD_PRIO_PROTECT
-  Description: Extended pthread_mutexattr_setprotocol() suport PTHREAD_PRIO_PROTECT:
+  Description: Extended pthread_mutexattr_setprotocol() support PTHREAD_PRIO_PROTECT:
                "When a thread owns one or more mutexes initialized with the
                PTHREAD_PRIO_PROTECT protocol, it shall execute at the higher of its
                priority  or  the  highest  of the priority ceilings of all the mutexes
@@ -392,6 +392,9 @@ o pthreads (sched/)
                complexity; in all other ways I believe that it is the inferior
                solution. So I discarded a few hours of programming. Not a
                big loss from the experience I gained."
+
+o Message Queues (sched/mqueue)
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 o Kernel/Protected Build
   ^^^^^^^^^^^^^^^^^^^^^^
@@ -789,14 +792,6 @@ o Binary loaders (binfmt/)
 o Network (net/, drivers/net)
   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-  Title:       IPv6
-  Description: IPv6 support is incomplete.  Adam Dunkels has recently announced
-               IPv6 support for uIP (currently only as part of Contiki).  Those
-               changes need to be ported to NuttX.
-  Status:      Open.  No work will probably be done until there is a specific
-               requirement for IPv6.
-  Priority:    Medium
-
   Title:       LISTENING FOR UDP BROADCASTS
   Description: Incoming UDP broadcast should only be accepted if listening on
                INADDR_ANY(?)
@@ -805,8 +800,20 @@ o Network (net/, drivers/net)
 
   Title:       STANDARDIZE ETHERNET DRIVER STATISTICS
   Description: Need to standardize collection of statistics from network
-               drivers.  apps/nshlib ifconfig command should present
-               statistics.
+               drivers.  Currently they are useless because they are not
+               accessible.  The solution is to standardize the structure
+               that holds the drivers statistics.  Then apps/nshlib
+               ifconfig command could present the driver statistics.
+
+               Currently these drivers support non-standard statistics:
+
+                 arch/arm/src/kinetis/kinetis_enet.c
+                 arch/arm/src/lpc17xx/lpc17_ethernet.c
+                 arch/arm/src/tiva/lm3s_ethernet.c
+                 arch/mips/src/pic32mx/pic32mx-ethernet.c
+                 arch/z80/src/ez80/ez80_emac.c
+
+               The other Ethernet drivers support no statistics.
   Status:      Open
   Priority:    Low.  This is not a bug but an enhancement idea.
 
@@ -823,36 +830,23 @@ o Network (net/, drivers/net)
   Priority:    Medium-Low.  This is an important issue for applications that
                send on the same TCP socket from multiple threads.
 
-  Title:       UDP READ-AHEAD?
-  Description: TCP supports read-ahead buffering to handle the receipt of
-               TCP/IP packets when there is no read() in place.  Should such
-               capability be useful for UDP?  PRO: Would reduce packet loss
-               and enable support for poll()/select().  CON: UDP is inherently
-               lossy so why waste memory footprint?
-  Status:      Open
-  Priority:    Medium
-
-  Title:       NO POLL/SELECT ON UDP SOCKETS
-  Description: poll()/select() is not implemented for UDP sockets because they do
-               do not support read-ahead buffering.  Therefore, there is never
-               a case where you can read from a UDP socket without blocking.
-  Status:      Open, depends on UDP read-ahead support
-  Priority:    Medium
-
-  Title:       POLL/SELECT ON TCP SOCKETS NEEDS READ-AHEAD
-  Description: poll()/select() only works for availability of buffered TCP
+  Title:       POLL/SELECT ON TCP/UDP SOCKETS NEEDS READ-AHEAD
+  Description: poll()/select() only works for availability of buffered TCP/UDP
                read data (when read-ahead is enabled).  The way writing is
-               handled in uIP, all sockets must wait when send and cannot
-               be notified when they can send without waiting.
+               handled in the network layer, all sockets must wait when send and
+               cannot be notified when they can send without waiting.
   Status:      Open, probably will not be fixed.
   Priority:    Medium... this does effect porting of applications that expect
                different behavior from poll()/select()
 
   Title:       SOCKETS DO NOT ALWAYS SUPPORT O_NONBLOCK
   Description: sockets do not support all modes for O_NONBLOCK. Sockets
-               support only (1) TCP/IP non-blocking read operations when read-ahead
-               buffering is enabled, and (2) TCP/IP accept() operations when TCP/IP
-               connection backlog is enabled.
+               support nonblocking operations only (1) for TCP/IP non-
+               blocking read operations when read-ahead buffering is
+               enabled, (2) TCP/IP accept() operations when TCP/IP
+               connection backlog is enabled, (2) UDP/IP read() operations
+               when UDP read-ahead is enabled, and (3) non-blocking
+               operations on Unix domain sockets.
   Status:      Open
   Priority:    Low.
 
@@ -898,19 +892,24 @@ o Network (net/, drivers/net)
                should be eliminated).  This applies to almost all Ethernet
                drivers:
 
-               ARCHITECTURE   CONFIG_NET_NOINTS
-               C5471          NO
-               STM32          NO
-               TIVA/LM3S      NO
-               TIVA/TM4C      YES <<
-               eZ80           NO
-               LPC17xx        YES <<
-               DMxxx NIC      NO
-               PIC32          NO
-               RGMP           NO
-               SAM3/4         NO
-               SAMA5D         NO
-               SIM            N/A << Doesn't support interrupts
+               ARCHITECTURE   CONFIG_NET_NOINTS?      ADDRESS FILTER SUPPORT?
+               C5471          NO                      NO
+               STM32          YES                     YES
+               TIVA           ----------------------- ------
+                 LM3S         NO                      NO
+                 TM4C         YES                     YES
+               eZ80           NO                      NO
+               LPC17xx        YES (could be issues)   YES (not tested)
+               DMxxx NIC      NO                      NO
+               PIC32          NO                      NO
+               RGMP           ???                     ???
+               SAM3/4         YES                     YES
+               SAMA5D         ----------------------- ------
+                 EMACA        NO                      YES (not tested)
+                 EMACB        YES                     YES
+                 GMAC         NO                      YES (not tested)
+               SAMV7          YES                     YES
+               SIM            N/A  (No interrupts)    NO
 
                The general outline of how this might be done is included in
                drivers/net/skeleton.c
@@ -942,6 +941,50 @@ o Network (net/, drivers/net)
                cmd_ifdown() and the network monitor thread to prevent this.
   Status:      Open
   Priority:    Low, this is just a nuisance in most cases.
+
+  Title:       FIFO CLEAN-UP AFTER CLOSING UNIX DOMAIN DATAGRAM SOCKET
+  Description: FIFOs are used as the IPC underlying all local Unix domain
+               sockets.  In NuttX, FIFOs are implemented as device drivers
+               (not as a special FIFO files).  The FIFO device driver is
+               instantiated when the Unix domain socket communications begin
+               and will automatically be released when (1) the driver is
+               unlinked and (2) all open references to the driver have been
+               closed.  But there is no mechanism in place now to unlink the
+               FIFO when the Unix domain datagram socket is no longer used.
+               The primary issue is timing.. the FIFO should persist until
+               it is no longer needed.  Perhaps there should be a delayed
+               call to unlink() (using a watchdog or the work queue).  If
+               the driver is re-opened, the delayed unlink could be
+               cancelled?  Needs more thought.
+               NOTE: This is not an issue for Unix domain streams sockets:
+               The end-of-life of the FIFO is well determined when sockets
+               are disconnected and support for that case is fully implemented.
+  Status:      Open
+  Priority:    Low for now because I don't have a situation where this is a
+               problem for me.  If you use the same Unix domain paths, then
+               it is not a issue; in fact it is more efficient if the FIFO
+               devices persist.  But this would be a serious problem if,
+               for example, you create new Unix domain paths dynamically.
+               In that case you would effectively have a memory leak and the
+               number of FIFO instances grow.
+
+  Title:       TCP IPv4-MAPPED IPv6 ADDRESSES
+  Description: The UDP implementation in net/udp contains support for Hybrid
+               dual-stack IPv6/IPv4 implementations that utilize a special
+               class of addresses, the IPv4-mapped IPv6 addresses.  You can
+               see that UDP implementation in:
+
+                 udp_callback.c:
+                   ip6_map_ipv4addr(ipv4addr,
+                 udp_send.c:
+                   ip6_is_ipv4addr((FAR struct in6_addr*)conn->u.ipv6.raddr)))
+                   ip6_is_ipv4addr((FAR struct in6_addr*)conn->u.ipv6.raddr))
+                   in_addr_t raddr = ip6_get_ipv4addr((FAR struct in6_addr*)conn->u.ipv6.raddr);
+
+               There is no corresponding support for TCP sockets.
+  Status:      Open
+  Priority:    Low.  I don't know of any issues now, but I am sure that
+               someone will encounter this in the future.
 
 o USB (drivers/usbdev, drivers/usbhost)
   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1067,7 +1110,7 @@ o Libraries (libc/)
   Title:       ENVIRON
   Description: The definition of environ in stdlib.h is bogus and will not
                work as it should.  This is because the underlying
-               representation of the environment is not an arry of pointers.
+               representation of the environment is not an array of pointers.
   Status:      Open
   Priority:    Medium
 
@@ -1205,16 +1248,6 @@ o File system / Generic drivers (fs/, drivers/)
   Status:      Open
   Priority:    Low
 
-  Title:       REMOVING PIPES AND FIFOS
-  Description: There is no way to remove a FIFO or PIPE created in the
-               pseudo filesystem.  Once created, they persist indefinitely
-               and cannot be unlinked.  This is actually a more generic
-               issue:  unlink does not work for anything in the pseudo-
-               filesystem.
-  Status:      Open, but partially resolved: pipe buffer is at least freed
-               when there are not open references to the pipe/FIFO.
-  Priority:    Medium
-
   Title:       ROMFS CHECKSUMS
   Description: The ROMFS file system does not verify checksums on either
                volume header on on the individual files.
@@ -1294,6 +1327,63 @@ o File system / Generic drivers (fs/, drivers/)
   Status:      Open
   Priority:    Medium
 
+  Title:       MISSING FILES IN NSH 'LS' OF A DIRECTORY
+  Description: I have seen cases where (1) long file names are enabled,
+               but (2) a short file name is created like:
+
+                 nsh> echo "This is another thest" >/mnt/sdcard/another.txt
+
+               But then on subsequent 'ls' operations, the file does not appear:
+
+                 nsh> ls -l /mnt/sdcard
+
+               I have determined that the problem is because, for some as-
+               of-yet-unkown reason the short file name is treated as a long
+               file name.  The name then fails the long filename checksum
+               test and is skipped.
+
+               readdir() (and fat_readdir()) is the logic underlying the
+               failure and the problem appears to be something unique to the
+               fat_readdir() implementation.  Why?  Because the file is
+               visible when you put the SD card on a PC and because this
+               works fine:
+
+                 nsh> ls -l /mnt/sdcard/another.txt
+
+               The failure does not happen on all short file names.  I do
+               not understand the pattern.  But I have not had the opportunity
+               to dig into this deeply.
+  Status:      Open
+  Priority:    Perhaps not a problem???  I have analyzed this problem and
+               I am not sure what to do about it.  I am suspected that a
+               fat filesystem was used with a version of NuttX that does
+               not support long file name entries.  Here is the failure
+               scenario:
+
+               1) A file with a long file name is created under Windows.
+               2) Then the file is deleted.  I am not sure if Windows or
+                  NuttX deleted the file, but the resulting directory
+                  content is not compatible with NuttX with long file
+                  name support.
+
+                  The file deletion left the full sequence of long
+                  file name entries intact but apparently delete only
+                  the following short file name entry.  I am thinking
+                  that this might have happened because a version of NuttX
+                  with only short file name support was used to delete
+                  the file.
+
+               3) When a new file with a short file name was created, it
+                  re-used the short file name entry that was previously
+                  deleted.  This makes the new short file name entry
+                  look like a part of the long file name.
+
+               4) When comparing the checksum in the long file name
+                  entry with the checksum of the short file name, the
+                  checksum fails and the entire directlry sequence is
+                  ignored by readder() logic.  This the file does not
+                  appear in the 'ls'.
+
 o Graphics subsystem (graphics/)
   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1370,17 +1460,6 @@ o Graphics subsystem (graphics/)
   Priority:    Medium-ish.  This would definitely improve graphics rendering
                and line drawing.
 
-  Title:       LINE JOINS
-  Description: Lines are currently draw as rectangles with the width of the
-               rectangle being the line width.  So when shapes, like circles,
-               are drawn with fat lines, they do not join cleanly from
-               segment to segment.
-
-               The fix would be to draw a circle at each endpoint that has a
-               radius equal to the width of the line.
-  Status:      Open
-  Priority:    Medium-ish.  This would definitely improve line drawing.
-
   Title:       PER-WINDOW FRAMEBUFFERS
   Description: One of the most awkard things to handle in the NX windowing
                system is the re-draw callback.  This is difficult because it
@@ -1417,15 +1496,6 @@ o Pascal Add-On (pcode/)
   Title:       PDBG
   Description: Move the the pascal p-code debugger into the NuttX apps/ tree
                where it can be used from the NSH command line.
-  Status:      Open
-  Priority:    Low
-
-o Documentation (Documentation/)
-  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-  Title:       DOCUMENT APIS USABLE FROM INTERRUPT HANDLERS
-  Description: Need to document which APIs can be used in interrupt
-               handlers (like mq_send and sem_post) and which cannot.
   Status:      Open
   Priority:    Low
 
@@ -1593,7 +1663,8 @@ o ARM (arch/arm/)
                  msr spsr_SVC, rm
                  ld r13,{r15}^
 
-               Would also need to set r13_USER and r14_USER. For new SYS_context_switch... couldn't we do he same thing?
+               Would also need to set r13_USER and r14_USER. For new
+               SYS_context_switch... couldn't we do he same thing?
 
                Also... System calls use traps to get from user- to kernel-
                mode to perform OS services.  That is necessary to get from
@@ -1818,6 +1889,12 @@ o ARM/SAMA5D3 ((arch/arm/src/sama5/)
   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
   Issues related to the SAMA5D3 port are in configs/sama5d3x-ek/README.txt.
+  Issues related to the SAMA5D4 port are in configs/sama5d4-ek/README.txt.
+
+o ARM/SAMV7 ((arch/arm/src/samv7/)
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  Issues related to the SAMA5D3 port are in configs/samv71-xult/README.txt.
 
 o ARM/STM32 (arch/arm/src/stm32/)
   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -2300,27 +2377,11 @@ o mc68hc1x (arch/hc)
 o Network Utilities (apps/netutils/)
   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-  Title:       PPP PORT
-  Description: Port PPP support from http://contiki.cvs.sourceforge.net/contiki/contiki-2.x/backyard/core/net/ppp/
-  Status:      Open
-  Priority:    Low
-
   Title:       UNVERIFIED THTTPD FEATURES
   Description: Not all THTTPD features/options have been verified.  In particular, there is no
                test case of a CGI program receiving POST input.  Only the configuration of
                apps/examples/thttpd has been tested.
   Status:      Open
-  Priority:    Medium
-
-  Title:       THE ARP ISSUES AGAIN
-  Description: The first GET received by THTTPD is not responded to.  Refreshing the page
-               from the browser solves the problem and THTTPD works fine after that.  I
-               believe that this is the duplicate of another bug: "Outgoing
-               [uIP] packets are dropped and overwritten by ARP packets if the
-               destination IP has not been mapped to a MAC."
-  Status:      Probably closed.  The basic ARP issue has been fixed (if
-               CONFIG_NET_ARP_SEND is enable), but this has not been verified
-               with THTTPD.
   Priority:    Medium
 
   Title:       THTTPD WARNINGS
@@ -2343,7 +2404,7 @@ o Network Utilities (apps/netutils/)
   Priority:    Medium.  Important for full functionality with kernel build.
 
   Title:       NETWORK MONITOR NOT GENERALLY AVAILABLE
-  Description: The NSH network management logic has generally applicability
+  Description: The NSH network management logic has general applicability
                but is currently useful only because it is embedded in the NSH
                module.  It should be moved to apps/system or, better,
                apps/netutils.
@@ -2364,6 +2425,11 @@ o NuttShell (NSH) (apps/nshlib)
   Title:       ARP COMMAND
   Description: Add an ARP command so that we can see and modify the contents of
                the ARP table.
+  Status:      Open
+  Priority:    Low (enhancement)
+
+  Title:       ARPPING COMMAND
+  Description: Add an arping command
   Status:      Open
   Priority:    Low (enhancement)
 

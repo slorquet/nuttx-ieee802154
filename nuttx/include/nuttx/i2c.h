@@ -250,18 +250,21 @@ struct i2c_ops_s
 {
   uint32_t (*setfrequency)(FAR struct i2c_dev_s *dev, uint32_t frequency);
   int    (*setaddress)(FAR struct i2c_dev_s *dev, int addr, int nbits);
-  int    (*write)(FAR struct i2c_dev_s *dev, const uint8_t *buffer, int buflen);
+  int    (*write)(FAR struct i2c_dev_s *dev, const uint8_t *buffer,
+                  int buflen);
   int    (*read)(FAR struct i2c_dev_s *dev, uint8_t *buffer, int buflen);
 #ifdef CONFIG_I2C_WRITEREAD
-  int    (*writeread)(FAR struct i2c_dev_s *inst, const uint8_t *wbuffer, int wbuflen,
-                        uint8_t *rbuffer, int rbuflen);
+  int    (*writeread)(FAR struct i2c_dev_s *inst, const uint8_t *wbuffer,
+                      int wbuflen, uint8_t *rbuffer, int rbuflen);
 #endif
 #ifdef CONFIG_I2C_TRANSFER
-  int    (*transfer)(FAR struct i2c_dev_s *dev, FAR struct i2c_msg_s *msgs, int count);
+  int    (*transfer)(FAR struct i2c_dev_s *dev, FAR struct i2c_msg_s *msgs,
+                     int count);
 #endif
 #ifdef CONFIG_I2C_SLAVE
   int    (*setownaddress)(FAR struct i2c_dev_s *dev, int addr, int nbits);
-  int    (*registercallback)(FAR struct i2c_dev_s *dev, int (*callback)(void) );
+  int    (*registercallback)(FAR struct i2c_dev_s *dev,
+                             int (*callback)(FAR void *arg), FAR void *arg);
 #endif
 };
 
@@ -295,7 +298,8 @@ struct i2c_dev_s
 #undef EXTERN
 #if defined(__cplusplus)
 #define EXTERN extern "C"
-extern "C" {
+extern "C"
+{
 #else
 #define EXTERN extern
 #endif
@@ -317,7 +321,7 @@ extern "C" {
  *
  ****************************************************************************/
 
-EXTERN FAR struct i2c_dev_s *up_i2cinitialize(int port);
+FAR struct i2c_dev_s *up_i2cinitialize(int port);
 
 /****************************************************************************
  * Name: up_i2cuninitialize
@@ -334,7 +338,7 @@ EXTERN FAR struct i2c_dev_s *up_i2cinitialize(int port);
  *
  ****************************************************************************/
 
-EXTERN int up_i2cuninitialize(FAR struct i2c_dev_s *dev);
+int up_i2cuninitialize(FAR struct i2c_dev_s *dev);
 
 /************************************************************************************
  * Name: up_i2creset
@@ -345,7 +349,7 @@ EXTERN int up_i2cuninitialize(FAR struct i2c_dev_s *dev);
  ************************************************************************************/
 
 #ifdef CONFIG_I2C_RESET
-EXTERN int up_i2creset(FAR struct i2c_dev_s *dev);
+int up_i2creset(FAR struct i2c_dev_s *dev);
 #endif
 
 #undef EXTERN

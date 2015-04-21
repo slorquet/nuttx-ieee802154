@@ -1,3 +1,4 @@
+accept         NXaccept
 calloc         NXcalloc
 clock_gettime  NXclock_gettime
 close          NXclose
@@ -13,6 +14,7 @@ fsync          NXfsync
 gettimeofday   NXgettimeofday
 ioctl          NXioctl
 isatty         NXisatty
+listen         NXlisten
 lseek          NXlseek
 malloc         NXmalloc
 malloc_init    NXmalloc_init
@@ -24,10 +26,17 @@ nanosleep      NXnanosleep
 pthread_create NXpthread_create
 read           NXread
 realloc        NXrealloc
+recv           NXrecv
+recvfrom       NXrecvfrom
 rewinddir      NXrewinddir
 rmdir          NXrmdir
 seekdir        NXseekdir
 select         NXselect
+send           NXsend
+sighold        NXsighold
+sigprocmask    NXsigprocmask
+sigrelse       NXsigrelse
+sendto         NXsendto
 sleep          NXsleep
 socket         NXsocket
 stat           NXstat
@@ -35,7 +44,7 @@ statfs         NXstatfs
 system         NXsystem
 tcgetattr      NXtcgetattr
 tcsetattr      NXtcsetattr
-umount         NXumount
+umount2        NXumount2
 unlink         NXunlink
 usleep         NXusleep
 vfork          NXvfork

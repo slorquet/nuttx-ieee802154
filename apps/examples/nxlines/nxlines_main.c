@@ -1,7 +1,7 @@
 /****************************************************************************
  * examples/nxlines/nxlines_main.c
  *
- *   Copyright (C) 2011-2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2011-2012, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,7 @@
 #include <nuttx/config.h>
 
 #include <sys/types.h>
+#include <sys/boardctl.h>
 
 #include <stdint.h>
 #include <stdio.h>
@@ -50,13 +51,15 @@
 #include <errno.h>
 #include <debug.h>
 
+#include <nuttx/arch.h>
+#include <nuttx/board.h>
+
 #ifdef CONFIG_NX_LCDDRIVER
 #  include <nuttx/lcd/lcd.h>
 #else
 #  include <nuttx/video/fb.h>
 #endif
 
-#include <nuttx/arch.h>
 #include <nuttx/nx/nx.h>
 #include <nuttx/nx/nxglib.h>
 
@@ -119,17 +122,26 @@ static inline int nxlines_initialize(void)
   FAR NX_DRIVERTYPE *dev;
 
 #if defined(CONFIG_EXAMPLES_NXLINES_EXTERNINIT)
+  struct boardioc_graphics_s devinfo;
+  int ret;
+
   /* Use external graphics driver initialization */
 
   printf("nxlines_initialize: Initializing external graphics device\n");
-  dev = up_nxdrvinit(CONFIG_EXAMPLES_NXLINES_DEVNO);
-  if (!dev)
+
+  devinfo.devno = CONFIG_EXAMPLES_NXLINES_DEVNO;
+  devinfo.dev = NULL;
+
+  ret = boardctl(BOARDIOC_GRAPHICS_SETUP, (uintptr_t)&devinfo);
+  if (ret < 0)
     {
-      printf("nxlines_initialize: up_nxdrvinit failed, devno=%d\n",
-             CONFIG_EXAMPLES_NXLINES_DEVNO);
+      printf("nxlines_initialize: boardctl failed, devno=%d: %d\n",
+             CONFIG_EXAMPLES_NXLINES_DEVNO, errno);
       g_nxlines.code = NXEXIT_EXTINITIALIZE;
       return ERROR;
     }
+
+  dev = devinfo.dev;
 
 #elif defined(CONFIG_NX_LCDDRIVER)
   int ret;
@@ -137,20 +149,21 @@ static inline int nxlines_initialize(void)
   /* Initialize the LCD device */
 
   printf("nxlines_initialize: Initializing LCD\n");
-  ret = up_lcdinitialize();
+  ret = board_lcd_initialize();
   if (ret < 0)
     {
-      printf("nxlines_initialize: up_lcdinitialize failed: %d\n", -ret);
+      printf("nxlines_initialize: board_lcd_initialize failed: %d\n", -ret);
       g_nxlines.code = NXEXIT_LCDINITIALIZE;
       return ERROR;
     }
 
   /* Get the device instance */
 
-  dev = up_lcdgetdev(CONFIG_EXAMPLES_NXLINES_DEVNO);
+  dev = board_lcd_getdev(CONFIG_EXAMPLES_NXLINES_DEVNO);
   if (!dev)
     {
-      printf("nxlines_initialize: up_lcdgetdev failed, devno=%d\n", CONFIG_EXAMPLES_NXLINES_DEVNO);
+      printf("nxlines_initialize: board_lcd_getdev failed, devno=%d\n",
+             CONFIG_EXAMPLES_NXLINES_DEVNO);
       g_nxlines.code = NXEXIT_LCDGETDEV;
       return ERROR;
     }

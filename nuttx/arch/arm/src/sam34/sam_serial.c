@@ -179,10 +179,6 @@
 #  undef HAVE_CONSOLE
 #endif
 
-/* If we are not using the serial driver for the console, then we still must
- * provide some minimal implementation of up_putc.
- */
-
 #ifdef USE_SERIALDRIVER
 
 /* Which UART/USART with be tty0/console and which tty1? tty2? tty3? tty4? tty5? */
@@ -654,9 +650,9 @@ static inline void up_serialout(struct up_dev_s *priv, int offset, uint32_t valu
 
 static inline void up_restoreusartint(struct up_dev_s *priv, uint32_t imr)
 {
-  /* Restore the previous interrupt state */
+  /* Restore the previous interrupt state (assuming all interrupts disabled) */
 
-  up_serialout(priv, SAM_UART_IMR_OFFSET, imr);
+  up_serialout(priv, SAM_UART_IER_OFFSET, imr);
 }
 
 /****************************************************************************
@@ -1098,6 +1094,7 @@ static int up_ioctl(struct file *filep, int cmd, unsigned long arg)
         struct termios  *termiosp = (struct termios*)arg;
         struct up_dev_s *priv     = (struct up_dev_s *)dev->priv;
         uint32_t baud;
+        uint32_t imr;
         uint8_t parity;
         uint8_t nbits;
         bool stop2;
@@ -1182,7 +1179,12 @@ static int up_ioctl(struct file *filep, int cmd, unsigned long arg)
              * implement TCSADRAIN / TCSAFLUSH
              */
 
+            up_disableallints(priv, &imr);
             ret = up_setup(dev);
+
+            /* Restore the interrupt state */
+
+            up_restoreusartint(priv, imr);
           }
       }
       break;

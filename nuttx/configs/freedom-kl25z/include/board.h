@@ -47,7 +47,7 @@
 #endif
 
 /************************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ************************************************************************************/
 
 /* Clocking *************************************************************************/
@@ -150,8 +150,8 @@
 
 /* TPM2 Channels */
 
-#define GPIO_TPM1_CH0OUT PIN_TPM2_CH0_1
-#define GPIO_TPM1_CH1OUT PIN_TPM2_CH1_1
+#define GPIO_TPM2_CH0OUT PIN_TPM2_CH0_1
+#define GPIO_TPM2_CH1OUT PIN_TPM2_CH1_1
 
 /* LED definitions ******************************************************************/
 /* The Freedom KL25Z has a single RGB LED driven by the KL25Z as follows:

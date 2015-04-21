@@ -46,7 +46,7 @@
 #include <stdint.h>
 #include <errno.h>
 #include <debug.h>
-#include <nuttx/timer.h>
+#include <nuttx/timers/timer.h>
 #include <arch/board/board.h>
 
 #include "up_arch.h"
@@ -56,7 +56,7 @@
 #if defined(CONFIG_TIMER) && (defined(CONFIG_SAM34_RTT))
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 /* Clocking *****************************************************************/
 
@@ -619,6 +619,7 @@ static int sam34_ioctl(FAR struct timer_lowerhalf_s *lower, int cmd,
 
   DEBUGASSERT(priv);
   rttvdbg("Entry: cmd=%d arg=%ld\n", cmd, arg);
+  UNUSED(priv);
 
   return ret;
 }

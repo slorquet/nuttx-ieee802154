@@ -12,7 +12,7 @@
       <h1><big><font color="#3c34ec">
         <i>NuttX RTOS Porting Guide</i>
       </font></big></h1>
-      <p>Last Updated: November 15, 2014</p>
+      <p>Last Updated: April 1, 2015</p>
     </td>
   </tr>
 </table>
@@ -30,7 +30,7 @@
   <a href="#Introduction">1.0 Introduction</a><br>
   <a href="#DirectoryStructure">2.0 Directory Structure</a>
   <ul>
-    <a href="#DirStructDocumentation">2.1 Documentation</a></br>
+    <a href="#DirStructDocumentation">2.1 Documentation</a><br>
     <a href="#DirStructArch">2.2 arch/</a>
     <ul>
       <a href="#archdirectorystructure">2.2.1 Subdirectory Structure</a><br>
@@ -93,14 +93,14 @@
       <a href="#upinterruptcontext">4.2.16 <code>up_interrupt_context()</code></a><br>
       <a href="#updisableirq">4.2.17 <code>up_disable_irq()</code></a><br>
       <a href="#upenableirq">4.2.18 <code>up_enable_irq()</code></a><br>
-      <a href="#upprioritizeirq">4.2.19 <code>up_prioritize_irq()</code></a></br>
-      <a href="#upputc">4.2.20 <code>up_putc()</code></a></br>
+      <a href="#upprioritizeirq">4.2.19 <code>up_prioritize_irq()</code></a><br>
+      <a href="#upputc">4.2.20 <code>up_putc()</code></a><br>
     </ul>
     <a href="#systemtime">4.3 System Time and Clock</a>
     <ul>
-      <a href="#basictimer">4.3.1 Basic System Timer</a></br>
-      <a href="#timerhw">4.3.2 Hardware</a></br>
-      <a href="#systcktime">4.3.3 System Tick and Time</a></br>
+      <a href="#basictimer">4.3.1 Basic System Timer</a><br>
+      <a href="#timerhw">4.3.2 Hardware</a><br>
+      <a href="#systcktime">4.3.3 System Tick and Time</a><br>
       <a href="#tickless">4.3.4 Tickless OS</a><br>
       <a href="#Watchdogs">4.3.5 Watchdog Timer Interfaces</a>
     </ul>
@@ -130,68 +130,74 @@
     </ul>
     <a href="#addrenv">4.5 Address Environments</a>
     <ul>
-      <a href="#up_addrenv_create">4.5.1 <code>up_addrenv_create()</code></a></br>
-      <a href="#up_addrenv_destroy">4.5.2 <code>up_addrenv_destroy()</code></a></br>
-      <a href="#up_addrenv_vtext">4.5.3 <code>up_addrenv_vtext()</code></a></br>
-      <a href="#up_addrenv_vdata">4.5.4 <code>up_addrenv_vdata()</code></a></br>
-      <a href="#up_addrenv_heapsize">4.5.5 <code>up_addrenv_heapsize()</code></a></br>
-      <a href="#up_addrenv_select">4.5.6 <code>up_addrenv_select()</code></a></br>
-      <a href="#up_addrenv_restore">4.5.7 <code>up_addrenv_restore()</code></a></br>
-      <a href="#up_addrenv_clone">4.5.8 <code>up_addrenv_clone()</code></a></br>
-      <a href="#up_addrenv_attach">4.5.9 <code>up_addrenv_attach()</code></a></br>
-      <a href="#up_addrenv_detach">4.5.10 <code>up_addrenv_detach()</code></a></br>
-      <a href="#up_addrenv_ustackalloc">4.5.11 <code>up_addrenv_ustackalloc()</code></a></br>
-      <a href="#up_addrenv_ustackfree">4.5.12 <code>up_addrenv_ustackfree()</code></a></br>
-      <a href="#up_addrenv_vustack">4.5.13 <code>up_addrenv_vustack()</code></a></br>
-      <a href="#up_addrenv_ustackselect">4.5.14 <code>up_addrenv_ustackselect()</code></a></br>
-      <a href="#up_addrenv_kstackalloc">4.5.15 <code>up_addrenv_kstackalloc()</code></a></br>
+      <a href="#up_addrenv_create">4.5.1 <code>up_addrenv_create()</code></a><br>
+      <a href="#up_addrenv_destroy">4.5.2 <code>up_addrenv_destroy()</code></a><br>
+      <a href="#up_addrenv_vtext">4.5.3 <code>up_addrenv_vtext()</code></a><br>
+      <a href="#up_addrenv_vdata">4.5.4 <code>up_addrenv_vdata()</code></a><br>
+      <a href="#up_addrenv_heapsize">4.5.5 <code>up_addrenv_heapsize()</code></a><br>
+      <a href="#up_addrenv_select">4.5.6 <code>up_addrenv_select()</code></a><br>
+      <a href="#up_addrenv_restore">4.5.7 <code>up_addrenv_restore()</code></a><br>
+      <a href="#up_addrenv_clone">4.5.8 <code>up_addrenv_clone()</code></a><br>
+      <a href="#up_addrenv_attach">4.5.9 <code>up_addrenv_attach()</code></a><br>
+      <a href="#up_addrenv_detach">4.5.10 <code>up_addrenv_detach()</code></a><br>
+      <a href="#up_addrenv_ustackalloc">4.5.11 <code>up_addrenv_ustackalloc()</code></a><br>
+      <a href="#up_addrenv_ustackfree">4.5.12 <code>up_addrenv_ustackfree()</code></a><br>
+      <a href="#up_addrenv_vustack">4.5.13 <code>up_addrenv_vustack()</code></a><br>
+      <a href="#up_addrenv_ustackselect">4.5.14 <code>up_addrenv_ustackselect()</code></a><br>
+      <a href="#up_addrenv_kstackalloc">4.5.15 <code>up_addrenv_kstackalloc()</code></a><br>
       <a href="#up_addrenv_kstackfree">4.5.16 <code>up_addrenv_kstackfree()</code></a>
     </ul>
-    <a href="#exports">4.6 APIs Exported by NuttX to Architecture-Specific Logic</a>
+    <a href="#boardctl">4.6 <code>boardctl()</code> Application Interface</a><br>
+    <a href="#exports">4.7 APIs Exported by NuttX to Architecture-Specific Logic</a>
     <ul>
-      <a href="#osstart">4.6.1 <code>os_start()</code></a><br>
-      <a href="#listmgmt">4.6.2 OS List Management APIs</a><br>
-      <a href="#schedprocesstimer">4.6.3 <code>sched_process_timer()</code></a><br>
-      <a href="#schedtimerexpiration">4.6.4 <code>sched_timer_expiration()</code></a></br>
-      <a href="#schedalarmexpiration">4.6.5 <code>sched_alarm_expiration()</code></a></br>
-      <a href="#irqdispatch">4.6.6 <code>irq_dispatch()</code></a>
+      <a href="#osstart">4.7.1 <code>os_start()</code></a><br>
+      <a href="#listmgmt">4.7.2 OS List Management APIs</a><br>
+      <a href="#schedprocesstimer">4.7.3 <code>sched_process_timer()</code></a><br>
+      <a href="#schedtimerexpiration">4.7.4 <code>sched_timer_expiration()</code></a><br>
+      <a href="#schedalarmexpiration">4.7.5 <code>sched_alarm_expiration()</code></a><br>
+      <a href="#irqdispatch">4.7.6 <code>irq_dispatch()</code></a>
     </ul>
-    <a href="#shm">4.7 Shared Memory</a>
+    <a href="#shm">4.8 Shared Memory</a>
     <ul>
-      <a href="#upshmat">4.7.1 <code>up_shmat()</code></a><br>
-      <a href="#upshmdt">4.7.2 <code>up_shmdt()</code></a><br>
+      <a href="#upshmat">4.8.1 <code>up_shmat()</code></a><br>
+      <a href="#upshmdt">4.8.2 <code>up_shmdt()</code></a><br>
     </ul>
-    <a href="#demandpaging">4.8 On-Demand Paging</a><br>
-    <a href="#ledsupport">4.9 LED Support</a>
+    <a href="#demandpaging">4.9 On-Demand Paging</a><br>
+    <a href="#ledsupport">4.10 LED Support</a>
     <ul>
-      <a href="#ledheaders">4.9.1 Header Files</a><br>
-      <a href="#leddefinitions">4.9.2 LED Definitions</a><br>
-      <a href="#ledapis">4.9.3 Common LED interfaces</a>
+      <a href="#ledheaders">4.10.1 Header Files</a><br>
+      <a href="#leddefinitions">4.10.2 LED Definitions</a><br>
+      <a href="#ledapis">4.10.3 Common LED interfaces</a>
     </ul>
   </ul>
   <a href="#NxFileSystem">5.0 NuttX File System</a><br>
   <a href="#DeviceDrivers">6.0 NuttX Device Drivers</a>
   <ul>
     <a href="#chardrivers">6.1 Character Device Drivers</a><br>
+    <ul>
+       <a href="#serialdrivers">6.1.1 Serial Device Drivers</a><br>
+       <a href="#tscdrivers">6.1.2 Touchscreen Device Drivers</a><br>
+       <a href="#analogdrivers">6.1.3 Analog (ADC/DAC) Drivers</a><br>
+       <a href="#pwmdrivers">6.1.4 PWM Drivers</a><br>
+       <a href="#candrivers">6.1.5 CAN Drivers</a><br>
+       <a href="#quadencoder">6.1.6 Quadrature Encoder Drivers</a><br>
+       <a href="#timerdriver">6.1.7 Timer Drivers</a><br>
+       <a href="#rtcriver">6.1.8 RTC Drivers</a><br>
+       <a href="#wdogdriver">6.1.9 Watchdog Timer Drivers</a><br>
+       <a href="#kbddriver">6.1.10 Keyboard/Keypad Drivers</a><br>
+    </ul>
     <a href="#blockdrivers">6.2 Block Device Drivers</a><br>
-    <a href="#blockdrivers">6.3 Specialized Device Drivers</a>
+    <a href="#specdrivers">6.3 Specialized Device Drivers</a>
     <ul>
        <a href="#ethdrivers">6.3.1 Ethernet Device Drivers</a><br>
        <a href="#spidrivers">6.3.2 SPI Device Drivers</a><br>
        <a href="#i2cdrivers">6.3.3 I2C Device Drivers</a><br>
-       <a href="#serialdrivers">6.3.4 Serial Device Drivers</a><br>
-       <a href="#fbdrivers">6.3.5 Frame Buffer Drivers</a><br>
-       <a href="#lcddrivers">6.3.6 LCD Drivers</a><br>
-       <a href="#mtddrivers">6.3.7 Memory Technology Device Drivers</a><br>
-       <a href="#sdiodrivers">6.3.8 SDIO Device Drivers</a><br>
-       <a href="#usbhostdrivers">6.3.9 USB Host-Side Drivers</a><br>
-       <a href="#usbdevdrivers">6.3.10 USB Device-Side Drivers</a><br>
-       <a href="#analogdrivers">6.3.11 Analog (ADC/DAC) Drivers</a><br>
-       <a href="#pwmdrivers">6.3.12 PWM Drivers</a><br>
-       <a href="#candrivers">6.3.13 CAN Drivers</a><br>
-       <a href="#quadencoder">6.3.14 Quadrature Encoder Drivers</a><br>
-       <a href="#wdogdriver">6.3.15 Watchdog Timer Drivers</a><br>
-       <a href="#kbddriver">6.3.16 Keyboard/Keypad Drivers</a><br>
+       <a href="#fbdrivers">6.3.4 Frame Buffer Drivers</a><br>
+       <a href="#lcddrivers">6.3.5 LCD Drivers</a><br>
+       <a href="#mtddrivers">6.3.6 Memory Technology Device Drivers</a><br>
+       <a href="#sdiodrivers">6.3.7 SDIO Device Drivers</a><br>
+       <a href="#usbhostdrivers">6.3.8 USB Host-Side Drivers</a><br>
+       <a href="#usbdevdrivers">6.3.9 USB Device-Side Drivers</a><br>
     </ul>
     <a href="#pwrmgmt">6.4 Power Management</a>
     <ul>
@@ -2380,9 +2386,6 @@ else
     Set the RTC to the provided time.
     All RTC implementations must be able to set their time based on a standard timespec.
   </li>
-  <li><code>up_rtc_setalarm()</code>.
-    Set up an alarm.
-  </li>
 </ul>
 
 <h3><a name="systcktime">4.3.3 System Tick and Time</a></h3>
@@ -3811,23 +3814,73 @@ void lpwork_restorepriority(uint8_t reqprio);
   Zero (<code>OK</code>) on success; a negated <code>errno</code> value on failure.
 </ul>
 
-<h2><a name="exports">4.6 APIs Exported by NuttX to Architecture-Specific Logic</a></h2>
+<h2><a name="boardctl">4.6 <code>boardctl()</code> Application Interface</a></h2>
+
+<p><b>Function Prototype</b>:<p>
+<ul>
+  <code>
+  include &lt;sys/boardctl.h&gt;<br>
+  int boardctl(unsigned int cmd, uintptr_t arg);
+  </code>
+</ul>
+<p><b>Description</b>:</p>
+<ul>
+  <p>
+    In a small embedded system, there will typically be a much greater interaction between application and low-level board features.
+    The canonically correct to implement such interactions is by implementing a character driver and performing the interactions via low level <code>ioctl()</code> calls.
+    This, however, may not be practical in many cases and will lead to &quot;correct&quot; but awkward implementations.
+  </p>
+  <p>
+    <code>boardctl()</code> is <i>non-standard</i> OS interface to alleviate the problem.
+    It basically circumvents the normal device driver <code>ioctl()</code> interlace and allows the application to perform direct IOCTL-like calls to the board-specific logic.
+    It is especially useful for setting up board operational and test configurations.
+  </p>
+  <p>
+    <b>NOTE:</b> The other interfaces described in this document are internal OS interface.
+    <code>boardctl()</code> is an application interface to the OS.
+    There is not point, in fact, of using <code>boardctl()</code> within the OS;
+    the board interfaces prototyped in <code>include/nuttx/board.h</code> may be called directly from within the OS.
+  </p>
+  <p>
+    Application interfaces are described in the <a href="NuttxUserGuide.html">NuttX User Guide</a>.
+    This application interface interface is described here only because it is so non-standard and because it is so closely tied to board porting logic.
+  </p>
+</ul>
+<p><b>Input Parameters</b>:</p>
+<ul>
+  <li>
+    <code>cmd</code>: Identifies the board command to be executed.
+    See <code>include/sys/boardctl.h</code> for the complete list of common board commands.
+    Provisions are made to support non-common, board-specific commands as well.
+  </li>
+  <li>
+    <code>arg</code>: The argument that accompanies the command.
+    The nature of the argument is determined by the specific command.
+  </li>
+</ul>
+<p><b>Returned Value</b>:</p>
+<ul>
+  On success zero (<code>OK</code>) is returned;
+  -1 (<code>ERROR</code>) is returned on failure with the <code>errno</code> variable to to indicate the nature of the failure.
+</ul>
+
+<h2><a name="exports">4.7 APIs Exported by NuttX to Architecture-Specific Logic</a></h2>
 <p>
   These are standard interfaces that are exported by the OS
   for use by the architecture specific logic.
 </p>
 
-<h3><a name="osstart">4.6.1 <code>os_start()</code></a></h3>
+<h3><a name="osstart">4.7.1 <code>os_start()</code></a></h3>
 <p>
   <b><i>To be provided</i></b>
 </p>
 
-<h3><a name="listmgmt">4.6.2 OS List Management APIs</a></h3></h3>
+<h3><a name="listmgmt">4.7.2 OS List Management APIs</a></h3></h3>
 <p>
   <b><i>To be provided</i></b>
 </p>
 
-<h3><a name="schedprocesstimer">4.6.3 <code>sched_process_timer()</code></a></h3>
+<h3><a name="schedprocesstimer">4.7.3 <code>sched_process_timer()</code></a></h3>
 <p><b>Function Prototype</b>: <code>void sched_process_timer(void);</code></p>
 
 <p><b>Description</b>.
@@ -3838,7 +3891,7 @@ void lpwork_restorepriority(uint8_t reqprio);
   <code>MSEC_PER_TICK</code>.
 </p>
 
-<h3><a name="schedtimerexpiration">4.6.4 <code>sched_timer_expiration()</code></a></h3>
+<h3><a name="schedtimerexpiration">4.7.4 <code>sched_timer_expiration()</code></a></h3>
 <p><b>Function Prototype</b>:<p>
 <ul><pre>
 #include &lt;nuttx/arch.h&gt;
@@ -3861,7 +3914,7 @@ void sched_timer_expiration(void);
   Base code implementation assumes that this function is called from interrupt handling logic with interrupts disabled.
 </ul>
 
-<h3><a name="schedalarmexpiration">4.6.5 <code>sched_alaram_expiration()</code></a></h3>
+<h3><a name="schedalarmexpiration">4.7.5 <code>sched_alaram_expiration()</code></a></h3>
 <p><b>Function Prototype</b>:<p>
 <ul><pre>
 #include &lt;nuttx/arch.h&gt;
@@ -3884,7 +3937,7 @@ void sched_timer_expiration(void);
   Base code implementation assumes that this function is called from interrupt handling logic with interrupts disabled.
 </ul>
 
-<h3><a name="irqdispatch">4.6.6 <code>irq_dispatch()</code></a></h3>
+<h3><a name="irqdispatch">4.7.6 <code>irq_dispatch()</code></a></h3>
 <p><b>Function Prototype</b>: <code>void irq_dispatch(int irq, FAR void *context);</code></p>
 
 <p><b>Description</b>.
@@ -3893,7 +3946,7 @@ void sched_timer_expiration(void);
   the appropriate, registered handling logic.
 </p>
 
-<h2><a name="shm">4.7 Shared Memory</a></h2>
+<h2><a name="shm">4.8 Shared Memory</a></h2>
 <p>
   Shared memory interfaces are only available with the NuttX kernel build (<code>CONFIG_BUILD_KERNEL=y</code>).
   These interfaces support user memory regions that can be shared between multiple user processes.
@@ -3902,7 +3955,7 @@ void sched_timer_expiration(void);
   Those interfaces are described below:
 </p>
 
-<h3><a name="upshmat">4.7.1 <code>up_shmat()</code></a></h3>
+<h3><a name="upshmat">4.8.1 <code>up_shmat()</code></a></h3>
 <p><b>Function Prototype</b>:<p>
 <ul><pre>
 #include &lt;nuttx/arch.h&gt;
@@ -3931,7 +3984,7 @@ int up_shmat(FAR uintptr_t *pages, unsigned int npages, uintptr_t vaddr);
   Zero (<code>OK</code>) is returned on success; a negated <code>errno</code> value is returned on failure.
 </ul>
 
-<h3><a name="upshmdt">4.7.2 <code>up_shmdt()</code></a></h3>
+<h3><a name="upshmdt">4.8.2 <code>up_shmdt()</code></a></h3>
 <p><b>Function Prototype</b>:<p>
 <ul><pre>
 #include &lt;nuttx/arch.h&gt;
@@ -3957,7 +4010,7 @@ int up_shmdt(uintptr_t vaddr, unsigned int npages);
   Zero (<code>OK</code>) is returned on success; a negated <code>errno</code> value is returned on failure.
 </ul>
 
-<h2><a name="demandpaging">4.8 On-Demand Paging</a></h2>
+<h2><a name="demandpaging">4.9 On-Demand Paging</a></h2>
 <p>
   The NuttX On-Demand Paging feature permits embedded MCUs with some limited RAM space to execute large programs from some non-random access media.
   If the platform meets certain requirements, then NuttX can provide on-demand paging:
@@ -3966,7 +4019,7 @@ int up_shmdt(uintptr_t vaddr, unsigned int npages);
   Please see the <a href="NuttXDemandPaging.html">NuttX Demand Paging</a> design document for further information.
 </p>
 
-<h2><a name="ledsupport">4.9 LED Support</a></h2>
+<h2><a name="ledsupport">4.10 LED Support</a></h2>
 
 <p>
   A board architecture may or may not have LEDs.
@@ -3976,7 +4029,7 @@ int up_shmdt(uintptr_t vaddr, unsigned int npages);
   However, the support provided by each architecture is sufficiently similar that it can be documented here.
 </p>
 
-<h3><a name="ledheaders">4.9.1 Header Files</a></h3>
+<h3><a name="ledheaders">4.10.1 Header Files</a></h3>
 
 <p>
   LED-related definitions are provided in two header files:
@@ -4000,7 +4053,7 @@ int up_shmdt(uintptr_t vaddr, unsigned int npages);
   </ul>
 </p>
 
-<h3><a name="leddefinitions">4.9.2 LED Definitions</a></h3>
+<h3><a name="leddefinitions">4.10.2 LED Definitions</a></h3>
 
 <p>
    The implementation of LED support is very specific to a board architecture.
@@ -4064,15 +4117,12 @@ int up_shmdt(uintptr_t vaddr, unsigned int npages);
   </li>
 </ul>
 
-<h3><a name="ledapis">4.9.3 Common LED interfaces</a></h3>
+<h3><a name="ledapis">4.10.3 Common LED interfaces</a></h3>
 
 <p>
-  The <code><i>&lt;arch-name&gt;</i>/src/common/up_internal.h</code> probably has definitions
-  like:
+  The <code>include/nuttx/board.h</code> has declarations like:
 </p>
 <ul><pre>
-/* Defined in board/up_leds.c */
-
 #ifdef CONFIG_ARCH_LEDS
 void board_led_initialize(void);
 void board_led_on(int led);
@@ -4088,17 +4138,32 @@ void board_led_off(int led);
 <p>
 <ul>
   <li>
+  <p>
     <code>void board_led_initialize(void)</code> is called early in power-up initialization to initialize the LED hardware.
+  </p>
+  <small><blockquote>
+    <b>NOTE:</b> In most architectures, <code>board_led_initialize()</code> is called from board-specific initialization logic.
+    But there are a few architectures where this initialization function is still called from common chip architecture logic.
+    This interface is nott, however, a common board interface in any event.
+  </blockquote>
+  <blockquote>
+    <b>WARNING:</b> This interface name will eventually be removed; do not use it in new board ports.
+    New implementations should not use the naming convention for common board interfaces, but should instted use the naming conventions for microprocessor-specific interfaces or the board-specific interfaces (such as <code>stm32_led_initialize()</code>).
+  </blockquote></small>
   </li>
   <li>
+  <p>
     <code>board_led_on(int led)</code> is called to instantiate the LED presentation of the event.
     The <code>led</code> argument is one of the definitions provided in <code><i>&lt;board-name&gt;</i>/include/board.h</code>.
+  </p>
   </li>
+  <p>
   <li>
     <code>board_led_off(int led</code>is called to terminate the LED presentation of the event.
     The <code>led</code> argument is one of the definitions provided in <code><i>&lt;board-name&gt;</i>/include/board.h</code>.
     Note that only <code>LED_INIRQ</code>, <code>LED_SIGNAL</code>, <code>LED_ASSERTION</code>, and <code>LED_PANIC</code>
     indications are terminated.
+  </p>
   </li>
 </ul>
 
@@ -4227,199 +4292,36 @@ void board_led_off(int led);
   </li>
   <li>
     <p>
+    <b>Specialized Character Drivers</b>.
+    Within the common character driver framework, there are different specific varieties of <i>specialized</i> character drivers.
+    The unique requirements of the underlying device hardware often mandates some customization of the character driver.
+    These customizations tend to take the form of:
+    </p>
+    <ul>
+      <li>
+        Device-specific <code>ioctl()</code> commands used to performed specialized operations on the device.
+        These <code>ioctl()</code> will be documented in header files under <code>include/nuttx</code> that detail the specific device interface.
+      </li>
+      <li>
+        Specialized I/O formats.
+        Some devices will require that <code>read()</code> and/or <code>write()</code> operations use data conforming to a specific format, rather than a plain stream of bytes.
+        These specialized I/O formats will be documented in header files under <code>include/nuttx</code> that detail the specific device interface.
+        The typical representation of the I/O format will be a C structure definition.
+      </li>
+    </ul>
+    <p>
+    The specialized character drivers support by NuttX are documented in the following paragraphs.
+    </p>
+  </li>
+  <li>
+    <p>
     <b>Examples</b>:
     <code>drivers/dev_null.c</code>, <code>drivers/fifo.c</code>, <code>drivers/serial.c</code>, etc.
     </p>
  </li>
 </ul>
 
-<h2><a name="blockdrivers">6.2 Block Device Drivers</a></h2>
-
-<p>
-  Block device drivers have these properties:
-</p>
-<ul>
-  <li>
-    <p>
-    <b><code>include/nuttx/fs/fs.h</code></b>.
-    All structures and APIs needed to work with block drivers are provided in this header file.
-    </p>
-  </li>
-  <li>
-    <p>
-    <b><code>struct block_operations</code></b>.
-    Each block device driver must implement an instance of <code>struct block_operations</code>.
-    That structure defines a call table with the following methods:
-    <ul>
-     <p><code>int open(FAR struct inode *inode);</code><br>
-     <code>int close(FAR struct inode *inode);</code><br>
-     <code>ssize_t read(FAR struct inode *inode, FAR unsigned char *buffer, size_t start_sector, unsigned int nsectors);</code><br>
-     <code>ssize_t write(FAR struct inode *inode, FAR const unsigned char *buffer, size_t start_sector, unsigned int nsectors);</code><br>
-     <code>int geometry(FAR struct inode *inode, FAR struct geometry *geometry);</code><br>
-     <code>int ioctl(FAR struct inode *inode, int cmd, unsigned long arg);</code></p>
-    </ul>
-    </p>
-  </li>
-  <li>
-    <p>
-    <b><code>int register_blockdriver(const char *path, const struct block_operations *bops, mode_t mode, void *priv);</code></b>.
-    Each block driver registers itself by calling <code>register_blockdriver()</code>, passing it the
-    <code>path</code> where it will appear in the <a href="#NxFileSystem">pseudo-file-system</a> and it's
-    initialized instance of <code>struct block_operations</code>.
-    </p>
-  </li>
-  <li>
-    <p>
-    <b>User Access</b>.
-    Users do not normally access block drivers directly, rather, they access block drivers
-    indirectly through the <code>mount()</code> API.
-    The <code>mount()</code> API binds a block driver instance with a file system and with a mountpoint.
-    Then the user may use the block driver to access the file system on the underlying media.
-    <i>Example</i>: See the <code>cmd_mount()</code> implementation in <code>apps/nshlib/nsh_fscmds.c</code>.
-    </p>
-  </li>
-  <li>
-    <p>
-    <b>Accessing a Character Driver as a Block Device</b>.
-    See the loop device at <code>drivers/loop.c</code>.
-    <i>Example</i>: See the <code>cmd_losetup()</code> implementation in <code>apps/nshlib/nsh_fscmds.c</code>.
-    </p>
-  </li>
-  <li>
-    <p>
-    <b>Accessing a Block Driver as Character Device</b>.
-    See the Block-to-Character (BCH) conversion logic in <code>drivers/bch/</code>.
-    <i>Example</i>: See the <code>cmd_dd()</code> implementation in <code>apps/nshlib/nsh_ddcmd.c</code>.
-    </p>
-  </li>
-  <li>
-    <p>
-    <b>Examples</b>.
-    <code>drivers/loop.c</code>, <code>drivers/mmcsd/mmcsd_spi.c</code>, <code>drivers/ramdisk.c</code>, etc.
-    </p>
-  </li>
-</ul>
-
-<h2><a name="blockdrivers">6.3 Specialized Device Drivers</a></h2>
-
-<h3><a name="ethdrivers">6.3.1 Ethernet Device Drivers</a></h3>
-
-<ul>
-  <li>
-    <p>
-    <b><code>include/nuttx/net/netdev.h</code></b>.
-    All structures and APIs needed to work with Ethernet drivers are provided in this header file.
-    The structure <code>struct net_driver_s</code> defines the interface and is passed to uIP via
-    <code>netdev_register()</code>.
-    </p>
-  </li>
-  <li>
-    <p>
-    <b><code>int netdev_register(FAR struct net_driver_s *dev, enum net_lltype_e lltype);</code></b>.
-    Each Ethernet driver registers itself by calling <code>netdev_register()</code>.
-    </p>
-  </li>
-  <li>
-    <p>
-    <b>Examples</b>:
-    <code>drivers/net/dm90x0.c</code>, <code>arch/drivers/arm/src/c5471/c5471_ethernet.c</code>, <code>arch/z80/src/ez80/ez80_emac.c</code>, etc.
-    </p>
-  </li>
-</ul>
-
-<h3><a name="spidrivers">6.3.2 SPI Device Drivers</a></h3>
-
-<ul>
-  <li>
-    <p>
-    <b><code>include/nuttx/spi/spi.h</code></b>.
-    All structures and APIs needed to work with SPI drivers are provided in this header file.
-    </p>
-  </li>
-  <li>
-    <p>
-    <b><code>struct spi_ops_s</code></b>.
-    Each SPI device driver must implement an instance of <code>struct spi_ops_s</code>.
-    That structure defines a call table with the following methods:
-    <ul>
-     <p><code>void lock(FAR struct spi_dev_s *dev);</code></p>
-     <p><code>void select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, bool selected);</code><br>
-     <code>uint32_t setfrequency(FAR struct spi_dev_s *dev, uint32_t frequency);</code><br>
-     <code>void setmode(FAR struct spi_dev_s *dev, enum spi_mode_e mode);</code><br>
-     <code>void setbits(FAR struct spi_dev_s *dev, int nbits);</code><br>
-     <code>uint8_t status(FAR struct spi_dev_s *dev, enum spi_dev_e devid);</code><br>
-     <code>uint16_t send(FAR struct spi_dev_s *dev, uint16_t wd);</code><br>
-     <code>void exchange(FAR struct spi_dev_s *dev, FAR const void *txbuffer, FAR void *rxbuffer, size_t nwords);</code><br>
-     <p><code>int registercallback(FAR struct spi_dev_s *dev, mediachange_t callback, void *arg);</code></p>
-    </ul>
-    </p>
-  <li>
-    <p>
-      <b>Binding SPI Drivers</b>.
-      SPI drivers are not normally directly accessed by user code, but are usually bound to another,
-      higher level device driver.
-      See for example, <code>int mmcsd_spislotinitialize(int minor, int slotno, FAR struct spi_dev_s *spi)</code> in <code>drivers/mmcsd/mmcsd_spi.c</code>.
-      In general, the binding sequence is:
-    </p>
-    <p>
-      <ol>
-        <li>Get an instance of <code>struct spi_dev_s</code> from the hardware-specific SPI device driver, and </li>
-        <li>Provide that instance to the initialization method of the higher level device driver.</li>
-      </ol>
-    </p>
-  </li>
-  <li>
-    <p>
-      <b>Examples</b>:
-      <code>drivers/loop.c</code>, <code>drivers/mmcsd/mmcsd_spi.c</code>, <code>drivers/ramdisk.c</code>, etc.
-    </p>
-  </li>
-</ul>
-
-<h3><a name="i2cdrivers">6.3.3 I2C Device Drivers</a></h3>
-
-<ul>
-  <li>
-    <p>
-    <b><code>include/nuttx/i2c/i2c.h</code></b>.
-    All structures and APIs needed to work with I2C drivers are provided in this header file.
-    </p>
-  </li>
-  <li>
-    <p>
-    <b><code>struct i2c_ops_s</code></b>.
-    Each I2C device driver must implement an instance of <code>struct i2c_ops_s</code>.
-    That structure defines a call table with the following methods:
-    <ul>
-     <p><code>uint32_t setfrequency(FAR struct i2c_dev_s *dev, uint32_t frequency);</code><br>
-     <code>int setaddress(FAR struct i2c_dev_s *dev, int addr, int nbits);</code><br>
-     <code>int write(FAR struct i2c_dev_s *dev, const uint8_t *buffer, int buflen);</code><br>
-     <code>int read(FAR struct i2c_dev_s *dev, uint8_t *buffer, int buflen);</code></p>
-    </p>
-  </ul>
-  <li>
-    <p>
-      <b>Binding I2C Drivers</b>.
-      I2C drivers are not normally directly accessed by user code, but are usually bound to another,
-      higher level device driver.
-      In general, the binding sequence is:
-    </p>
-    <p>
-      <ol>
-        <li>Get an instance of <code>struct i2c_dev_s</code> from the hardware-specific I2C device driver, and </li>
-        <li>Provide that instance to the initialization method of the higher level device driver.</li>
-      </ol>
-    </p>
-  </li>
-  <li>
-    <p>
-      <b>Examples</b>:
-      <code>arch/z80/src/ez80/ez80_i2c.c</code>, <code>arch/z80/src/z8/z8_i2c.c</code>, etc.
-    </p>
-  </li>
-</ul>
-
-<h3><a name="serialdrivers">6.3.4 Serial Device Drivers</a></h3>
+<h3><a name="serialdrivers">6.1.1 Serial Device Drivers</a></h3>
 
 <ul>
   <li>
@@ -4476,547 +4378,39 @@ void board_led_off(int led);
   </li>
 </ul>
 
-<h3><a name="fbdrivers">6.3.5 Frame Buffer Drivers</a></h3>
+<h3><a name="tscdrivers">6.1.1 Touchscreen Device Drivers</a></h3>
 
+<p>
+  NuttX supports a two-part touchscreen driver architecture.
+</p>
+<ol>
+  <li>
+    An &quot;upper half&quot;, generic driver that provides the common touchscreen interface to application level code, and
+  </li>
+  <li>
+    A &quot;lower half&quot;, platform-specific driver that implements the low-level touchscreen controls to implement the touchscreen functionality.
+  </li>
+</ol>
+<p>
+  Files supporting the touchscreen controller (TSC) driver can be found in the following locations:
+</p>
 <ul>
-  <li>
-    <p>
-      <b><code>include/nuttx/video/fb.h</code></b>.
-      All structures and APIs needed to work with frame buffer drivers are provided in this header file.
-    </p>
+  <li><b>Interface Definition</b>.
+    The header files for NuttX touchscreen drivers reside in the <code>include/nuttx/include/input</code> directory.
+    The interface between the touchscreen controller &quot;upper half&quot; and &quot;lower half&quot; drivers are <i>not</i> common, but vary from controller-to-controller.
+    Because of this, each touchscreen driver has its own unique header file that describes the &quot;upper half&quot;/&quot;lower half&quot; interface in that directory.
+    The application level interface to each touchscreen driver, on the other hand, <i>is</i> the same for each touchscreen driver and is described <code>include/nuttx/include/input/touchscreen.h</code>.
+    The touchscreen driver uses a standard character driver framework but read operations return specially formatted data.
   </li>
-  <li>
-    <p>
-      <b><code>struct fb_vtable_s</code></b>.
-      Each frame buffer device driver must implement an instance of <code>struct fb_vtable_s</code>.
-      That structure defines a call table with the following methods:
-    </p>
-    <p>
-      Get information about the video controller configuration and the configuration of each color plane.
-    </p>
-    <ul>
-     <p><code>int (*getvideoinfo)(FAR struct fb_vtable_s *vtable, FAR struct fb_videoinfo_s *vinfo);</code><br>
-     <code>int (*getplaneinfo)(FAR struct fb_vtable_s *vtable, int planeno, FAR struct fb_planeinfo_s *pinfo);</code></p>
-    </ul>
-    <p>
-      The following are provided only if the video hardware supports RGB color mapping:
-    </p>
-    <ul>
-     <p><code>int (*getcmap)(FAR struct fb_vtable_s *vtable, FAR struct fb_cmap_s *cmap);</code><br>
-     <code>int (*putcmap)(FAR struct fb_vtable_s *vtable, FAR const struct fb_cmap_s *cmap);</code></p>
-    </ul>
-    <p>
-      The following are provided only if the video hardware supports a hardware cursor:
-    </p>
-    <ul>
-     <p><code>int (*getcursor)(FAR struct fb_vtable_s *vtable, FAR struct fb_cursorattrib_s *attrib);</code><br>
-     <code>int (*setcursor)(FAR struct fb_vtable_s *vtable, FAR struct fb_setcursor_s *settings);</code></p>
-    </ul>
+  <li><b>&quot;Upper Half&quot; Driver</b>.
+    The controller-specific, &quot;upper half&quot; touchscreen drivers reside in the directory <code>drivers/input</code>.
   </li>
-  <li>
-    <p>
-      <b>Binding Frame Buffer Drivers</b>.
-      Frame buffer drivers are not normally directly accessed by user code, but are usually bound to another,
-      higher level device driver.
-      In general, the binding sequence is:
-    </p>
-    <p>
-      <ol>
-        <li>Get an instance of <code>struct fb_vtable_s</code> from the hardware-specific frame buffer device driver, and </li>
-        <li>Provide that instance to the initialization method of the higher level device driver.</li>
-      </ol>
-    </p>
-  </li>
-  <li>
-    <p>
-      <b>Examples</b>:
-      <code>arch/sim/src/up_framebuffer.c</code>.
-      See also the usage of the frame buffer driver in the <code>graphics/</code> directory.
-    </p>
+  <li><b>&quot;Lower Half&quot; Drivers</b>.
+    Platform-specific touchscreen drivers reside in either: (1) The <code>arch/</code><i>&lt;architecture&gt;</i><code>/src/</code><i>&lt;chip&gt;</i> directory for the processor architectures that have build in touchscreen controllers or (2) the <code>configs/</code><i>&lt;board&gt;</i><code>/src/</code> directory for boards that use an external touchscreen controller chip.
   </li>
 </ul>
 
-<h3><a name="lcddrivers">6.3.6 LCD Drivers</a></h3>
-
-<ul>
-  <li>
-    <p>
-      <b><code>include/nuttx/lcd/lcd.h</code></b>.
-      Structures and APIs needed to work with LCD drivers are provided in this header file.
-      This header file also depends on some of the same definitions used for the frame buffer driver as provided in <code>include/nuttx/video/fb.h</code>.
-    </p>
-  </li>
-  <li>
-    <p>
-      <b><code>struct lcd_dev_s</code></b>.
-      Each LCD device driver must implement an instance of <code>struct lcd_dev_s</code>.
-      That structure defines a call table with the following methods:
-    </p>
-    <p>
-      Get information about the LCD video controller configuration and the configuration of each LCD color plane.
-    </p>
-    <ul>
-    <p>
-       <code>int (*getvideoinfo)(FAR struct lcd_dev_s *dev, FAR struct fb_videoinfo_s *vinfo);</code><br>
-       <code>int (*getplaneinfo)(FAR struct lcd_dev_s *dev, unsigned int planeno, FAR struct lcd_planeinfo_s *pinfo);</code>
-     </p>
-    </ul>
-    <p>
-      The following are provided only if the video hardware supports RGB color mapping:
-    </p>
-    <ul>
-     <p>
-       <code>int (*getcmap)(FAR struct lcd_dev_s *dev, FAR struct fb_cmap_s *cmap);</code><br>
-       <code>int (*putcmap)(FAR struct lcd_dev_s *dev, FAR const struct fb_cmap_s *cmap);</code>
-     </p>
-    </ul>
-    <p>
-      The following are provided only if the video hardware supports a hardware cursor:
-    </p>
-    <ul>
-     <p>
-       <code>int (*getcursor)(FAR struct lcd_dev_s *dev, FAR struct fb_cursorattrib_s *attrib);</code><br>
-       <code>int (*setcursor)(FAR struct lcd_dev_s *dev, FAR struct fb_setcursor_s *settings)</code>
-     </p>
-    </ul>
-    <p>
-      Get the LCD panel power status (0: full off - <code>CONFIG_LCD_MAXPOWER</code>: full on).
-      On backlit LCDs, this setting may correspond to the backlight setting.
-    </p>
-    <ul>
-     <p>
-       <code>int (*getpower)(struct lcd_dev_s *dev);</code>
-     </p>
-    </ul>
-    <p>
-      Enable/disable LCD panel power (0: full off - <code>CONFIG_LCD_MAXPOWER</code>: full on).
-      On backlit LCDs, this setting may correspond to the backlight setting.
-    </p>
-    <ul>
-     <p>
-       <code>int (*setpower)(struct lcd_dev_s *dev, int power);</code>
-     </p>
-    </ul>
-    <p>
-      Get the current contrast setting (0-CONFIG_LCD_MAXCONTRAST) */
-    </p>
-    <ul>
-     <p>
-       <code>int (*getcontrast)(struct lcd_dev_s *dev);</code>
-     </p>
-    </ul>
-    <p>
-      Set LCD panel contrast (0-CONFIG_LCD_MAXCONTRAST)
-    </p>
-    <ul>
-     <p>
-       <code>int (*setcontrast)(struct lcd_dev_s *dev, unsigned int contrast);</code>
-     </p>
-    </ul>
-  </p>
-  <li>
-    <p>
-      <b>Binding LCD Drivers</b>.
-      LCD drivers are not normally directly accessed by user code, but are usually bound to another,
-      higher level device driver.
-      In general, the binding sequence is:
-    </p>
-    <p>
-      <ol>
-        <li>Get an instance of <code>struct lcd_dev_s</code> from the hardware-specific LCD device driver, and </li>
-        <li>Provide that instance to the initialization method of the higher level device driver.</li>
-      </ol>
-    </p>
-  </li>
-  <li>
-    <p>
-      <b>Examples</b>:
-      <code>drivers/lcd/nokia6100.c</code>, <code>drivers/lcd/p14201.c</code>, <code>configs/sam3u-ek/src/up_lcd.c.</code>
-      See also the usage of the LCD driver in the <code>graphics/</code> directory.
-    </p>
-  </li>
-</ul>
-
-<h3><a name="mtddrivers">6.3.7 Memory Technology Device Drivers</a></h3>
-
-<ul>
-  <li>
-    <p>
-      <b><code>include/nuttx/mtd/mtd.h</code></b>.
-      All structures and APIs needed to work with MTD drivers are provided in this header file.
-    </p>
-  </li>
-  <li>
-    <p>
-      <b><code>struct mtd_dev_s</code></b>.
-      Each MTD device driver must implement an instance of <code>struct mtd_dev_s</code>.
-      That structure defines a call table with the following methods:
-    </p>
-    <p>
-      Erase the specified erase blocks (units are erase blocks):
-    </p>
-    <ul>
-     <p><code>int (*erase)(FAR struct mtd_dev_s *dev, off_t startblock, size_t nblocks);</code></p>
-    </ul>
-    <p>
-      Read/write from the specified read/write blocks:
-    </p>
-    <ul>
-     <p><code>ssize_t (*bread)(FAR struct mtd_dev_s *dev, off_t startblock, size_t nblocks, FAR uint8_t *buffer);</code><br>
-     <code>ssize_t (*bwrite)(FAR struct mtd_dev_s *dev, off_t startblock, size_t nblocks, FAR const uint8_t *buffer);</code></p>
-    </ul>
-    <p>
-      Some devices may support byte oriented reads (optional).
-      Most MTD devices are inherently block oriented so byte-oriented accesses are not supported.
-      It is recommended that low-level drivers not support read() if it requires buffering.
-    </p>
-    <ul>
-     <p><code>ssize_t (*read)(FAR struct mtd_dev_s *dev, off_t offset, size_t nbytes, FAR uint8_t *buffer);</code></p>
-    </ul>
-    <p>
-      Some devices may also support byte oriented writes (optional).
-      Most MTD devices are inherently block oriented so byte-oriented accesses are not supported.
-      It is recommended that low-level drivers not support read() if it requires buffering.
-      This interface is only available if <code>CONFIG_MTD_BYTE_WRITE</code> is defined.
-    </p>
-    <ul>
-     <p><code>ssize_t (*write)(FAR struct mtd_dev_s *dev, off_t offset, size_t nbytes, FAR const uint8_t *buffer);</code></p>
-    </ul>
-    <p>
-      Support other, less frequently used commands:
-    </p>
-    <ul>
-      <li><code>MTDIOC_GEOMETRY</code>:  Get MTD geometry</li>
-      <li><code>MTDIOC_XIPBASE:</code>: Convert block to physical address for eXecute-In-Place</li>
-      <li><code>MTDIOC_BULKERASE</code>: Erase the entire device</li>
-    </ul>
-    <p>
-      is provided via a single <code>ioctl</code> method (see <code>include/nuttx/fs/ioctl.h</code>):
-    </p>
-    <ul>
-     <p><code>int (*ioctl)(FAR struct mtd_dev_s *dev, int cmd, unsigned long arg);</code></p>
-    </ul>
-  </li>
-  <li>
-    <p>
-      <b>Binding MTD Drivers</b>.
-      MTD drivers are not normally directly accessed by user code, but are usually bound to another,
-      higher level device driver.
-      In general, the binding sequence is:
-    </p>
-    <p>
-      <ol>
-        <li>Get an instance of <code>struct mtd_dev_s</code> from the hardware-specific MTD device driver, and </li>
-        <li>Provide that instance to the initialization method of the higher level device driver.</li>
-      </ol>
-    </p>
-  </li>
-  <li>
-    <p>
-      <b>Examples</b>:
-      <code>drivers/mtd/m25px.c</code> and <code>drivers/mtd/ftl.c</code>
-    </p>
-  </li>
-</ul>
-
-<h3><a name="sdiodrivers">6.3.8 SDIO Device Drivers</a></h3>
-
-<ul>
-  <li>
-    <p>
-      <b><code>include/nuttx/sdio.h</code></b>.
-      All structures and APIs needed to work with SDIO drivers are provided in this header file.
-    </p>
-  </li>
-  <li>
-    <p>
-      <b><code>struct sdio_dev_s</code></b>.
-      Each SDIO device driver must implement an instance of <code>struct sdio_dev_s</code>.
-      That structure defines a call table with the following methods:
-    </p>
-    <p>
-      Mutual exclusion:
-    </p>
-    <ul>
-      <p>
-        <code>#ifdef CONFIG_SDIO_MUXBUS</code><br>
-        <code>  int (*lock)(FAR struct sdio_dev_s *dev, bool lock);</code><br>
-        <code>#endif</code>
-      </p>
-    </ul>
-    <p>
-      Initialization/setup:
-    </p>
-    <ul>
-     <p><code>void (*reset)(FAR struct sdio_dev_s *dev);</code><br>
-     <code>uint8_t (*status)(FAR struct sdio_dev_s *dev);</code><br>
-     <code>void (*widebus)(FAR struct sdio_dev_s *dev, bool enable);</code><br>
-     <code>void (*clock)(FAR struct sdio_dev_s *dev, enum sdio_clock_e rate);</code><br>
-     <code>int (*attach)(FAR struct sdio_dev_s *dev);</code><br>
-    </ul>
-    <p>
-      Command/Status/Data Transfer:
-    </p>
-    <ul>
-     <p><code>int (*sendcmd)(FAR struct sdio_dev_s *dev, uint32_t cmd, uint32_t arg);</code><br>
-     <code>int (*recvsetup)(FAR struct sdio_dev_s *dev, FAR uint8_t *buffer, size_t nbytes);</code><br>
-     <code>int (*sendsetup)(FAR struct sdio_dev_s *dev, FAR const uint8_t *buffer, size_t nbytes);</code><br>
-     <code>int (*cancel)(FAR struct sdio_dev_s *dev);</code><br>
-     <code>int (*waitresponse)(FAR struct sdio_dev_s *dev, uint32_t cmd);</code><br>
-     <code>int (*recvR1)(FAR struct sdio_dev_s *dev, uint32_t cmd, uint32_t *R1);</code><br>
-     <code>int (*recvR2)(FAR struct sdio_dev_s *dev, uint32_t cmd, uint32_t R2[4]);</code><br>
-     <code>int (*recvR3)(FAR struct sdio_dev_s *dev, uint32_t cmd, uint32_t *R3);</code><br>
-     <code>int (*recvR4)(FAR struct sdio_dev_s *dev, uint32_t cmd, uint32_t *R4);</code><br>
-     <code>int (*recvR5)(FAR struct sdio_dev_s *dev, uint32_t cmd, uint32_t *R5);</code><br>
-     <code>int (*recvR6)(FAR struct sdio_dev_s *dev, uint32_t cmd, uint32_t *R6);</code><br>
-     <code>int (*recvR7)(FAR struct sdio_dev_s *dev, uint32_t cmd, uint32_t *R7);</code></p>
-    </ul>
-    <p>
-      Event/Callback support:
-    </p>
-    <ul>
-     <p><code>void (*waitenable)(FAR struct sdio_dev_s *dev, sdio_eventset_t eventset);</code><br>
-     <code>sdio_eventset_t (*eventwait)(FAR struct sdio_dev_s *dev, uint32_t timeout);</code><br>
-     <code>void (*callbackenable)(FAR struct sdio_dev_s *dev, sdio_eventset_t eventset);</code><br>
-     <code>int (*registercallback)(FAR struct sdio_dev_s *dev, worker_t callback, void *arg);</code></p>
-    </ul>
-    <p>
-      DMA support:
-    </p>
-    <ul>
-     <p><code>bool (*dmasupported)(FAR struct sdio_dev_s *dev);</code><br>
-     <code>int (*dmarecvsetup)(FAR struct sdio_dev_s *dev, FAR uint8_t *buffer, size_t buflen);</code><br>
-     <code>int (*dmasendsetup)(FAR struct sdio_dev_s *dev, FAR const uint8_t *buffer,  size_t buflen);</code></p>
-    </ul>
-  </li>
-  <li>
-    <p>
-      <b>Binding SDIO Drivers</b>.
-      SDIO drivers are not normally directly accessed by user code, but are usually bound to another,
-      higher level device driver.
-      In general, the binding sequence is:
-    </p>
-    <p>
-      <ol>
-        <li>Get an instance of <code>struct sdio_dev_s</code> from the hardware-specific SDIO device driver, and </li>
-        <li>Provide that instance to the initialization method of the higher level device driver.</li>
-      </ol>
-    </p>
-  </li>
-  <li>
-    <p>
-      <b>Examples</b>:
-      <code>arch/arm/src/stm32/stm32_sdio.c</code> and <code>drivers/mmcsd/mmcsd_sdio.c</code>
-    </p>
-  </li>
-</ul>
-
-<h3><a name="usbhostdrivers">6.3.9 USB Host-Side Drivers</a></h3>
-
-<ul>
-  <li>
-    <p>
-      <b><code>include/nuttx/usb/usbhost.h</code></b>.
-      All structures and APIs needed to work with USB host-side drivers are provided in this header file.
-    </p>
-  </li>
-  <li>
-    <p>
-      <b><code>struct usbhost_driver_s</code> and <code>struct usbhost_connection_s</code></b>.
-      Each USB host controller driver must implement an instance of <code>struct usbhost_driver_s</code> and <code>struct usbhost_connection_s</code>:
-      <code>struct usbhost_driver_s</code> provides the interface between the USB host driver and the USB class driver;
-      <code>struct usbhost_connection_s</code> provides the interface between the USB host driver and platform-specific connection management and device enumeration logic.
-      These structures are defined in <code>include/nuttx/usb/usbhost.h</code>.
-    </p>
-    <p>
-      <b>Examples</b>:
-      <code>arch/arm/src/lpc17xx/lpc17_usbhost.c</code>,
-      <code>arch/arm/src/stm32/stm32_otgfshost.c</code>,
-      <code>arch/arm/src/sama5/sam_ohci.c</code>, and
-      <code>arch/arm/src/sama5/sam_ehci.c</code>.
-    </p>
-  </li>
-  <li>
-    <p>
-      <b><code>struct usbhost_class_s</code></b>.
-      Each USB host class driver must implement an instance of <code>struct usbhost_class_s</code>.
-      This structure is also defined in <code>include/nuttx/usb/usbhost.h</code>.
-    </p>
-    <p>
-      <b>Examples</b>:
-      <code>drivers/usbhost/usbhost_storage.c</code>
-    </p>
-  </li>
-  <li>
-    <p>
-      <b>USB Host Class Driver Registry</b>.
-      The NuttX USB host infrastructure includes a <i>registry</i>.
-      During its initialization, each USB host class driver must call the interface, <code>usbhost_registerclass()</code>
-      in order add its interface to the registry.
-      Later, when a USB device is connected, the USB host controller will look up the USB host class driver that is needed to support the connected device in this registry.
-    </p>
-    <p>
-      <b>Examples</b>:
-      <code>drivers/usbhost/usbhost_registry.c</code>, <code>drivers/usbhost/usbhost_registerclass.c</code>, and <code>drivers/usbhost/usbhost_findclass.c</code>,
-    </p>
-  </li>
-  <li>
-    <p>
-      <b>Detection and Enumeration of Connected Devices</b>.
-      Each USB host device controller supports two methods that are used to detect and enumeration newly connected devices
-      (and also detect disconnected devices):
-    </p>
-    <p>
-      <ul>
-        <li>
-          <p>
-            <code>int (*wait)(FAR struct usbhost_connection_s *drvr, FAR const bool *connected);</code>
-          </p>
-          <p>
-            Wait for a device to be connected or disconnected.
-          </p>
-        </li>
-        <li>
-          <p>
-            <code>int (*enumerate)(FAR struct usbhost_connection_s *drvr, int rhpndx);</code>
-          </p>
-          <p>
-            Enumerate the device connected to a root hub port.
-            As part of this enumeration process, the driver will
-            (1) get the device's configuration descriptor,
-            (2) extract the class ID info from the configuration descriptor,
-            (3) call <code>usbhost_findclass(</code>) to find the class that supports this device,
-            (4) call the <code>create()</code> method on the <code>struct usbhost_registry_s interface</code> to get a class instance, and
-            finally (5) call the <code>connect()</code> method of the <code>struct usbhost_class_s</code> interface.
-            After that, the class is in charge of the sequence of operations.
-          </p>
-      </ul>
-    </p>
-  </li>
-  <li>
-    <p>
-      <b>Binding USB Host-Side Drivers</b>.
-      USB host-side controller drivers are not normally directly accessed by user code,
-      but are usually bound to another, higher level USB host class driver.
-      The class driver exports the standard NuttX device interface so that the connected USB device can be accessed just as with other, similar, on-board devices.
-      For example, the USB host mass storage class driver (<code>drivers/usbhost/usbhost_storage.c</code>) will register a standard, NuttX block driver interface (like <code>/dev/sda</code>)
-      that can be used to mount a file system just as with any other other block driver instance.
-      In general, the binding sequence is:
-    </p>
-    <p>
-      <ol>
-        <li>
-          <p>
-            Each USB host class driver includes an initialization entry point that is called from the
-            application at initialization time.
-            This driver calls <code>usbhost_registerclass()</code> during this initialization in order to makes itself available in the event the device that it supports is connected.
-          </p>
-          <p>
-            <b>Examples</b>:
-            The function <code>usbhost_storageinit()</code> in the file <code>drivers/usbhost/usbhost_storage.c</code>
-          </p>
-        </li>
-        <li>
-          <p>
-            Each application must include a <i>waiter</i> thread thread that (1) calls the USB host controller driver's <code>wait()</code> to detect the connection of a device, and then
-            (2) call the USB host controller driver's <code>enumerate</code> method to bind the registered USB host class driver to the USB host controller driver.
-          </p>
-          <p>
-            <b>Examples</b>:
-            The function <code>nsh_waiter()</code> in the file <code>configs/nucleus2g/src/up_nsh.c</code> and
-            the function <code>nsh_waiter()</code> in the file <code>configs/olimex-lpc1766stk/src/up_nsh.c</code>.
-          </p>
-        </li>
-        <li>
-          <p>
-            As part of its operation during the binding operation, the USB host class driver will register an instances of a standard NuttX driver under the <code>/dev</code> directory.
-            To repeat the above example, the USB host mass storage class driver (<code>drivers/usbhost/usbhost_storage.c</code>) will register a standard, NuttX block driver interface (like <code>/dev/sda</code>)
-            that can be used to mount a file system just as with any other other block driver instance.
-          </p>
-          <p>
-            <b>Examples</b>:
-            See the call to <code>register_blockdriver()</code> in the function <code>usbhost_initvolume()</code> in the file <code>drivers/usbhost/usbhost_storage.c</code>.
-          </p>
-        </li>
-      </ol>
-    </p>
-  </li>
-</ul>
-
-<h3><a name="usbdevdrivers">6.3.10 USB Device-Side Drivers</a></h3>
-
-<ul>
-  <li>
-    <p>
-      <b><code>include/nuttx/usb/usbdev.h</code></b>.
-      All structures and APIs needed to work with USB device-side drivers are provided in this header file.
-    </p>
-  </li>
-  <li>
-    <p>
-      <b><code>include/nuttx/usb/usbdev_trace.h</code></b>.
-      Declarations needed to work with the NuttX USB device driver trace capability.
-      That USB trace capability is detailed in <a href="UsbTrace.html">separate document</a>.
-    </p>
-  </li>
-  <li>
-    <p>
-      <b><code>struct usbdev_s</code></b>.
-      Each USB device controller driver must implement an instance of <code>struct usbdev_s</code>.
-      This structure is defined in <code>include/nuttx/usb/usbdev.h</code>.
-    </p>
-    <p>
-      <b>Examples</b>:
-      <code>arch/arm/src/dm320/dm320_usbdev.c</code>, <code>arch/arm/src/lpc17xx/lpc17_usbdev.c</code>,
-      <code>arch/arm/src/lpc214x/lpc214x_usbdev.c</code>, <code>arch/arm/src/lpc313x/lpc313x_usbdev.c</code>, and
-       <code>arch/arm/src/stm32/stm32_usbdev.c</code>.
-    </p>
-  </li>
-  <li>
-    <p>
-      <b><code>struct usbdevclass_driver_s</code></b>.
-      Each USB device class driver must implement an instance of <code>struct usbdevclass_driver_s</code>.
-      This structure is also defined in <code>include/nuttx/usb/usbdev.h</code>.
-    </p>
-    <p>
-      <b>Examples</b>:
-      <code>drivers/usbdev/pl2303.c</code> and <code>drivers/usbdev/usbmsc.c</code>
-    </p>
-  </li>
-  <li>
-    <p>
-      <b>Binding USB Device-Side Drivers</b>.
-      USB device-side controller drivers are not normally directly accessed by user code,
-      but are usually bound to another, higher level USB device class driver.
-      The class driver is then configured to export the USB device functionality.
-      In general, the binding sequence is:
-    </p>
-    <p>
-      <ol>
-        <li>
-          <p>
-            Each USB device class driver includes an initialization entry point that is called from the
-            application at initialization time.
-          </p>
-          <p>
-            <b>Examples</b>:
-            The function <code>usbdev_serialinitialize()</code> in the file <code>drivers/usbdev/pl2303.c</code> and
-            the function <code></code> in the file <code>drivers/usbdev/usbmsc.c</code>
-          </p>
-        </li>
-        <li>
-          <p>
-            These initialization functions called the driver API, <code>usbdev_register()</code>.
-            This driver function will <i>bind</i> the USB class driver to the USB device controller driver,
-            completing the initialization.
-          </p>
-        </li>
-      </ol>
-    </p>
-  </li>
-</ul>
-
-<h3><a name="analogdrivers">6.3.11 Analog (ADC/DAC) Drivers</a></h3>
+<h3><a name="analogdrivers">6.1.2 Analog (ADC/DAC) Drivers</a></h3>
 <p>
   The NuttX analog drivers are split into two parts:
 </p>
@@ -5041,7 +4435,7 @@ void board_led_off(int led);
   </li>
 </ul>
 
-<h4><a name="adcdrivers">6.3.11.1 ADC Drivers</a></h4>
+<h4><a name="adcdrivers">6.1.3.1 ADC Drivers</a></h4>
 <ul>
   <li>
     <code>include/nuttx/analog/adc.h</code>.
@@ -5066,7 +4460,7 @@ void board_led_off(int led);
   </li>
 </ul>
 
-<h4><a name="dacdrivers">6.3.11.2 DAC Drivers</a></h4>
+<h4><a name="dacdrivers">6.1.3.2 DAC Drivers</a></h4>
 <ul>
   <li>
     <code>include/nuttx/analog/dac.h</code>.
@@ -5091,7 +4485,7 @@ void board_led_off(int led);
   </li>
 </ul>
 
-<h3><a name="pwmdrivers">6.3.12 PWM Drivers</a></h3>
+<h3><a name="pwmdrivers">6.1.4 PWM Drivers</a></h3>
 <p>
   For the purposes of this driver, a PWM device is any device that generates periodic output pulses of controlled frequency and pulse width.
   Such a device might be used, for example, to perform pulse-width modulated output or frequency/pulse-count modulated output
@@ -5127,7 +4521,7 @@ void board_led_off(int led);
   </li>
 </ul>
 
-<h3><a name="candrivers">6.3.13 CAN Drivers</a></h3>
+<h3><a name="candrivers">6.1.5 CAN Drivers</a></h3>
 <p>
   NuttX supports only a very low-level CAN driver.
   This driver supports only the data exchange and does not include any high-level CAN protocol.
@@ -5158,7 +4552,7 @@ void board_led_off(int led);
   </li>
 </ul>
 
-<h3><a name="quadencoder">6.3.14 Quadrature Encoder Drivers</a></h3>
+<h3><a name="quadencoder">6.1.6 Quadrature Encoder Drivers</a></h3>
 <p>
   NuttX supports a low-level, two-part Quadrature Encoder driver.
 </p>
@@ -5187,7 +4581,65 @@ void board_led_off(int led);
   </li>
 </ul>
 
-<h3><a name="wdogdriver">6.3.15 Watchdog Timer Drivers</a></h3>
+<h3><a name="timerdriver">6.1.7 Timer Drivers</a></h3>
+<p>
+  NuttX supports a low-level, two-part timer driver.
+</p>
+<ol>
+  <li>
+    An &quot;upper half&quot;, generic driver that provides the common timer interface to application level code, and
+  </li>
+  <li>
+    A &quot;lower half&quot;, platform-specific driver that implements the low-level timer controls to implement the timer functionality.
+  </li>
+</ol>
+<p>
+  Files supporting the timer driver can be found in the following locations:
+</p>
+<ul>
+  <li><b>Interface Definition</b>.
+    The header file for the NuttX timer driver reside at <code>include/nuttx/timers/timer.h</code>.
+    This header file includes both the application level interface to the timer driver as well as the interface between the &quot;upper half&quot; and &quot;lower half&quot; drivers.
+    The timer driver uses a standard character driver framework.
+  </li>
+  <li><b>&quot;Upper Half&quot; Driver</b>.
+    The generic, &quot;upper half&quot; timer driver resides at <code>drivers/timers/timer.c</code>.
+  </li>
+  <li><b>&quot;Lower Half&quot; Drivers</b>.
+    Platform-specific timer drivers reside in <code>arch/</code><i>&lt;architecture&gt;</i><code>/src/</code><i>&lt;chip&gt;</i> directory for the specific processor <i>&lt;architecture&gt;</i> and for the specific <i>&lt;chip&gt;</i> timer peripheral devices.
+  </li>
+</ul>
+
+<h3><a name="rtcriver">6.1.8 RTC Drivers</a></h3>
+<p>
+  NuttX supports a low-level, two-part RealTime Clock (RTC) driver.
+</p>
+<ol>
+  <li>
+    An &quot;upper half&quot;, generic driver that provides the common RTC interface to application level code, and
+  </li>
+  <li>
+    A &quot;lower half&quot;, platform-specific driver that implements the low-level timer controls to implement the RTC functionality.
+  </li>
+</ol>
+<p>
+  Files supporting the RTC driver can be found in the following locations:
+</p>
+<ul>
+  <li><b>Interface Definition</b>.
+    The header file for the NuttX RTC driver reside at <code>include/nuttx/timers/rtc.h</code>.
+    This header file includes both the application level interface to the RTC driver as well as the interface between the &quot;upper half&quot; and &quot;lower half&quot; drivers.
+    The RTC driver uses a standard character driver framework.
+  </li>
+  <li><b>&quot;Upper Half&quot; Driver</b>.
+    The generic, &quot;upper half&quot; RTC driver resides at <code>drivers/timers/rtc.c</code>.
+  </li>
+  <li><b>&quot;Lower Half&quot; Drivers</b>.
+    Platform-specific RTC drivers reside in <code>arch/</code><i>&lt;architecture&gt;</i><code>/src/</code><i>&lt;chip&gt;</i> directory for the specific processor <i>&lt;architecture&gt;</i> and for the specific <i>&lt;chip&gt;</i> RTC peripheral devices.
+  </li>
+</ul>
+
+<h3><a name="wdogdriver">6.1.9 Watchdog Timer Drivers</a></h3>
 <p>
   NuttX supports a low-level, two-part watchdog timer driver.
 </p>
@@ -5200,23 +4652,23 @@ void board_led_off(int led);
   </li>
 </ol>
 <p>
-  Files supporting the watchdog timer can be found in the following locations:
+  Files supporting the watchdog timer driver can be found in the following locations:
 </p>
 <ul>
   <li><b>Interface Definition</b>.
-    The header file for the NuttX watchdog timer driver reside at <code>include/nuttx/watchdog.h</code>.
+    The header file for the NuttX watchdog timer driver reside at <code>include/nuttx/timers/watchdog.h</code>.
     This header file includes both the application level interface to the watchdog timer driver as well as the interface between the &quot;upper half&quot; and &quot;lower half&quot; drivers.
     The watchdog timer driver uses a standard character driver framework.
   </li>
   <li><b>&quot;Upper Half&quot; Driver</b>.
-    The generic, &quot;upper half&quot; watchdog timer driver resides at <code>drivers/watchdog.c</code>.
+    The generic, &quot;upper half&quot; watchdog timer driver resides at <code>drivers/timers/watchdog.c</code>.
   </li>
   <li><b>&quot;Lower Half&quot; Drivers</b>.
     Platform-specific watchdog timer drivers reside in <code>arch/</code><i>&lt;architecture&gt;</i><code>/src/</code><i>&lt;chip&gt;</i> directory for the specific processor <i>&lt;architecture&gt;</i> and for the specific <i>&lt;chip&gt;</i> watchdog timer peripheral devices.
   </li>
 </ul>
 
-<h3><a name="kbddriver">6.3.16 Keyboard/Keypad Drivers</a></h3>
+<h3><a name="kbddriver">6.1.10 Keyboard/Keypad Drivers</a></h3>
 <p>
   <b>Keypads vs. Keyboards</b>
   Keyboards and keypads are really the same devices for NuttX.
@@ -5440,6 +4892,739 @@ int kbd_decode(FAR struct lib_instream_s *stream, FAR struct kbd_getstate_s *sta
   Notice the use of the abstract I/O streams in these interfaces.
   These stream interfaces are defined in <code>include/nuttx/streams.h</code>.
 </p>
+
+<h2><a name="blockdrivers">6.2 Block Device Drivers</a></h2>
+
+<p>
+  Block device drivers have these properties:
+</p>
+<ul>
+  <li>
+    <p>
+    <b><code>include/nuttx/fs/fs.h</code></b>.
+    All structures and APIs needed to work with block drivers are provided in this header file.
+    </p>
+  </li>
+  <li>
+    <p>
+    <b><code>struct block_operations</code></b>.
+    Each block device driver must implement an instance of <code>struct block_operations</code>.
+    That structure defines a call table with the following methods:
+    <ul>
+     <p><code>int open(FAR struct inode *inode);</code><br>
+     <code>int close(FAR struct inode *inode);</code><br>
+     <code>ssize_t read(FAR struct inode *inode, FAR unsigned char *buffer, size_t start_sector, unsigned int nsectors);</code><br>
+     <code>ssize_t write(FAR struct inode *inode, FAR const unsigned char *buffer, size_t start_sector, unsigned int nsectors);</code><br>
+     <code>int geometry(FAR struct inode *inode, FAR struct geometry *geometry);</code><br>
+     <code>int ioctl(FAR struct inode *inode, int cmd, unsigned long arg);</code></p>
+    </ul>
+    </p>
+  </li>
+  <li>
+    <p>
+    <b><code>int register_blockdriver(const char *path, const struct block_operations *bops, mode_t mode, void *priv);</code></b>.
+    Each block driver registers itself by calling <code>register_blockdriver()</code>, passing it the
+    <code>path</code> where it will appear in the <a href="#NxFileSystem">pseudo-file-system</a> and it's
+    initialized instance of <code>struct block_operations</code>.
+    </p>
+  </li>
+  <li>
+    <p>
+    <b>User Access</b>.
+    Users do not normally access block drivers directly, rather, they access block drivers
+    indirectly through the <code>mount()</code> API.
+    The <code>mount()</code> API binds a block driver instance with a file system and with a mountpoint.
+    Then the user may use the block driver to access the file system on the underlying media.
+    <i>Example</i>: See the <code>cmd_mount()</code> implementation in <code>apps/nshlib/nsh_fscmds.c</code>.
+    </p>
+  </li>
+  <li>
+    <p>
+    <b>Accessing a Character Driver as a Block Device</b>.
+    See the loop device at <code>drivers/loop.c</code>.
+    <i>Example</i>: See the <code>cmd_losetup()</code> implementation in <code>apps/nshlib/nsh_fscmds.c</code>.
+    </p>
+  </li>
+  <li>
+    <p>
+    <b>Accessing a Block Driver as Character Device</b>.
+    See the Block-to-Character (BCH) conversion logic in <code>drivers/bch/</code>.
+    <i>Example</i>: See the <code>cmd_dd()</code> implementation in <code>apps/nshlib/nsh_ddcmd.c</code>.
+    </p>
+  </li>
+  <li>
+    <p>
+    <b>Examples</b>.
+    <code>drivers/loop.c</code>, <code>drivers/mmcsd/mmcsd_spi.c</code>, <code>drivers/ramdisk.c</code>, etc.
+    </p>
+  </li>
+</ul>
+
+<h2><a name="specdrivers">6.3 Specialized Device Drivers</a></h2>
+
+<p>
+  All device drivers that are accessible to application logic are either:  (1) Character device drivers that can be accessed via the standard driver operations (<code>open()</code>, <code>close()</code>, <code>read()</code>, <code>write()</code>, etc.), or (2) block drivers that can be accessing only as part of mounting a file system or other special use cases as described in the preceding paragraph.
+</p>
+<p>
+  In addition to this, there are also specialized &quot;drivers&quot; that can be used only within the OS logic itself and are not accessible to application logic.  These specialized drivers are discussed in the following paragraphs.
+</p>
+
+<h3><a name="ethdrivers">6.3.1 Ethernet Device Drivers</a></h3>
+
+<ul>
+  <li>
+    <p>
+    <b><code>include/nuttx/net/netdev.h</code></b>.
+    All structures and APIs needed to work with Ethernet drivers are provided in this header file.
+    The structure <code>struct net_driver_s</code> defines the interface and is passed to uIP via
+    <code>netdev_register()</code>.
+    </p>
+  </li>
+  <li>
+    <p>
+    <b><code>int netdev_register(FAR struct net_driver_s *dev, enum net_lltype_e lltype);</code></b>.
+    Each Ethernet driver registers itself by calling <code>netdev_register()</code>.
+    </p>
+  </li>
+  <li>
+    <p>
+    <b>Examples</b>:
+    <code>drivers/net/dm90x0.c</code>, <code>arch/drivers/arm/src/c5471/c5471_ethernet.c</code>, <code>arch/z80/src/ez80/ez80_emac.c</code>, etc.
+    </p>
+  </li>
+</ul>
+
+<h3><a name="spidrivers">6.3.2 SPI Device Drivers</a></h3>
+
+<ul>
+  <li>
+    <p>
+    <b><code>include/nuttx/spi/spi.h</code></b>.
+    All structures and APIs needed to work with SPI drivers are provided in this header file.
+    </p>
+  </li>
+  <li>
+    <p>
+    <b><code>struct spi_ops_s</code></b>.
+    Each SPI device driver must implement an instance of <code>struct spi_ops_s</code>.
+    That structure defines a call table with the following methods:
+    <ul>
+     <p><code>void lock(FAR struct spi_dev_s *dev);</code></p>
+     <p><code>void select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, bool selected);</code><br>
+     <code>uint32_t setfrequency(FAR struct spi_dev_s *dev, uint32_t frequency);</code><br>
+     <code>void setmode(FAR struct spi_dev_s *dev, enum spi_mode_e mode);</code><br>
+     <code>void setbits(FAR struct spi_dev_s *dev, int nbits);</code><br>
+     <code>uint8_t status(FAR struct spi_dev_s *dev, enum spi_dev_e devid);</code><br>
+     <code>uint16_t send(FAR struct spi_dev_s *dev, uint16_t wd);</code><br>
+     <code>void exchange(FAR struct spi_dev_s *dev, FAR const void *txbuffer, FAR void *rxbuffer, size_t nwords);</code><br>
+     <p><code>int registercallback(FAR struct spi_dev_s *dev, mediachange_t callback, void *arg);</code></p>
+    </ul>
+    </p>
+  <li>
+    <p>
+      <b>Binding SPI Drivers</b>.
+      SPI drivers are not normally directly accessed by user code, but are usually bound to another,
+      higher level device driver.
+      See for example, <code>int mmcsd_spislotinitialize(int minor, int slotno, FAR struct spi_dev_s *spi)</code> in <code>drivers/mmcsd/mmcsd_spi.c</code>.
+      In general, the binding sequence is:
+    </p>
+    <p>
+      <ol>
+        <li>Get an instance of <code>struct spi_dev_s</code> from the hardware-specific SPI device driver, and </li>
+        <li>Provide that instance to the initialization method of the higher level device driver.</li>
+      </ol>
+    </p>
+  </li>
+  <li>
+    <p>
+      <b>Examples</b>:
+      <code>drivers/loop.c</code>, <code>drivers/mmcsd/mmcsd_spi.c</code>, <code>drivers/ramdisk.c</code>, etc.
+    </p>
+  </li>
+</ul>
+
+<h3><a name="i2cdrivers">6.3.3 I2C Device Drivers</a></h3>
+
+<ul>
+  <li>
+    <p>
+    <b><code>include/nuttx/i2c/i2c.h</code></b>.
+    All structures and APIs needed to work with I2C drivers are provided in this header file.
+    </p>
+  </li>
+  <li>
+    <p>
+    <b><code>struct i2c_ops_s</code></b>.
+    Each I2C device driver must implement an instance of <code>struct i2c_ops_s</code>.
+    That structure defines a call table with the following methods:
+    <ul>
+     <p><code>uint32_t setfrequency(FAR struct i2c_dev_s *dev, uint32_t frequency);</code><br>
+     <code>int setaddress(FAR struct i2c_dev_s *dev, int addr, int nbits);</code><br>
+     <code>int write(FAR struct i2c_dev_s *dev, const uint8_t *buffer, int buflen);</code><br>
+     <code>int read(FAR struct i2c_dev_s *dev, uint8_t *buffer, int buflen);</code></p>
+    </p>
+  </ul>
+  <li>
+    <p>
+      <b>Binding I2C Drivers</b>.
+      I2C drivers are not normally directly accessed by user code, but are usually bound to another,
+      higher level device driver.
+      In general, the binding sequence is:
+    </p>
+    <p>
+      <ol>
+        <li>Get an instance of <code>struct i2c_dev_s</code> from the hardware-specific I2C device driver, and </li>
+        <li>Provide that instance to the initialization method of the higher level device driver.</li>
+      </ol>
+    </p>
+  </li>
+  <li>
+    <p>
+      <b>Examples</b>:
+      <code>arch/z80/src/ez80/ez80_i2c.c</code>, <code>arch/z80/src/z8/z8_i2c.c</code>, etc.
+    </p>
+  </li>
+</ul>
+
+<h3><a name="fbdrivers">6.3.4 Frame Buffer Drivers</a></h3>
+
+<ul>
+  <li>
+    <p>
+      <b><code>include/nuttx/video/fb.h</code></b>.
+      All structures and APIs needed to work with frame buffer drivers are provided in this header file.
+    </p>
+  </li>
+  <li>
+    <p>
+      <b><code>struct fb_vtable_s</code></b>.
+      Each frame buffer device driver must implement an instance of <code>struct fb_vtable_s</code>.
+      That structure defines a call table with the following methods:
+    </p>
+    <p>
+      Get information about the video controller configuration and the configuration of each color plane.
+    </p>
+    <ul>
+     <p><code>int (*getvideoinfo)(FAR struct fb_vtable_s *vtable, FAR struct fb_videoinfo_s *vinfo);</code><br>
+     <code>int (*getplaneinfo)(FAR struct fb_vtable_s *vtable, int planeno, FAR struct fb_planeinfo_s *pinfo);</code></p>
+    </ul>
+    <p>
+      The following are provided only if the video hardware supports RGB color mapping:
+    </p>
+    <ul>
+     <p><code>int (*getcmap)(FAR struct fb_vtable_s *vtable, FAR struct fb_cmap_s *cmap);</code><br>
+     <code>int (*putcmap)(FAR struct fb_vtable_s *vtable, FAR const struct fb_cmap_s *cmap);</code></p>
+    </ul>
+    <p>
+      The following are provided only if the video hardware supports a hardware cursor:
+    </p>
+    <ul>
+     <p><code>int (*getcursor)(FAR struct fb_vtable_s *vtable, FAR struct fb_cursorattrib_s *attrib);</code><br>
+     <code>int (*setcursor)(FAR struct fb_vtable_s *vtable, FAR struct fb_setcursor_s *settings);</code></p>
+    </ul>
+  </li>
+  <li>
+    <p>
+      <b>Binding Frame Buffer Drivers</b>.
+      Frame buffer drivers are not normally directly accessed by user code, but are usually bound to another,
+      higher level device driver.
+      In general, the binding sequence is:
+    </p>
+    <p>
+      <ol>
+        <li>Get an instance of <code>struct fb_vtable_s</code> from the hardware-specific frame buffer device driver, and </li>
+        <li>Provide that instance to the initialization method of the higher level device driver.</li>
+      </ol>
+    </p>
+  </li>
+  <li>
+    <p>
+      <b>Examples</b>:
+      <code>arch/sim/src/up_framebuffer.c</code>.
+      See also the usage of the frame buffer driver in the <code>graphics/</code> directory.
+    </p>
+  </li>
+</ul>
+
+<h3><a name="lcddrivers">6.3.5 LCD Drivers</a></h3>
+
+<ul>
+  <li>
+    <p>
+      <b><code>include/nuttx/lcd/lcd.h</code></b>.
+      Structures and APIs needed to work with LCD drivers are provided in this header file.
+      This header file also depends on some of the same definitions used for the frame buffer driver as provided in <code>include/nuttx/video/fb.h</code>.
+    </p>
+  </li>
+  <li>
+    <p>
+      <b><code>struct lcd_dev_s</code></b>.
+      Each LCD device driver must implement an instance of <code>struct lcd_dev_s</code>.
+      That structure defines a call table with the following methods:
+    </p>
+    <p>
+      Get information about the LCD video controller configuration and the configuration of each LCD color plane.
+    </p>
+    <ul>
+    <p>
+       <code>int (*getvideoinfo)(FAR struct lcd_dev_s *dev, FAR struct fb_videoinfo_s *vinfo);</code><br>
+       <code>int (*getplaneinfo)(FAR struct lcd_dev_s *dev, unsigned int planeno, FAR struct lcd_planeinfo_s *pinfo);</code>
+     </p>
+    </ul>
+    <p>
+      The following are provided only if the video hardware supports RGB color mapping:
+    </p>
+    <ul>
+     <p>
+       <code>int (*getcmap)(FAR struct lcd_dev_s *dev, FAR struct fb_cmap_s *cmap);</code><br>
+       <code>int (*putcmap)(FAR struct lcd_dev_s *dev, FAR const struct fb_cmap_s *cmap);</code>
+     </p>
+    </ul>
+    <p>
+      The following are provided only if the video hardware supports a hardware cursor:
+    </p>
+    <ul>
+     <p>
+       <code>int (*getcursor)(FAR struct lcd_dev_s *dev, FAR struct fb_cursorattrib_s *attrib);</code><br>
+       <code>int (*setcursor)(FAR struct lcd_dev_s *dev, FAR struct fb_setcursor_s *settings)</code>
+     </p>
+    </ul>
+    <p>
+      Get the LCD panel power status (0: full off - <code>CONFIG_LCD_MAXPOWER</code>: full on).
+      On backlit LCDs, this setting may correspond to the backlight setting.
+    </p>
+    <ul>
+     <p>
+       <code>int (*getpower)(struct lcd_dev_s *dev);</code>
+     </p>
+    </ul>
+    <p>
+      Enable/disable LCD panel power (0: full off - <code>CONFIG_LCD_MAXPOWER</code>: full on).
+      On backlit LCDs, this setting may correspond to the backlight setting.
+    </p>
+    <ul>
+     <p>
+       <code>int (*setpower)(struct lcd_dev_s *dev, int power);</code>
+     </p>
+    </ul>
+    <p>
+      Get the current contrast setting (0-CONFIG_LCD_MAXCONTRAST) */
+    </p>
+    <ul>
+     <p>
+       <code>int (*getcontrast)(struct lcd_dev_s *dev);</code>
+     </p>
+    </ul>
+    <p>
+      Set LCD panel contrast (0-CONFIG_LCD_MAXCONTRAST)
+    </p>
+    <ul>
+     <p>
+       <code>int (*setcontrast)(struct lcd_dev_s *dev, unsigned int contrast);</code>
+     </p>
+    </ul>
+  </p>
+  <li>
+    <p>
+      <b>Binding LCD Drivers</b>.
+      LCD drivers are not normally directly accessed by user code, but are usually bound to another,
+      higher level device driver.
+      In general, the binding sequence is:
+    </p>
+    <p>
+      <ol>
+        <li>Get an instance of <code>struct lcd_dev_s</code> from the hardware-specific LCD device driver, and </li>
+        <li>Provide that instance to the initialization method of the higher level device driver.</li>
+      </ol>
+    </p>
+  </li>
+  <li>
+    <p>
+      <b>Examples</b>:
+      <code>drivers/lcd/nokia6100.c</code>, <code>drivers/lcd/p14201.c</code>, <code>configs/sam3u-ek/src/up_lcd.c.</code>
+      See also the usage of the LCD driver in the <code>graphics/</code> directory.
+    </p>
+  </li>
+</ul>
+
+<h3><a name="mtddrivers">6.3.6 Memory Technology Device Drivers</a></h3>
+
+<ul>
+  <li>
+    <p>
+      <b><code>include/nuttx/mtd/mtd.h</code></b>.
+      All structures and APIs needed to work with MTD drivers are provided in this header file.
+    </p>
+  </li>
+  <li>
+    <p>
+      <b><code>struct mtd_dev_s</code></b>.
+      Each MTD device driver must implement an instance of <code>struct mtd_dev_s</code>.
+      That structure defines a call table with the following methods:
+    </p>
+    <p>
+      Erase the specified erase blocks (units are erase blocks):
+    </p>
+    <ul>
+     <p><code>int (*erase)(FAR struct mtd_dev_s *dev, off_t startblock, size_t nblocks);</code></p>
+    </ul>
+    <p>
+      Read/write from the specified read/write blocks:
+    </p>
+    <ul>
+     <p><code>ssize_t (*bread)(FAR struct mtd_dev_s *dev, off_t startblock, size_t nblocks, FAR uint8_t *buffer);</code><br>
+     <code>ssize_t (*bwrite)(FAR struct mtd_dev_s *dev, off_t startblock, size_t nblocks, FAR const uint8_t *buffer);</code></p>
+    </ul>
+    <p>
+      Some devices may support byte oriented reads (optional).
+      Most MTD devices are inherently block oriented so byte-oriented accesses are not supported.
+      It is recommended that low-level drivers not support read() if it requires buffering.
+    </p>
+    <ul>
+     <p><code>ssize_t (*read)(FAR struct mtd_dev_s *dev, off_t offset, size_t nbytes, FAR uint8_t *buffer);</code></p>
+    </ul>
+    <p>
+      Some devices may also support byte oriented writes (optional).
+      Most MTD devices are inherently block oriented so byte-oriented accesses are not supported.
+      It is recommended that low-level drivers not support read() if it requires buffering.
+      This interface is only available if <code>CONFIG_MTD_BYTE_WRITE</code> is defined.
+    </p>
+    <ul>
+     <p><code>ssize_t (*write)(FAR struct mtd_dev_s *dev, off_t offset, size_t nbytes, FAR const uint8_t *buffer);</code></p>
+    </ul>
+    <p>
+      Support other, less frequently used commands:
+    </p>
+    <ul>
+      <li><code>MTDIOC_GEOMETRY</code>:  Get MTD geometry</li>
+      <li><code>MTDIOC_XIPBASE:</code>: Convert block to physical address for eXecute-In-Place</li>
+      <li><code>MTDIOC_BULKERASE</code>: Erase the entire device</li>
+    </ul>
+    <p>
+      is provided via a single <code>ioctl</code> method (see <code>include/nuttx/fs/ioctl.h</code>):
+    </p>
+    <ul>
+     <p><code>int (*ioctl)(FAR struct mtd_dev_s *dev, int cmd, unsigned long arg);</code></p>
+    </ul>
+  </li>
+  <li>
+    <p>
+      <b>Binding MTD Drivers</b>.
+      MTD drivers are not normally directly accessed by user code, but are usually bound to another,
+      higher level device driver.
+      In general, the binding sequence is:
+    </p>
+    <p>
+      <ol>
+        <li>Get an instance of <code>struct mtd_dev_s</code> from the hardware-specific MTD device driver, and </li>
+        <li>Provide that instance to the initialization method of the higher level device driver.</li>
+      </ol>
+    </p>
+  </li>
+  <li>
+    <p>
+      <b>Examples</b>:
+      <code>drivers/mtd/m25px.c</code> and <code>drivers/mtd/ftl.c</code>
+    </p>
+  </li>
+</ul>
+
+<h3><a name="sdiodrivers">6.3.7 SDIO Device Drivers</a></h3>
+
+<ul>
+  <li>
+    <p>
+      <b><code>include/nuttx/sdio.h</code></b>.
+      All structures and APIs needed to work with SDIO drivers are provided in this header file.
+    </p>
+  </li>
+  <li>
+    <p>
+      <b><code>struct sdio_dev_s</code></b>.
+      Each SDIO device driver must implement an instance of <code>struct sdio_dev_s</code>.
+      That structure defines a call table with the following methods:
+    </p>
+    <p>
+      Mutual exclusion:
+    </p>
+    <ul>
+      <p>
+        <code>#ifdef CONFIG_SDIO_MUXBUS</code><br>
+        <code>  int (*lock)(FAR struct sdio_dev_s *dev, bool lock);</code><br>
+        <code>#endif</code>
+      </p>
+    </ul>
+    <p>
+      Initialization/setup:
+    </p>
+    <ul>
+     <p><code>void (*reset)(FAR struct sdio_dev_s *dev);</code><br>
+     <code>uint8_t (*status)(FAR struct sdio_dev_s *dev);</code><br>
+     <code>void (*widebus)(FAR struct sdio_dev_s *dev, bool enable);</code><br>
+     <code>void (*clock)(FAR struct sdio_dev_s *dev, enum sdio_clock_e rate);</code><br>
+     <code>int (*attach)(FAR struct sdio_dev_s *dev);</code><br>
+    </ul>
+    <p>
+      Command/Status/Data Transfer:
+    </p>
+    <ul>
+     <p><code>int (*sendcmd)(FAR struct sdio_dev_s *dev, uint32_t cmd, uint32_t arg);</code><br>
+     <code>int (*recvsetup)(FAR struct sdio_dev_s *dev, FAR uint8_t *buffer, size_t nbytes);</code><br>
+     <code>int (*sendsetup)(FAR struct sdio_dev_s *dev, FAR const uint8_t *buffer, size_t nbytes);</code><br>
+     <code>int (*cancel)(FAR struct sdio_dev_s *dev);</code><br>
+     <code>int (*waitresponse)(FAR struct sdio_dev_s *dev, uint32_t cmd);</code><br>
+     <code>int (*recvR1)(FAR struct sdio_dev_s *dev, uint32_t cmd, uint32_t *R1);</code><br>
+     <code>int (*recvR2)(FAR struct sdio_dev_s *dev, uint32_t cmd, uint32_t R2[4]);</code><br>
+     <code>int (*recvR3)(FAR struct sdio_dev_s *dev, uint32_t cmd, uint32_t *R3);</code><br>
+     <code>int (*recvR4)(FAR struct sdio_dev_s *dev, uint32_t cmd, uint32_t *R4);</code><br>
+     <code>int (*recvR5)(FAR struct sdio_dev_s *dev, uint32_t cmd, uint32_t *R5);</code><br>
+     <code>int (*recvR6)(FAR struct sdio_dev_s *dev, uint32_t cmd, uint32_t *R6);</code><br>
+     <code>int (*recvR7)(FAR struct sdio_dev_s *dev, uint32_t cmd, uint32_t *R7);</code></p>
+    </ul>
+    <p>
+      Event/Callback support:
+    </p>
+    <ul>
+     <p><code>void (*waitenable)(FAR struct sdio_dev_s *dev, sdio_eventset_t eventset);</code><br>
+     <code>sdio_eventset_t (*eventwait)(FAR struct sdio_dev_s *dev, uint32_t timeout);</code><br>
+     <code>void (*callbackenable)(FAR struct sdio_dev_s *dev, sdio_eventset_t eventset);</code><br>
+     <code>int (*registercallback)(FAR struct sdio_dev_s *dev, worker_t callback, void *arg);</code></p>
+    </ul>
+    <p>
+      DMA support:
+    </p>
+    <ul>
+     <p><code>bool (*dmasupported)(FAR struct sdio_dev_s *dev);</code><br>
+     <code>int (*dmarecvsetup)(FAR struct sdio_dev_s *dev, FAR uint8_t *buffer, size_t buflen);</code><br>
+     <code>int (*dmasendsetup)(FAR struct sdio_dev_s *dev, FAR const uint8_t *buffer,  size_t buflen);</code></p>
+    </ul>
+  </li>
+  <li>
+    <p>
+      <b>Binding SDIO Drivers</b>.
+      SDIO drivers are not normally directly accessed by user code, but are usually bound to another,
+      higher level device driver.
+      In general, the binding sequence is:
+    </p>
+    <p>
+      <ol>
+        <li>Get an instance of <code>struct sdio_dev_s</code> from the hardware-specific SDIO device driver, and </li>
+        <li>Provide that instance to the initialization method of the higher level device driver.</li>
+      </ol>
+    </p>
+  </li>
+  <li>
+    <p>
+      <b>Examples</b>:
+      <code>arch/arm/src/stm32/stm32_sdio.c</code> and <code>drivers/mmcsd/mmcsd_sdio.c</code>
+    </p>
+  </li>
+</ul>
+
+<h3><a name="usbhostdrivers">6.3.8 USB Host-Side Drivers</a></h3>
+
+<ul>
+  <li>
+    <p>
+      <b><code>include/nuttx/usb/usbhost.h</code></b>.
+      All structures and APIs needed to work with USB host-side drivers are provided in this header file.
+    </p>
+  </li>
+  <li>
+    <p>
+      <b><code>struct usbhost_driver_s</code> and <code>struct usbhost_connection_s</code></b>.
+      Each USB host controller driver must implement an instance of <code>struct usbhost_driver_s</code> and <code>struct usbhost_connection_s</code>:
+      <code>struct usbhost_driver_s</code> provides the interface between the USB host driver and the USB class driver;
+      <code>struct usbhost_connection_s</code> provides the interface between the USB host driver and platform-specific connection management and device enumeration logic.
+      These structures are defined in <code>include/nuttx/usb/usbhost.h</code>.
+    </p>
+    <p>
+      <b>Examples</b>:
+      <code>arch/arm/src/lpc17xx/lpc17_usbhost.c</code>,
+      <code>arch/arm/src/stm32/stm32_otgfshost.c</code>,
+      <code>arch/arm/src/sama5/sam_ohci.c</code>, and
+      <code>arch/arm/src/sama5/sam_ehci.c</code>.
+    </p>
+  </li>
+  <li>
+    <p>
+      <b><code>struct usbhost_class_s</code></b>.
+      Each USB host class driver must implement an instance of <code>struct usbhost_class_s</code>.
+      This structure is also defined in <code>include/nuttx/usb/usbhost.h</code>.
+    </p>
+    <p>
+      <b>Examples</b>:
+      <code>drivers/usbhost/usbhost_storage.c</code>
+    </p>
+  </li>
+  <li>
+    <p>
+      <b>USB Host Class Driver Registry</b>.
+      The NuttX USB host infrastructure includes a <i>registry</i>.
+      During its initialization, each USB host class driver must call the interface, <code>usbhost_registerclass()</code>
+      in order add its interface to the registry.
+      Later, when a USB device is connected, the USB host controller will look up the USB host class driver that is needed to support the connected device in this registry.
+    </p>
+    <p>
+      <b>Examples</b>:
+      <code>drivers/usbhost/usbhost_registry.c</code>, <code>drivers/usbhost/usbhost_registerclass.c</code>, and <code>drivers/usbhost/usbhost_findclass.c</code>,
+    </p>
+  </li>
+  <li>
+    <p>
+      <b>Detection and Enumeration of Connected Devices</b>.
+      Each USB host device controller supports two methods that are used to detect and enumeration newly connected devices
+      (and also detect disconnected devices):
+    </p>
+    <p>
+      <ul>
+        <li>
+          <p>
+            <code>int (*wait)(FAR struct usbhost_connection_s *drvr, FAR const bool *connected);</code>
+          </p>
+          <p>
+            Wait for a device to be connected or disconnected.
+          </p>
+        </li>
+        <li>
+          <p>
+            <code>int (*enumerate)(FAR struct usbhost_connection_s *drvr, int rhpndx);</code>
+          </p>
+          <p>
+            Enumerate the device connected to a root hub port.
+            As part of this enumeration process, the driver will
+            (1) get the device's configuration descriptor,
+            (2) extract the class ID info from the configuration descriptor,
+            (3) call <code>usbhost_findclass(</code>) to find the class that supports this device,
+            (4) call the <code>create()</code> method on the <code>struct usbhost_registry_s interface</code> to get a class instance, and
+            finally (5) call the <code>connect()</code> method of the <code>struct usbhost_class_s</code> interface.
+            After that, the class is in charge of the sequence of operations.
+          </p>
+      </ul>
+    </p>
+  </li>
+  <li>
+    <p>
+      <b>Binding USB Host-Side Drivers</b>.
+      USB host-side controller drivers are not normally directly accessed by user code,
+      but are usually bound to another, higher level USB host class driver.
+      The class driver exports the standard NuttX device interface so that the connected USB device can be accessed just as with other, similar, on-board devices.
+      For example, the USB host mass storage class driver (<code>drivers/usbhost/usbhost_storage.c</code>) will register a standard, NuttX block driver interface (like <code>/dev/sda</code>)
+      that can be used to mount a file system just as with any other other block driver instance.
+      In general, the binding sequence is:
+    </p>
+    <p>
+      <ol>
+        <li>
+          <p>
+            Each USB host class driver includes an initialization entry point that is called from the
+            application at initialization time.
+            This driver calls <code>usbhost_registerclass()</code> during this initialization in order to makes itself available in the event the device that it supports is connected.
+          </p>
+          <p>
+            <b>Examples</b>:
+            The function <code>usbhost_storageinit()</code> in the file <code>drivers/usbhost/usbhost_storage.c</code>
+          </p>
+        </li>
+        <li>
+          <p>
+            Each application must include a <i>waiter</i> thread thread that (1) calls the USB host controller driver's <code>wait()</code> to detect the connection of a device, and then
+            (2) call the USB host controller driver's <code>enumerate</code> method to bind the registered USB host class driver to the USB host controller driver.
+          </p>
+          <p>
+            <b>Examples</b>:
+            The function <code>nsh_waiter()</code> in the file <code>configs/nucleus2g/src/up_nsh.c</code> and
+            the function <code>nsh_waiter()</code> in the file <code>configs/olimex-lpc1766stk/src/up_nsh.c</code>.
+          </p>
+        </li>
+        <li>
+          <p>
+            As part of its operation during the binding operation, the USB host class driver will register an instances of a standard NuttX driver under the <code>/dev</code> directory.
+            To repeat the above example, the USB host mass storage class driver (<code>drivers/usbhost/usbhost_storage.c</code>) will register a standard, NuttX block driver interface (like <code>/dev/sda</code>)
+            that can be used to mount a file system just as with any other other block driver instance.
+          </p>
+          <p>
+            <b>Examples</b>:
+            See the call to <code>register_blockdriver()</code> in the function <code>usbhost_initvolume()</code> in the file <code>drivers/usbhost/usbhost_storage.c</code>.
+          </p>
+        </li>
+      </ol>
+    </p>
+  </li>
+</ul>
+
+<h3><a name="usbdevdrivers">6.3.9 USB Device-Side Drivers</a></h3>
+
+<ul>
+  <li>
+    <p>
+      <b><code>include/nuttx/usb/usbdev.h</code></b>.
+      All structures and APIs needed to work with USB device-side drivers are provided in this header file.
+    </p>
+  </li>
+  <li>
+    <p>
+      <b><code>include/nuttx/usb/usbdev_trace.h</code></b>.
+      Declarations needed to work with the NuttX USB device driver trace capability.
+      That USB trace capability is detailed in <a href="UsbTrace.html">separate document</a>.
+    </p>
+  </li>
+  <li>
+    <p>
+      <b><code>struct usbdev_s</code></b>.
+      Each USB device controller driver must implement an instance of <code>struct usbdev_s</code>.
+      This structure is defined in <code>include/nuttx/usb/usbdev.h</code>.
+    </p>
+    <p>
+      <b>Examples</b>:
+      <code>arch/arm/src/dm320/dm320_usbdev.c</code>, <code>arch/arm/src/lpc17xx/lpc17_usbdev.c</code>,
+      <code>arch/arm/src/lpc214x/lpc214x_usbdev.c</code>, <code>arch/arm/src/lpc313x/lpc313x_usbdev.c</code>, and
+       <code>arch/arm/src/stm32/stm32_usbdev.c</code>.
+    </p>
+  </li>
+  <li>
+    <p>
+      <b><code>struct usbdevclass_driver_s</code></b>.
+      Each USB device class driver must implement an instance of <code>struct usbdevclass_driver_s</code>.
+      This structure is also defined in <code>include/nuttx/usb/usbdev.h</code>.
+    </p>
+    <p>
+      <b>Examples</b>:
+      <code>drivers/usbdev/pl2303.c</code> and <code>drivers/usbdev/usbmsc.c</code>
+    </p>
+  </li>
+  <li>
+    <p>
+      <b>Binding USB Device-Side Drivers</b>.
+      USB device-side controller drivers are not normally directly accessed by user code,
+      but are usually bound to another, higher level USB device class driver.
+      The class driver is then configured to export the USB device functionality.
+      In general, the binding sequence is:
+    </p>
+    <p>
+      <ol>
+        <li>
+          <p>
+            Each USB device class driver includes an initialization entry point that is called from the
+            application at initialization time.
+          </p>
+          <p>
+            <b>Examples</b>:
+            The function <code>usbdev_serialinitialize()</code> in the file <code>drivers/usbdev/pl2303.c</code> and
+            the function <code></code> in the file <code>drivers/usbdev/usbmsc.c</code>
+          </p>
+        </li>
+        <li>
+          <p>
+            These initialization functions called the driver API, <code>usbdev_register()</code>.
+            This driver function will <i>bind</i> the USB class driver to the USB device controller driver,
+            completing the initialization.
+          </p>
+        </li>
+      </ol>
+    </p>
+  </li>
+</ul>
 
 <h2><a name="pwrmgmt">6.4 Power Management</a></h2>
 

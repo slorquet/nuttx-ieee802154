@@ -1,7 +1,7 @@
 /****************************************************************************
  * arch/avr/src/avr/up_checkstack.c
  *
- *   Copyright (C) 2011, 2013-2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2011, 2013-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -45,6 +45,7 @@
 #include <debug.h>
 
 #include <nuttx/arch.h>
+#include <nuttx/board.h>
 
 #include "up_internal.h"
 #include "sched/sched.h"
@@ -53,11 +54,7 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
-#if !defined(CONFIG_DEBUG)
-#  undef CONFIG_DEBUG_STACK
-#endif
-
-#if defined(CONFIG_DEBUG_STACK)
+#ifdef CONFIG_STACK_COLORATION
 
 /****************************************************************************
  * Public Data
@@ -66,6 +63,8 @@
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
+
+static size_t do_stackcheck(uintptr_t alloc, size_t size);
 
 /****************************************************************************
  * Name: do_stackcheck
@@ -84,7 +83,7 @@
  *
  ****************************************************************************/
 
-size_t do_stackcheck(uintptr_t alloc, size_t size)
+static size_t do_stackcheck(uintptr_t alloc, size_t size)
 {
   FAR uint8_t *ptr;
   size_t mark;
@@ -197,4 +196,4 @@ size_t up_check_intstack_remain(void)
 }
 #endif
 
-#endif /* CONFIG_DEBUG_STACK */
+#endif /* CONFIG_STACK_COLORATION */

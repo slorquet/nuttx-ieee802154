@@ -1,7 +1,7 @@
 /****************************************************************************
  * arch/sim/src/up_netdriver.c
  *
- *   Copyright (C) 2007, 2009-2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2007, 2009-2012, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Based on code from uIP which also has a BSD-like license:
@@ -56,13 +56,17 @@
 #include <nuttx/net/netdev.h>
 #include <nuttx/net/arp.h>
 
+#ifdef CONFIG_NET_PKT
+#  include <nuttx/net/pkt.h>
+#endif
+
 #include "up_internal.h"
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 
-#define BUF ((struct ether_header*)g_sim_dev.d_buf)
+#define BUF ((struct eth_hdr_s *)g_sim_dev.d_buf)
 
 /****************************************************************************
  * Private Types
@@ -122,7 +126,30 @@ static int sim_txpoll(struct net_driver_s *dev)
 
   if (g_sim_dev.d_len > 0)
     {
-      arp_out(&g_sim_dev);
+      /* Look up the destination MAC address and add it to the Ethernet
+       * header.
+       */
+
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+      if (IFF_IS_IPv4(&g_sim_dev))
+#endif
+        {
+          arp_out(&g_sim_dev);
+        }
+#endif /* CONFIG_NET_IPv4 */
+
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+      else
+#endif
+        {
+          neighbor_out(&g_sim_dev);
+        }
+#endif /* CONFIG_NET_IPv6 */
+
+      /* Send the packet */
+
       netdev_send(g_sim_dev.d_buf, g_sim_dev.d_len);
     }
 
@@ -139,6 +166,8 @@ static int sim_txpoll(struct net_driver_s *dev)
 
 void netdriver_loop(void)
 {
+ struct eth_hdr_s *eth;
+
   /* netdev_read will return 0 on a timeout event and >0 on a data received event */
 
   g_sim_dev.d_len = netdev_read((unsigned char*)g_sim_dev.d_buf, CONFIG_NET_ETH_MTU);
@@ -155,18 +184,31 @@ void netdriver_loop(void)
        * MAC address
        */
 
-      if (g_sim_dev.d_len > ETH_HDRLEN && up_comparemac(BUF->ether_dhost, &g_sim_dev.d_mac) == 0)
+      eth = BUF;
+      if (g_sim_dev.d_len > ETH_HDRLEN &&
+          up_comparemac(eth->dest, &g_sim_dev.d_mac) == 0)
         {
+#ifdef CONFIG_NET_PKT
+          /* When packet sockets are enabled, feed the frame into the packet
+           * tap.
+           */
+
+          pkt_input(&g_sim_dev);
+#endif
+
           /* We only accept IP packets of the configured type and ARP packets */
 
-#ifdef CONFIG_NET_IPv6
-          if (BUF->ether_type == htons(ETHTYPE_IP6))
-#else
-          if (BUF->ether_type == htons(ETHTYPE_IP))
-#endif
+#ifdef CONFIG_NET_IPv4
+          if (eth->type == HTONS(ETHTYPE_IP))
             {
+              nllvdbg("IPv4 frame\n");
+
+              /* Handle ARP on input then give the IPv4 packet to the network
+               * layer
+               */
+
               arp_ipin(&g_sim_dev);
-              devif_input(&g_sim_dev);
+              ipv4_input(&g_sim_dev);
 
              /* If the above function invocation resulted in data that
               * should be sent out on the network, the global variable
@@ -175,11 +217,68 @@ void netdriver_loop(void)
 
               if (g_sim_dev.d_len > 0)
                 {
-                  arp_out(&g_sim_dev);
+                  /* Update the Ethernet header with the correct MAC address */
+
+#ifdef CONFIG_NET_IPv6
+                  if (IFF_IS_IPv4(g_sim_dev.d_flags))
+#endif
+                    {
+                      arp_out(&g_sim_dev);
+                    }
+#ifdef CONFIG_NET_IPv6
+                  else
+                    {
+                      neighbor_out(&g_sim_dev);
+                    }
+#endif
+
+                  /* And send the packet */
+
                   netdev_send(g_sim_dev.d_buf, g_sim_dev.d_len);
                 }
             }
-          else if (BUF->ether_type == htons(ETHTYPE_ARP))
+          else
+#endif
+#ifdef CONFIG_NET_IPv6
+          if (eth->type == HTONS(ETHTYPE_IP6))
+            {
+              nllvdbg("Iv6 frame\n");
+
+              /* Give the IPv6 packet to the network layer */
+
+              ipv6_input(&g_sim_dev);
+
+             /* If the above function invocation resulted in data that
+              * should be sent out on the network, the global variable
+              * d_len is set to a value > 0.
+              */
+
+              if (g_sim_dev.d_len > 0)
+               {
+                  /* Update the Ethernet header with the correct MAC address */
+
+#ifdef CONFIG_NET_IPv4
+                  if (IFF_IS_IPv4(g_sim_dev.d_flags))
+                    {
+                      arp_out(&g_sim_dev);
+                    }
+                  else
+#endif
+#ifdef CONFIG_NET_IPv6
+                    {
+                      neighbor_out(&g_sim_dev);
+                    }
+#endif
+
+                  /* And send the packet */
+
+                  netdev_send(g_sim_dev.d_buf, g_sim_dev.d_len);
+                }
+            }
+          else
+#endif
+#ifdef CONFIG_NET_ARP
+          if (eth->type == htons(ETHTYPE_ARP))
             {
               arp_arpin(&g_sim_dev);
 
@@ -193,6 +292,7 @@ void netdriver_loop(void)
                   netdev_send(g_sim_dev.d_buf, g_sim_dev.d_len);
                 }
             }
+#endif
         }
     }
 

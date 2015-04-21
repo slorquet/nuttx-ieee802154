@@ -217,7 +217,7 @@ static char g_uart2rxbuffer[CONFIG_UART2_RXBUFSIZE];
 static char g_uart2txbuffer[CONFIG_UART2_TXBUFSIZE];
 #endif
 
-/* This describes the state of the AVR32 UART1 port. */
+/* This describes the state of the PIC32MX UART1 port. */
 
 #ifdef CONFIG_PIC32MX_UART1
 static struct up_dev_s g_uart1priv =
@@ -251,7 +251,7 @@ static uart_dev_t g_uart1port =
 };
 #endif
 
-/* This describes the state of the AVR32 UART2 port. */
+/* This describes the state of the PIC32MX UART2 port. */
 
 #ifdef CONFIG_PIC32MX_UART2
 static struct up_dev_s g_uart2priv =

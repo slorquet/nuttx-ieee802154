@@ -1,7 +1,7 @@
 ############################################################################
 # configs/tm4c123g-launchpad/src/Makefile
 #
-#   Copyright (C) 2014 Gregory Nutt. All rights reserved.
+#   Copyright (C) 2014-2015 Gregory Nutt. All rights reserved.
 #   Author: Gregory Nutt <gnutt@nuttx.org>
 #
 # Redistribution and use in source and binary forms, with or without
@@ -47,6 +47,14 @@ endif
 
 ifeq ($(CONFIG_NSH_ARCHINIT),y)
 CSRCS += tm4c_nsh.c
+endif
+
+ifeq ($(CONFIG_TIVA_TIMER),y)
+CSRCS += tm4c_timer.c
+endif
+
+ifeq ($(CONFIG_TIVA_ADC),y)
+CSRCS += tm4c_adc.c
 endif
 
 ifeq ($(CONFIG_MTD_AT24XX),y)

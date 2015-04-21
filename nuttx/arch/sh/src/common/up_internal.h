@@ -48,7 +48,7 @@
 #endif
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /* Bring-up debug configurations.  These are here (vs defconfig)
@@ -207,26 +207,6 @@ extern void up_wdtinit(void);
 /* Defined in up_timerisr.c */
 
 extern void up_timer_initialize(void);
-
-/* Defined in chip-specific logic if CONFIG_ARCH_NOINTC is not set */
-
-#ifndef CONFIG_ARCH_NOINTC
-extern void up_maskack_irq(int irq);
-#else
-#  define up_maskack_irq(irq)
-#endif
-
-/* Defined in board/up_leds.c */
-
-#ifdef CONFIG_ARCH_LEDS
-extern void board_led_initialize(void);
-extern void board_led_on(int led);
-extern void board_led_off(int led);
-#else
-# define board_led_initialize()
-# define board_led_on(led)
-# define board_led_off(led)
-#endif
 
 /* Defined in board/up_lcd.c */
 

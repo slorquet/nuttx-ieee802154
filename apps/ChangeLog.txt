@@ -1140,7 +1140,7 @@
 	* apps/examples/bridge/host_main.c, host_net1.c, host_net2.c, Kconfig,
 	  and Makefile:  Add host-side test driver (2014-11-21).
 
-7.7 2015-xx-xx Gregory Nutt <gnutt@nuttx.org>
+7.7 2015-01-26 Gregory Nutt <gnutt@nuttx.org>
 
 	* apps/examples/romfs/Makefile: fix romfs example builtin app registry
 	  issue.  From Librae (2014-11-27).
@@ -1171,4 +1171,110 @@
 	  Contributed by Dave Marples (2015-01-11).
 	* apps/examples/timer:  Add a trivial test of the timer driver
 	  (2015-01-13).
+	* apps/netutils/dnsclient:  Can select to be either IPv4 or IPv6, but
+	  not both (IPv6 still does not compile) (2015-01-18).
+	* apps/netutils/netlib:  Add new library functions to manipulate IPv6
+	  addresses (2015-01-13).
+	* apps/nshlib/Kconfig and nsh_netinit.c:  Add logic to initialize
+	  IPv6 addresses (2015-01-19).
+	* apps/netutils/netlib:  All IOCTLs must use a valid address family --
+	  even if the address family does not matter such as when getting the
+	  MAC address or the network flags (2015-01-19).
+	* apps/examples/nettest:  Update test so that it can be used to test
+	  IPv6 TCP sockets (2015-01-20).
+	* Many files: Correct name of fields in struct sockaddr_in6:  sin6_port
+	  and sin6_family, not sin_port and sin_family (2015-01-20).
+	* apps/netutils/telnetd:  Add protection when CONFIG_SCHED_HAVE_PARENT
+	  is enabled:  Call sigaction with SA_NOCLDWAIT so that exit status is
+	  not retained (no zombies) and block receipt of SIGCHLD so that accept
+	  is not awakened by a signal.  If accept() is awakened by a signal, do
+	  not do anything crazy like exit.  Most from Rony Xln (2015-01-22).
+	*  apps/examples/udp:  The UDP test example has been extend to support
+	  IPv6 domain sockets (2015-01-22).
+	* apps/nshlib:  Add the ping6 command to support checking IPv6 networks.
+	  (2015-01-23).
+	* apps/nsh: Clean up network status presentation for IPv6 (2015-01-24).
 
+7.8 2015-02-11 Gregory Nutt <gnutt@nuttx.org>
+
+	* apps/interpreters/micropython: Add math library defines for nan(),
+	  copysign(), and trunc() functions.  From Brennan Ashton (2015-01-26).
+	* apps/examples/ustream:  Add a simple test of Unix domain sockets
+	  (2015-01-27).
+	* apps/examples/udgram:  Add a simple test of Unix domain datagram
+	  sockets (2015-01-28)
+	* apps/Makefile and builtin/Makefile: Fix for building with parallel
+	  make. Build-server sometimes failed 'make -j24' with errors in the
+	  builtin line or or sometimes silently succeeds but generated builds
+	  that contain a random subset of configured NuttX applications. There
+	  are two root causes for this: (1) Recipes for building builtin_list.h
+	  and builtin_proto.h are not linearizable, and (2) Nothing ensures
+	  that 'make context' is run first for apps/builtin.  This change
+	  address both issues. From Juha Niskanen (2015-02-03).
+	* apps/netutils/netlib:  Add utilities to convert to/from prefix lengths
+	  from/to 128-bit network masks (2015-02-06).
+	* apps/nshlib: Modify the NSH IPv6 ifconfig command to show the more
+	  standard post-pended prefix value, rather than the full 128-bit netmask
+	  (2015-02-06).
+
+7.9 2015-04-14 Gregory Nutt <gnutt@nuttx.org>
+
+	* apps/examples/ostest: Improved error checking for sem_timedwait()
+	  from Juha Niskanen (2015-02-20).
+	* apps/netutils/Kconfig, Make.defs, and pppd/: Add a PPP daemon.  From
+	  Max Neklyudov (2015-03-11).
+	* Rename arch_nshinitialize() to board_app_initialize() (2015-03-30).
+	* apps/nshlib:  NSH initialization now calls boardctl(BOARDIOC_INIT)
+	  instead of board_app_initaliaze().   Remove support for
+	  CONFIG_NSH_ARCHMAC.  It is not used and there are better ways to do
+	  that operation (2015-03-31).
+	* apps/examples/touchscreen:  No longer calls arch_tcinitialize() or
+	  arch_tcuninitialize().  Instead the new OS interface boardctl() is
+	  called to perform these test operations on the touchscreen driver
+	  (2015-03-31).
+	* apps/examples/adc: Change apps/examples/adc to that is now calls
+	  boardctl() instead of adc_devinit() in order to initalize the ADC
+	  device(2015-03-31).
+	* apps/examples/pwm/: Replace calls to pwm_devinit() in
+	  apps/examples/pwm with calls to boardctl() (2015-03-31).
+	* apps/examples/:  More renaming: up_lcdinitialize->board_lcd_initialize,
+	  up_lcdgetdev->board_lcd_getdev, up_lcduninitialize->board_lcd_uninitialize
+	  (2015-04-04).
+	* apps/examples/nxlines/: Add the new 'capped' parameter to nx_drawline()
+	  calls (2015-04-05).
+	* apps/modbus/tcp:  Fix some complile problems when TCP is enabled
+	  (2015-04-06).
+	* apps/system: Clean up Kconfig menus.  The way it worked before, it was
+	  difficult to see what was enabled and what was not.  menus replaced
+	  with menuconfig (2015-04-07).
+	* apps/examples/ostest/sigprocmask.c: Add a simple test of sigprocmask,
+	  sighold, and sigrelse (2015-04-09).
+	* apps/modbus: Includes extensions to support RTU master mode by
+	  Armink(383016632@qq.com):
+	  https://github.com/armink/FreeModbus_Slave-Master-RTT-STM32.  Ported
+	  to NuttX by Darcy Gong.
+	* apps/nshlib:  Allow NSH 'date' command with no hardware RTC.  Thisi
+	  command is useful without an RTC too.  Also, this permits testing on
+	  the simulator which never has an RTC (2015-04-11).
+	* apps/netutils/ppp: Make pppd PAP authentication optional.  From
+	  Brennan Ashton
+	* apps/examples/pppd:  Add PPPD test case.  Split out from
+	  apps/netutils/pppd by Brennan Ashton.
+	* apps/netutils/pppd: Spit up pppd utils.  From Brennan Ashton.
+	* apps/system/zoneinfo:  All logic to build timezone info.  Does not do
+	  much else yet (2015-04-14).
+
+7.10 2015-xx-xx Gregory Nutt <gnutt@nuttx.org>
+
+	* apps/system/zoneinfo:  Add logic to build a ROMFS file system
+	  containing the timezone data (2015-04-15).
+	* apps/nshlib/nsh_timcmds.c: Check return values from time functions
+	  (2015-04-15).
+	* apps/examples/nxlines:  Fix missing right bracket that causes
+	  compile error when CONFIG_NX_XYINPUT=y.  From Librae (2015-04-16).
+	* apps/examples: When boardctl() fails, need to print errno not the
+	  returned value which will always be -1 (2015-04-16).
+	* apps/examples: Correct use of the BOARDIOC_GRAPHICS_SETUP boardctl()
+	  call (2015-04-16).
+	* apps/examples/ltdc:  Add testing support for the STM32 LTDC's 2D
+	  DMA. From Marco Krahl (2015-04-16).

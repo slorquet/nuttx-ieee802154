@@ -44,7 +44,7 @@
 #include <debug.h>
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 #if defined(CONFIG_CRYPTO_AES)
@@ -79,10 +79,16 @@ extern "C"
  * Public Function Prototypes
  ************************************************************************************/
 
+int up_cryptoinitialize(void);
+
 #if defined(CONFIG_CRYPTO_AES)
 int up_aesinitialize(void);
 int aes_cypher(FAR void *out, FAR const void *in, uint32_t size, FAR const void *iv,
                FAR const void *key, uint32_t keysize, int mode, int encrypt);
+#endif
+
+#if defined(CONFIG_CRYPTO_ALGTEST)
+int crypto_test(void);
 #endif
 
 #undef EXTERN

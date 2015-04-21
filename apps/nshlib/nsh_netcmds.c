@@ -1,7 +1,7 @@
 /****************************************************************************
  * apps/nshlib/nsh_netcmds.c
  *
- *   Copyright (C) 2007-2012, 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2007-2012, 2014-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -64,6 +64,8 @@
 #include <nuttx/net/netdev.h>
 #include <nuttx/net/netstats.h>
 #include <nuttx/net/ip.h>
+#include <nuttx/net/icmp.h>
+#include <nuttx/net/icmpv6.h>
 
 #if defined(CONFIG_NET_ICMP) && defined(CONFIG_NET_ICMP_PING) && \
    !defined(CONFIG_DISABLE_SIGNALS)
@@ -96,8 +98,21 @@
 #include "nsh_console.h"
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
+
+#undef HAVE_PING
+#undef HAVE_PING6
+
+#if defined(CONFIG_NET_ICMP) && defined(CONFIG_NET_ICMP_PING) && \
+   !defined(CONFIG_DISABLE_SIGNALS) && !defined(CONFIG_NSH_DISABLE_PING)
+#  define HAVE_PING
+#endif
+
+#if defined(CONFIG_NET_ICMPv6) && defined(CONFIG_NET_ICMPv6_PING) && \
+   !defined(CONFIG_DISABLE_SIGNALS) && !defined(CONFIG_NSH_DISABLE_PING6)
+#  define HAVE_PING6
+#endif
 
 /* Size of the ECHO data */
 
@@ -132,8 +147,7 @@ struct tftpc_args_s
  * Private Data
  ****************************************************************************/
 
-#if defined(CONFIG_NET_ICMP) && defined(CONFIG_NET_ICMP_PING) && \
-   !defined(CONFIG_DISABLE_SIGNALS)
+#if defined(HAVE_PING) || defined(HAVE_PING6)
 static uint16_t g_pingid = 0;
 #endif
 
@@ -149,16 +163,108 @@ static uint16_t g_pingid = 0;
  * Name: ping_newid
  ****************************************************************************/
 
-#if defined(CONFIG_NET_ICMP) && defined(CONFIG_NET_ICMP_PING) && \
-   !defined(CONFIG_DISABLE_SIGNALS)
-static inline uint16_t ping_newid(void)
+#if defined(HAVE_PING) || defined(HAVE_PING6)
+static uint16_t ping_newid(void)
 {
   irqstate_t save = irqsave();
   uint16_t ret = ++g_pingid;
   irqrestore(save);
   return ret;
 }
-#endif
+#endif /* HAVE_PING || HAVE_PINg */
+
+/****************************************************************************
+ * Name: ping_options
+ ****************************************************************************/
+
+#if defined(HAVE_PING) || defined(HAVE_PING6)
+static int ping_options(FAR struct nsh_vtbl_s *vtbl,
+                        int argc, FAR char **argv,
+                        FAR int *count, FAR uint32_t *dsec, FAR char **staddr)
+{
+  FAR const char *fmt = g_fmtarginvalid;
+  bool badarg = false;
+  int option;
+  int tmp;
+
+  /* Get the ping options */
+
+  while ((option = getopt(argc, argv, ":c:i:")) != ERROR)
+    {
+      switch (option)
+        {
+          case 'c':
+            tmp = atoi(optarg);
+            if (tmp < 1 || tmp > 10000)
+              {
+                nsh_output(vtbl, g_fmtargrange, argv[0]);
+                badarg = true;
+              }
+            else
+              {
+                *count = tmp;
+              }
+            break;
+
+          case 'i':
+            tmp = atoi(optarg);
+            if (tmp < 1 || tmp >= 4294)
+              {
+                nsh_output(vtbl, g_fmtargrange, argv[0]);
+                badarg = true;
+              }
+            else
+              {
+                *dsec = 10 * tmp;
+              }
+            break;
+
+          case ':':
+            nsh_output(vtbl, g_fmtargrequired, argv[0]);
+            badarg = true;
+            break;
+
+          case '?':
+          default:
+            nsh_output(vtbl, g_fmtarginvalid, argv[0]);
+            badarg = true;
+            break;
+        }
+    }
+
+  /* If a bad argument was encountered, then return without processing the
+   * command
+   */
+
+  if (badarg)
+    {
+      return ERROR;
+    }
+
+  /* There should be exactly on parameter left on the command-line */
+
+  if (optind == argc-1)
+    {
+      *staddr = argv[optind];
+    }
+  else if (optind >= argc)
+    {
+      fmt = g_fmttoomanyargs;
+      goto errout;
+    }
+  else
+    {
+      fmt = g_fmtargrequired;
+      goto errout;
+    }
+
+  return OK;
+
+errout:
+  nsh_output(vtbl, fmt, argv[0]);
+  return ERROR;
+}
+#endif /* HAVE_PING || HAVE_PING6 */
 
 /****************************************************************************
  * Name: net_statistics
@@ -167,107 +273,184 @@ static inline uint16_t ping_newid(void)
 #if defined(CONFIG_NET_STATISTICS) && !defined(CONFIG_NSH_DISABLE_IFCONFIG)
 static inline void net_statistics(FAR struct nsh_vtbl_s *vtbl)
 {
-  nsh_output(vtbl, "            IP ");
+  /* Headings */
+
+  nsh_output(vtbl, "           ");
+#ifdef CONFIG_NET_IPv4
+  nsh_output(vtbl, "  IPv4");
+#endif
+#ifdef CONFIG_NET_IPv6
+  nsh_output(vtbl, "  IPv6");
+#endif
 #ifdef CONFIG_NET_TCP
-  nsh_output(vtbl, "  TCP");
+  nsh_output(vtbl, "   TCP");
 #endif
 #ifdef CONFIG_NET_UDP
-  nsh_output(vtbl, "  UDP");
+  nsh_output(vtbl, "   UDP");
 #endif
 #ifdef CONFIG_NET_ICMP
   nsh_output(vtbl, "  ICMP");
+#endif
+#ifdef CONFIG_NET_ICMPv6
+  nsh_output(vtbl, "  ICMPv6");
 #endif
   nsh_output(vtbl, "\n");
 
   /* Received packets */
 
-  nsh_output(vtbl, "Received    %04x", g_netstats.ip.recv);
+  nsh_output(vtbl, "Received   ");
+#ifdef CONFIG_NET_IPv4
+  nsh_output(vtbl, "  %04x", g_netstats.ipv4.recv);
+#endif
+#ifdef CONFIG_NET_IPv6
+  nsh_output(vtbl, "  %04x", g_netstats.ipv6.recv);
+#endif
 #ifdef CONFIG_NET_TCP
-  nsh_output(vtbl, " %04x", g_netstats.tcp.recv);
+  nsh_output(vtbl, "  %04x", g_netstats.tcp.recv);
 #endif
 #ifdef CONFIG_NET_UDP
-  nsh_output(vtbl, " %04x", g_netstats.udp.recv);
+  nsh_output(vtbl, "  %04x", g_netstats.udp.recv);
 #endif
 #ifdef CONFIG_NET_ICMP
-  nsh_output(vtbl, " %04x", g_netstats.icmp.recv);
+  nsh_output(vtbl, "  %04x", g_netstats.icmp.recv);
+#endif
+#ifdef CONFIG_NET_ICMPv6
+  nsh_output(vtbl, "  %04x", g_netstats.icmpv6.recv);
 #endif
   nsh_output(vtbl, "\n");
 
   /* Dropped packets */
 
-  nsh_output(vtbl, "Dropped     %04x", g_netstats.ip.drop);
+  nsh_output(vtbl, "Dropped    ");
+#ifdef CONFIG_NET_IPv4
+  nsh_output(vtbl, "  %04x", g_netstats.ipv4.drop);
+#endif
+#ifdef CONFIG_NET_IPv6
+  nsh_output(vtbl, "  %04x", g_netstats.ipv6.drop);
+#endif
 #ifdef CONFIG_NET_TCP
-  nsh_output(vtbl, " %04x", g_netstats.tcp.drop);
+  nsh_output(vtbl, "  %04x", g_netstats.tcp.drop);
 #endif
 #ifdef CONFIG_NET_UDP
-  nsh_output(vtbl, " %04x", g_netstats.udp.drop);
+  nsh_output(vtbl, "  %04x", g_netstats.udp.drop);
 #endif
 #ifdef CONFIG_NET_ICMP
-  nsh_output(vtbl, " %04x", g_netstats.icmp.drop);
+  nsh_output(vtbl, "  %04x", g_netstats.icmp.drop);
+#endif
+#ifdef CONFIG_NET_ICMPv6
+  nsh_output(vtbl, "  %04x", g_netstats.icmpv6.drop);
 #endif
   nsh_output(vtbl, "\n");
 
-  nsh_output(vtbl, "  IP        VHL: %04x HBL: %04x\n",
-             g_netstats.ip.vhlerr, g_netstats.ip.hblenerr);
-  nsh_output(vtbl, "            LBL: %04x Frg: %04x\n",
-             g_netstats.ip.lblenerr, g_netstats.ip.fragerr);
+  /* Dropped IP packets */
 
-  nsh_output(vtbl, "  Checksum  %04x",g_netstats.ip.chkerr);
+#ifdef CONFIG_NET_IPv4
+  nsh_output(vtbl, "  IPv4        VHL: %04x   Frg: %04x\n",
+             g_netstats.ipv4.vhlerr, g_netstats.ipv4.fragerr);
+#endif
+#ifdef CONFIG_NET_IPv6
+  nsh_output(vtbl, "  IPv6        VHL: %04x\n",
+             g_netstats.ipv6.vhlerr);
+#endif
+
+  /* Checksum errors */
+
+  nsh_output(vtbl, "  Checksum ");
+#ifdef CONFIG_NET_IPv4
+  nsh_output(vtbl, "  %04x", g_netstats.ipv4.chkerr);
+#endif
+#ifdef CONFIG_NET_IPv6
+  nsh_output(vtbl, "  ----");
+#endif
 #ifdef CONFIG_NET_TCP
-  nsh_output(vtbl, " %04x", g_netstats.tcp.chkerr);
+  nsh_output(vtbl, "  %04x", g_netstats.tcp.chkerr);
 #endif
 #ifdef CONFIG_NET_UDP
-  nsh_output(vtbl, " %04x", g_netstats.udp.chkerr);
+  nsh_output(vtbl, "  %04x", g_netstats.udp.chkerr);
 #endif
 #ifdef CONFIG_NET_ICMP
-  nsh_output(vtbl, " ----");
+  nsh_output(vtbl, "  ----");
+#endif
+#ifdef CONFIG_NET_ICMPv6
+  nsh_output(vtbl, "  ----");
 #endif
   nsh_output(vtbl, "\n");
 
 #ifdef CONFIG_NET_TCP
-  nsh_output(vtbl, "  TCP       ACK: %04x SYN: %04x\n",
+  nsh_output(vtbl, "  TCP         ACK: %04x   SYN: %04x\n",
             g_netstats.tcp.ackerr, g_netstats.tcp.syndrop);
-  nsh_output(vtbl, "            RST: %04x %04x\n",
+  nsh_output(vtbl, "              RST: %04x  %04x\n",
             g_netstats.tcp.rst, g_netstats.tcp.synrst);
 #endif
 
-  nsh_output(vtbl, "  Type      %04x", g_netstats.ip.protoerr);
+  /* Prototype errors */
+
+  nsh_output(vtbl, "  Type     ");
+#ifdef CONFIG_NET_IPv4
+  nsh_output(vtbl, "  %04x", g_netstats.ipv4.protoerr);
+#endif
+#ifdef CONFIG_NET_IPv6
+  nsh_output(vtbl, "  %04x", g_netstats.ipv6.protoerr);
+#endif
 #ifdef CONFIG_NET_TCP
-  nsh_output(vtbl, " ----");
+  nsh_output(vtbl, "  ----");
 #endif
 #ifdef CONFIG_NET_UDP
-  nsh_output(vtbl, " ----");
+  nsh_output(vtbl, "  ----");
 #endif
 #ifdef CONFIG_NET_ICMP
-  nsh_output(vtbl, " %04x", g_netstats.icmp.typeerr);
+  nsh_output(vtbl, "  %04x", g_netstats.icmp.typeerr);
+#endif
+#ifdef CONFIG_NET_ICMPv6
+  nsh_output(vtbl, "  %04x", g_netstats.icmpv6.typeerr);
 #endif
   nsh_output(vtbl, "\n");
 
   /* Sent packets */
 
-  nsh_output(vtbl, "Sent        ----", g_netstats.ip.sent);
+  nsh_output(vtbl, "Sent       ");
+#ifdef CONFIG_NET_IPv4
+  nsh_output(vtbl, "  %04x", g_netstats.ipv4.sent);
+#endif
+#ifdef CONFIG_NET_IPv6
+  nsh_output(vtbl, "  %04x", g_netstats.ipv6.sent);
+#endif
 #ifdef CONFIG_NET_TCP
-  nsh_output(vtbl, " %04x", g_netstats.tcp.sent);
+  nsh_output(vtbl, "  %04x", g_netstats.tcp.sent);
 #endif
 #ifdef CONFIG_NET_UDP
-  nsh_output(vtbl, " %04x", g_netstats.udp.sent);
+  nsh_output(vtbl, "  %04x", g_netstats.udp.sent);
 #endif
 #ifdef CONFIG_NET_ICMP
-  nsh_output(vtbl, " %04x", g_netstats.icmp.sent);
+  nsh_output(vtbl, "  %04x", g_netstats.icmp.sent);
+#endif
+#ifdef CONFIG_NET_ICMPv6
+  nsh_output(vtbl, "  %04x", g_netstats.icmpv6.sent);
 #endif
   nsh_output(vtbl, "\n");
 
+  /* TCP retransmissions */
+
 #ifdef CONFIG_NET_TCP
-  nsh_output(vtbl, "  Rexmit    ---- %04x", g_netstats.tcp.rexmit);
+  nsh_output(vtbl, "  Rexmit   ");
+#ifdef CONFIG_NET_IPv4
+  nsh_output(vtbl, "  ----");
+#endif
+#ifdef CONFIG_NET_IPv6
+  nsh_output(vtbl, "  ----");
+#endif
+  nsh_output(vtbl, "  %04x", g_netstats.tcp.rexmit);
 #ifdef CONFIG_NET_UDP
-  nsh_output(vtbl, " ----");
+  nsh_output(vtbl, "  ----");
 #endif
 #ifdef CONFIG_NET_ICMP
-   nsh_output(vtbl, " ----");
+   nsh_output(vtbl, "  ----");
+#endif
+#ifdef CONFIG_NET_ICMPv6
+   nsh_output(vtbl, "  ----");
 #endif
   nsh_output(vtbl, "\n");
-#endif
-  nsh_output(vtbl, "\n");
+#endif /* CONFIG_NET_TCP */
 }
 #else
 # define net_statistics(vtbl)
@@ -277,10 +460,17 @@ static inline void net_statistics(FAR struct nsh_vtbl_s *vtbl)
  * Name: ifconfig_callback
  ****************************************************************************/
 
-int ifconfig_callback(FAR struct net_driver_s *dev, void *arg)
+#if !defined(CONFIG_NSH_DISABLE_IFUPDOWN) || !defined(CONFIG_NSH_DISABLE_IFCONFIG)
+static int ifconfig_callback(FAR struct net_driver_s *dev, void *arg)
 {
   struct nsh_vtbl_s *vtbl = (struct nsh_vtbl_s*)arg;
+#ifdef CONFIG_NET_IPv4
   struct in_addr addr;
+#endif
+#ifdef CONFIG_NET_IPv6
+  char addrstr[INET6_ADDRSTRLEN];
+  uint8_t preflen;
+#endif
   uint8_t iff;
   const char *status;
   int ret;
@@ -305,18 +495,27 @@ int ifconfig_callback(FAR struct net_driver_s *dev, void *arg)
       status = "DOWN";
     }
 
-#ifdef CONFIG_NET_ETHERNET
+#if defined(CONFIG_NET_ETHERNET)
   /* REVISIT: How will we handle Ethernet and SLIP networks together? */
 
-  nsh_output(vtbl, "%s\tHWaddr %s at %s\n",
+  nsh_output(vtbl, "%s\tLink encap: Ethernet HWaddr %s at %s\n",
              dev->d_ifname, ether_ntoa(&dev->d_mac), status);
+#elif defined(CONFIG_NET_SLIP)
+  nsh_output(vtbl, "%s\tLink encap:SLIP\n");
 #endif
 
+#ifdef CONFIG_NET_IPv4
+  /* Show the IPv4 address */
+
   addr.s_addr = dev->d_ipaddr;
-  nsh_output(vtbl, "\tIPaddr:%s ", inet_ntoa(addr));
+  nsh_output(vtbl, "\tinet addr:%s ", inet_ntoa(addr));
+
+  /* Show the IPv4 default router address */
 
   addr.s_addr = dev->d_draddr;
   nsh_output(vtbl, "DRaddr:%s ", inet_ntoa(addr));
+
+  /* Show the IPv4 network mask */
 
   addr.s_addr = dev->d_netmask;
   nsh_output(vtbl, "Mask:%s\n", inet_ntoa(addr));
@@ -325,10 +524,36 @@ int ifconfig_callback(FAR struct net_driver_s *dev, void *arg)
   dns_getserver(&addr);
   nsh_output(vtbl, "\tDNSaddr:%s\n", inet_ntoa(addr));
 #endif
+#endif
+
+#ifdef CONFIG_NET_IPv6
+  /* Convert the 128 network mask to a human friendly prefix length */
+
+  preflen = netlib_ipv6netmask2prefix(dev->d_ipv6netmask);
+
+  /* Show the assigned IPv6 address */
+
+  if (inet_ntop(AF_INET6, dev->d_ipv6addr, addrstr, INET6_ADDRSTRLEN))
+    {
+      nsh_output(vtbl, "\tinet6 addr:%s/%d\n", addrstr, preflen);
+    }
+
+  /* REVISIT: Show the IPv6 default router address */
+
+  if (inet_ntop(AF_INET6, dev->d_ipv6draddr, addrstr, INET6_ADDRSTRLEN))
+    {
+      nsh_output(vtbl, "\tinet6 DRaddr:%s/%d\n", addrstr, preflen);
+    }
+
+#if defined(CONFIG_NSH_DHCPCv6) || defined(CONFIG_NSH_DNS)
+#  warning Missing logic
+#endif
+#endif
 
   nsh_output(vtbl, "\n");
   return OK;
 }
+#endif /* !CONFIG_NSH_DISABLE_IFUPDOWN || !CONFIG_NSH_DISABLE_IFCONFIG */
 
 /****************************************************************************
  * Name: tftpc_parseargs
@@ -455,6 +680,7 @@ int tftpc_parseargs(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv,
         {
           goto errout;
         }
+
       args->allocated = true;
     }
 
@@ -581,7 +807,12 @@ int cmd_ifdown(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
 #ifndef CONFIG_NSH_DISABLE_IFCONFIG
 int cmd_ifconfig(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
 {
+#ifdef CONFIG_NET_IPv4
   struct in_addr addr;
+#endif
+#ifdef CONFIG_NET_IPv6
+  struct in6_addr addr6;
+#endif
   in_addr_t gip;
   int i;
   FAR char *intf = NULL;
@@ -595,13 +826,16 @@ int cmd_ifconfig(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
 #if defined(CONFIG_NSH_DHCPC) || defined(CONFIG_NSH_DNS)
   FAR char *dns = NULL;
 #endif
+#if defined(CONFIG_NET_IPv4) && defined(CONFIG_NET_IPv6)
+  bool inet6 = false;
+#endif
   bool badarg = false;
   uint8_t mac[IFHWADDRLEN];
 #if defined(CONFIG_NSH_DHCPC)
   FAR void *handle;
 #endif
 
-  /* With one or no arguments, ifconfig simply shows the status of ethernet
+  /* With one or no arguments, ifconfig simply shows the status of Ethernet
    * device:
    *
    *   ifconfig
@@ -660,6 +894,22 @@ int cmd_ifconfig(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
                       badarg = true;
                     }
                 }
+              else if (!strcmp(tmp, "inet"))
+                {
+#if defined(CONFIG_NET_IPv4) && defined(CONFIG_NET_IPv6)
+                  inet6 = false;
+#elif !defined(CONFIG_NET_IPv4)
+                  badarg = true;
+#endif
+                }
+              else if (!strcmp(tmp, "inet6"))
+                {
+#if defined(CONFIG_NET_IPv4) && defined(CONFIG_NET_IPv6)
+                  inet6 = true;
+#elif !defined(CONFIG_NET_IPv6)
+                  badarg = true;
+#endif
+                }
 
 #ifdef CONFIG_NET_ETHERNET
               /* REVISIT: How will we handle Ethernet and SLIP networks together? */
@@ -714,77 +964,148 @@ int cmd_ifconfig(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
     }
 #endif
 
-#if defined(CONFIG_NSH_DHCPC)
-  if (!strcmp(hostip, "dhcp"))
-    {
-      /* Set DHCP addr */
+   /* Set IP address */
 
-      ndbg("DHCPC Mode\n");
-      gip = addr.s_addr = 0;
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+  if (inet6)
+#endif
+    {
+#warning Missing Logic
+      UNUSED(addr6);
+      UNUSED(gip);
+      UNUSED(hostip);
     }
+#endif /* CONFIG_NET_IPv6 */
+
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
   else
 #endif
     {
-      /* Set host IP address */
-
-      ndbg("Host IP: %s\n", hostip);
-      gip = addr.s_addr = inet_addr(hostip);
-    }
-
-  netlib_sethostaddr(intf, &addr);
-
-  /* Set gateway */
-
-  if (gwip)
-    {
-      ndbg("Gateway: %s\n", gwip);
-      gip = addr.s_addr = inet_addr(gwip);
-    }
-  else
-    {
-      if (gip)
+#if defined(CONFIG_NSH_DHCPC)
+      if (!strcmp(hostip, "dhcp"))
         {
-          ndbg("Gateway: default\n");
-          gip  = NTOHL(gip);
-          gip &= ~0x000000ff;
-          gip |= 0x00000001;
-          gip  = HTONL(gip);
+          /* Set DHCP addr */
+
+          ndbg("DHCPC Mode\n");
+          gip = addr.s_addr = 0;
+        }
+      else
+#endif
+        {
+          /* Set host IP address */
+
+          ndbg("Host IP: %s\n", hostip);
+          gip = addr.s_addr = inet_addr(hostip);
         }
 
-      addr.s_addr = gip;
+      netlib_set_ipv4addr(intf, &addr);
     }
+#endif /* CONFIG_NET_IPv4 */
 
-  netlib_setdraddr(intf, &addr);
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+  if (inet6)
+#endif
+    {
+#warning Missing Logic
+      UNUSED(gwip);
+    }
+#endif /* CONFIG_NET_IPv6 */
+
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+  else
+#endif
+    {
+      /* Set gateway */
+
+      if (gwip)
+        {
+          ndbg("Gateway: %s\n", gwip);
+          gip = addr.s_addr = inet_addr(gwip);
+        }
+      else
+        {
+          if (gip)
+            {
+              ndbg("Gateway: default\n");
+              gip  = NTOHL(gip);
+              gip &= ~0x000000ff;
+              gip |= 0x00000001;
+              gip  = HTONL(gip);
+            }
+
+          addr.s_addr = gip;
+        }
+
+      netlib_set_dripv4addr(intf, &addr);
+    }
+#endif /* CONFIG_NET_IPv4 */
 
   /* Set network mask */
 
-  if (mask)
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+  if (inet6)
+#endif
     {
-      ndbg("Netmask: %s\n",mask);
-      addr.s_addr = inet_addr(mask);
+#warning Missing Logic
+      UNUSED(mask);
     }
-  else
-    {
-      ndbg("Netmask: Default\n");
-      addr.s_addr = inet_addr("255.255.255.0");
-    }
+#endif /* CONFIG_NET_IPv6 */
 
-  netlib_setnetmask(intf, &addr);
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+  else
+#endif
+    {
+      if (mask)
+        {
+          ndbg("Netmask: %s\n",mask);
+          addr.s_addr = inet_addr(mask);
+        }
+      else
+        {
+          ndbg("Netmask: Default\n");
+          addr.s_addr = inet_addr("255.255.255.0");
+        }
+
+      netlib_set_ipv4netmask(intf, &addr);
+    }
+#endif /* CONFIG_NET_IPv4 */
 
 #if defined(CONFIG_NSH_DHCPC) || defined(CONFIG_NSH_DNS)
-  if (dns)
-    {
-      ndbg("DNS: %s\n", dns);
-      addr.s_addr = inet_addr(dns);
-    }
-  else
-    {
-      ndbg("DNS: Default\n");
-      addr.s_addr = gip;
-    }
-
-  dns_setserver(&addr);
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+  if (inet6)
 #endif
+    {
+#warning Missing Logic
+    }
+#endif /* CONFIG_NET_IPv6 */
+
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+  else
+#endif
+    {
+      if (dns)
+        {
+          ndbg("DNS: %s\n", dns);
+          addr.s_addr = inet_addr(dns);
+        }
+      else
+        {
+          ndbg("DNS: Default\n");
+          addr.s_addr = gip;
+        }
+
+      dns_setserver(&addr);
+    }
+#endif /* CONFIG_NET_IPv4 */
+#endif /* CONFIG_NSH_DHCPC || CONFIG_NSH_DNS */
 
 #if defined(CONFIG_NSH_DHCPC)
   /* Get the MAC address of the NIC */
@@ -797,8 +1118,9 @@ int cmd_ifconfig(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
 
       handle = dhcpc_open(&mac, IFHWADDRLEN);
 
-      /* Get an IP address.  Note that there is no logic for renewing the IP address in this
-       * example.  The address should be renewed in ds.lease_time/2 seconds.
+      /* Get an IP address.  Note that there is no logic for renewing the IP
+       * address in this example.  The address should be renewed in
+       * ds.lease_time/2 seconds.
        */
 
       if (handle)
@@ -806,16 +1128,16 @@ int cmd_ifconfig(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
           struct dhcpc_state ds;
 
           (void)dhcpc_request(handle, &ds);
-          netlib_sethostaddr("eth0", &ds.ipaddr);
+          netlib_set_ipv4addr("eth0", &ds.ipaddr);
 
           if (ds.netmask.s_addr != 0)
             {
-              netlib_setnetmask("eth0", &ds.netmask);
+              netlib_set_ipv4netmask("eth0", &ds.netmask);
             }
 
           if (ds.default_router.s_addr != 0)
             {
-              netlib_setdraddr("eth0", &ds.default_router);
+              netlib_set_dripv4addr("eth0", &ds.default_router);
             }
 
           if (ds.dnsaddr.s_addr != 0)
@@ -836,103 +1158,46 @@ int cmd_ifconfig(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
  * Name: cmd_ping
  ****************************************************************************/
 
-#if defined(CONFIG_NET_ICMP) && defined(CONFIG_NET_ICMP_PING) && \
-   !defined(CONFIG_DISABLE_SIGNALS)
-#ifndef CONFIG_NSH_DISABLE_PING
+#ifdef HAVE_PING
 int cmd_ping(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
 {
-  FAR const char *fmt = g_fmtarginvalid;
-  const char *staddr;
-  net_ipaddr_t ipaddr;
+  FAR char *staddr;
+  in_addr_t ipaddr;
   uint32_t start;
   uint32_t next;
   uint32_t dsec = 10;
   uint32_t maxwait;
   uint16_t id;
-  bool badarg = false;
   int count = 10;
-  int option;
   int seqno;
   int replies = 0;
   int elapsed;
+  int ret;
   int tmp;
   int i;
 
   /* Get the ping options */
 
-  while ((option = getopt(argc, argv, ":c:i:")) != ERROR)
-    {
-      switch (option)
-        {
-          case 'c':
-            count = atoi(optarg);
-            if (count < 1 || count > 10000)
-              {
-                nsh_output(vtbl, g_fmtargrange, argv[0]);
-                badarg = true;
-              }
-            break;
-
-          case 'i':
-            tmp = atoi(optarg);
-            if (tmp < 1 || tmp >= 4294)
-              {
-                nsh_output(vtbl, g_fmtargrange, argv[0]);
-                badarg = true;
-              }
-            else
-              {
-                dsec = 10 * tmp;
-              }
-            break;
-
-          case ':':
-            nsh_output(vtbl, g_fmtargrequired, argv[0]);
-            badarg = true;
-            break;
-
-          case '?':
-          default:
-            nsh_output(vtbl, g_fmtarginvalid, argv[0]);
-            badarg = true;
-            break;
-        }
-    }
-
-  /* If a bad argument was encountered, then return without processing the command */
-
-  if (badarg)
+  ret = ping_options(vtbl, argc, argv, &count, &dsec, &staddr);
+  if (ret < 0)
     {
       return ERROR;
     }
 
-  /* There should be exactly on parameter left on the command-line */
+  /* Get the IP address in binary form */
 
-  if (optind == argc-1)
+  if (dns_gethostip(staddr, &ipaddr) < 0)
     {
-      staddr = argv[optind];
-      if (dns_gethostip(staddr, &ipaddr) < 0)
-        {
-          goto errout;
-        }
-    }
-  else if (optind >= argc)
-    {
-      fmt = g_fmttoomanyargs;
-      goto errout;
-    }
-  else
-    {
-      fmt = g_fmtargrequired;
-      goto errout;
+      nsh_output(vtbl, g_fmtarginvalid, argv[0]);
+      return ERROR;
     }
 
   /* Get the ID to use */
 
   id = ping_newid();
 
-  /* The maximum wait for a response will be the larger of the inter-ping time and
-   * the configured maximum round-trip time.
+  /* The maximum wait for a response will be the larger of the inter-ping
+   * time and the configured maximum round-trip time.
    */
 
   maxwait = MAX(dsec, CONFIG_NSH_MAX_ROUNDTRIP);
@@ -960,7 +1225,7 @@ int cmd_ping(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
         {
           /* Get the elapsed time from the time that the request was
            * sent until the response was received.  If we got a response
-           * to an earlier request, then fudge the elpased time.
+           * to an earlier request, then fudge the elapsed time.
            */
 
           elapsed = TICK2MSEC(clock_systimer() - next);
@@ -999,13 +1264,131 @@ int cmd_ping(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
   nsh_output(vtbl, "%d packets transmitted, %d received, %d%% packet loss, time %d ms\n",
              count, replies, tmp, elapsed);
   return OK;
-
-errout:
-  nsh_output(vtbl, fmt, argv[0]);
-  return ERROR;
 }
+#endif /* HAVE_PING */
+
+/****************************************************************************
+ * Name: cmd_ping6
+ ****************************************************************************/
+
+#ifdef HAVE_PING6
+int cmd_ping6(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
+{
+  FAR char *staddr;
+  struct in6_addr ipaddr;
+  uint32_t start;
+  uint32_t next;
+  uint32_t dsec = 10;
+  uint32_t maxwait;
+  uint16_t id;
+  int count = 10;
+  int seqno;
+  int replies = 0;
+  int elapsed;
+  int ret;
+  int tmp;
+  int i;
+
+  /* Get the ping options */
+
+  ret = ping_options(vtbl, argc, argv, &count, &dsec, &staddr);
+  if (ret < 0)
+    {
+      return ERROR;
+    }
+
+  /* Get the IP address in binary form
+   * REVISIT:  DNS hostname look-up not yet supported
+   */
+
+#if 0
+  ret = dns_gethostip(staddr, &ipaddr);
+#else
+  ret = inet_pton(AF_INET6, staddr, &ipaddr);
 #endif
-#endif /* CONFIG_NET_ICMP && CONFIG_NET_ICMP_PING */
+  if (ret < 0)
+    {
+      nsh_output(vtbl, g_fmtarginvalid, argv[0]);
+      return ERROR;
+    }
+
+  /* Get the ID to use */
+
+  id = ping_newid();
+
+  /* The maximum wait for a response will be the larger of the inter-ping
+   * time and the configured maximum round-trip time.
+   */
+
+  maxwait = MAX(dsec, CONFIG_NSH_MAX_ROUNDTRIP);
+
+  /* Loop for the specified count */
+
+  nsh_output(vtbl,
+             "PING6 %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x %d bytes of data\n",
+             ntohs(ipaddr.s6_addr16[0]), ntohs(ipaddr.s6_addr16[1]),
+             ntohs(ipaddr.s6_addr16[2]), ntohs(ipaddr.s6_addr16[3]),
+             ntohs(ipaddr.s6_addr16[4]), ntohs(ipaddr.s6_addr16[5]),
+             ntohs(ipaddr.s6_addr16[6]), ntohs(ipaddr.s6_addr16[7]),
+             DEFAULT_PING_DATALEN);
+
+  start = clock_systimer();
+  for (i = 1; i <= count; i++)
+    {
+      /* Send the ECHO request and wait for the response */
+
+      next  = clock_systimer();
+      seqno = icmpv6_ping(ipaddr.s6_addr16, id, i, DEFAULT_PING_DATALEN, maxwait);
+
+      /* Was any response returned? We can tell if a non-negative sequence
+       * number was returned.
+       */
+
+      if (seqno >= 0 && seqno <= i)
+        {
+          /* Get the elapsed time from the time that the request was
+           * sent until the response was received.  If we got a response
+           * to an earlier request, then fudge the elapsed time.
+           */
+
+          elapsed = TICK2MSEC(clock_systimer() - next);
+          if (seqno < i)
+            {
+              elapsed += 100 * dsec * (i - seqno);
+            }
+
+          /* Report the receipt of the reply */
+
+          nsh_output(vtbl, "%d bytes from %s: icmp_seq=%d time=%d ms\n",
+                     DEFAULT_PING_DATALEN, staddr, seqno, elapsed);
+          replies++;
+        }
+
+      /* Wait for the remainder of the interval.  If the last seqno<i,
+       * then this is a bad idea... we will probably lose the response
+       * to the current request!
+       */
+
+      elapsed = TICK2DSEC(clock_systimer() - next);
+      if (elapsed < dsec)
+        {
+          usleep(100000 * (dsec - elapsed));
+        }
+    }
+
+  /* Get the total elapsed time */
+
+  elapsed = TICK2MSEC(clock_systimer() - start);
+
+  /* Calculate the percentage of lost packets */
+
+  tmp = (100*(count - replies) + (count >> 1)) / count;
+
+  nsh_output(vtbl, "%d packets transmitted, %d received, %d%% packet loss, time %d ms\n",
+             count, replies, tmp, elapsed);
+  return OK;
+}
+#endif /* CONFIG_NET_ICMPv6 && CONFIG_NET_ICMPv6_PING */
 
 /****************************************************************************
  * Name: cmd_put
@@ -1091,7 +1474,9 @@ int cmd_wget(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
         }
     }
 
-  /* If a bad argument was encountered, then return without processing the command */
+  /* If a bad argument was encountered, then return without processing the
+   * command
+   */
 
   if (badarg)
     {

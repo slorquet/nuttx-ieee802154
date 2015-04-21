@@ -179,6 +179,17 @@ extern uint32_t _ebss;            /* End+1 of .bss */
 
 #ifndef __ASSEMBLY__
 
+/****************************************************************************
+ * Name: x86_boardinitialize
+ *
+ * Description:
+ *   This function must be provided by the board-specific logic in the
+ *   directory configs/<board-name>/src/.
+ *
+ ****************************************************************************/
+
+void x86_boardinitialize(void);
+
 /* Defined in files with the same name as the function */
 
 extern void up_boot(void);
@@ -233,22 +244,6 @@ extern void up_wdtinit(void);
 /* Defined in up_timerisr.c */
 
 extern void up_timer_initialize(void);
-
-/* Defined in up_irq.c */
-
-extern void up_maskack_irq(int irq);
-
-/* Defined in board/up_leds.c */
-
-#ifdef CONFIG_ARCH_LEDS
-extern void board_led_initialize(void);
-extern void board_led_on(int led);
-extern void board_led_off(int led);
-#else
-# define board_led_initialize()
-# define board_led_on(led)
-# define board_led_off(led)
-#endif
 
 /* Defined in board/up_network.c */
 

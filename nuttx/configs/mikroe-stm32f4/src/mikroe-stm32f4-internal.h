@@ -1,6 +1,5 @@
 /****************************************************************************************************
  * configs/mikroe-stm32f4/src/mikroe-stm32f4-internal.h
- * arch/arm/src/board/mikroe-stm32f4-internal.n
  *
  *   Copyright (C) 2011-2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -46,7 +45,7 @@
 #include <stdint.h>
 
 /****************************************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************************************/
 /* Configuration ************************************************************************************/
 /* How many SPI modules does this chip support? */
@@ -252,19 +251,6 @@ void weak_function stm32_usbinitialize(void);
 
 #if defined(CONFIG_LCD_MIO283QT2) || defined(CONFIG_LCD_MIO283QT9A)
 void stm32_lcdinitialize(void);
-#endif
-
-/****************************************************************************************************
- * Name:  up_lcdinitialize
- *
- * Description:
- *   Initialize the LCD video hardware.  The initial state of the LCD is fully initialized, display
- *   memory cleared, and the LCD ready to use, but with the power setting at 0 (full off).
- *
- ****************************************************************************************************/
-
-#if defined(CONFIG_LCD_MIO283QT2) || defined(CONFIG_LCD_MIO283QT9A)
-int up_lcdinitialize(void);
 #endif
 
 /****************************************************************************************************

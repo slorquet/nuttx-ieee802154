@@ -132,7 +132,7 @@ static uint16_t psock_send_interrupt(FAR struct net_driver_s *dev,
            * flag will be cleared in arp_out().
            */
 
-          dev->d_flags |= IFF_NOARP;
+          IFF_SET_NOARP(dev->d_flags);
         }
 
       /* Don't allow any further call backs. */
@@ -267,14 +267,14 @@ ssize_t psock_pkt_send(FAR struct socket *psock, FAR const void *buf,
           dev = netdev_findbyname("eth0");
 
           /* Notify the device driver that new TX data is available.
-           * NOTES: This is in essence what netdev_txnotify() does, which
-           * is not possible to call since it expects a net_ipaddr_t as
+           * NOTES: This is in essence what netdev_ipv4_txnotify() does,
+           * which is not possible to call since it expects a in_addr_t as
            * its single argument to lookup the network interface.
            */
 
           dev->d_txavail(dev);
 
-          /* Wait for the send to complete or an error to occure: NOTES: (1)
+          /* Wait for the send to complete or an error to occur: NOTES: (1)
            * net_lockedwait will also terminate if a signal is received, (2)
            * interrupts may be disabled! They will be re-enabled while the
            * task sleeps and automatically re-enabled when the task restarts.

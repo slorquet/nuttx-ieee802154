@@ -1,6 +1,5 @@
 /****************************************************************************
  * configs/lpc4330-xplorer/src/xplorer_internal.h
- * arch/arm/src/board/xplorer_internal.n
  *
  *   Copyright (C) 2012 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -48,7 +47,7 @@
 #include "lpc43_gpio.h"
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /****************************************************************************
@@ -123,7 +122,7 @@
  *
  ****************************************************************************/
 
-extern void weak_function lpc43_sspinitialize(void);
+void weak_function lpc43_sspinitialize(void);
 
 #endif /* __ASSEMBLY__ */
 #endif /* _CONFIGS_LPC4330_XPLORER_SRC_XPLORER_INTERNAL_H */

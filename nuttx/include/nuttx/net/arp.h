@@ -2,7 +2,7 @@
  * include/nuttx/net/arp.h
  * Macros and definitions for the ARP module.
  *
- *   Copyright (C) 2007, 2009-2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2007, 2009-2012, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Derived from uIP with has a similar BSD-styple license:
@@ -54,36 +54,15 @@
 #include <net/ethernet.h>
 
 #include <nuttx/net/netconfig.h>
+#include <nuttx/net/ethernet.h>
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
-
-/* Recognized values of the type bytes in the Ethernet header */
-
-#define ETHTYPE_ARP     0x0806 /* Address resolution protocol */
-#define ETHTYPE_IP      0x0800 /* IP protocol */
-#define ETHTYPE_IP6     0x86dd /* IP protocol version 6 */
-
-/* Size of the Ethernet header */
-
-#define ETH_HDRLEN      14     /* Minimum size: 2*6 + 2 */
 
 /****************************************************************************
  * Public Types
  ****************************************************************************/
-
-/* The Ethernet header -- 14 bytes. The first two fields are type 'struct
- * ether_addr but are represented as a simple byte array here because
- * some compilers refuse to pack 6 byte structures.
- */
-
-struct eth_hdr_s
-{
-  uint8_t  dest[6]; /* Ethernet destination address (6 bytes) */
-  uint8_t  src[6];  /* Ethernet source address (6 bytes) */
-  uint16_t type;    /* Type code (2 bytes) */
-};
 
 /* One entry in the ARP table (volatile!) */
 
@@ -161,20 +140,20 @@ void arp_arpin(struct net_driver_s *dev);
  * Name: arp_out
  *
  * Description:
- *   This function should be called before sending out an IP packet. The
- *   function checks the destination IP address of the IP packet to see
+ *   This function should be called before sending out an IPv4 packet. The
+ *   function checks the destination IPv4 address of the IPv4 packet to see
  *   what Ethernet MAC address that should be used as a destination MAC
  *   address on the Ethernet.
  *
- *   If the destination IP address is in the local network (determined
- *   by logical ANDing of netmask and our IP address), the function
- *   checks the ARP cache to see if an entry for the destination IP
+ *   If the destination IPv4 address is in the local network (determined
+ *   by logical ANDing of netmask and our IPv4 address), the function
+ *   checks the ARP cache to see if an entry for the destination IPv4
  *   address is found.  If so, an Ethernet header is pre-pended at the
  *   beginning of the packet and the function returns.
  *
- *   If no ARP cache entry is found for the destination IP address, the
+ *   If no ARP cache entry is found for the destination IIPv4P address, the
  *   packet in the d_buf[] is replaced by an ARP request packet for the
- *   IP address. The IP packet is dropped and it is assumed that the
+ *   IPv4 address. The IPv4 packet is dropped and it is assumed that the
  *   higher level protocols (e.g., TCP) eventually will retransmit the
  *   dropped packet.
  *

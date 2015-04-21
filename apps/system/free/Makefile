@@ -42,8 +42,7 @@ ifeq ($(WINTOOL),y)
 INCDIROPT = -w
 endif
 
-# Hello Application
-# TODO: appname can be automatically extracted from the directory name
+# Replacement free command
 
 APPNAME = free
 PRIORITY = SCHED_PRIORITY_DEFAULT

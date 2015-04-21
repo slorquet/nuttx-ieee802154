@@ -2,7 +2,7 @@
  * include/nuttx/net/netdev.h
  * Defines architecture-specific device driver interfaces to the uIP network.
  *
- *   Copyright (C) 2007, 2009, 2011-2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2007, 2009, 2011-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Derived largely from portions of uIP with has a similar BSD-styple license:
@@ -99,25 +99,33 @@ struct net_driver_s
 #ifdef CONFIG_NET_MULTILINK
   /* Multi network devices using multiple data links protocols are selected */
 
-  uint8_t d_lltype;         /* See enum net_datalink_e */
-  uint8_t d_llhdrlen;       /* Link layer header size */
-  uint16_t d_mtu;           /* Maximum packet size */
+  uint8_t d_lltype;             /* See enum net_lltype_e */
+  uint8_t d_llhdrlen;           /* Link layer header size */
+  uint16_t d_mtu;               /* Maximum packet size */
 #ifdef CONFIG_NET_TCP
-  uint16_t d_recvwndo;      /* TCP receive window size */
+  uint16_t d_recvwndo;          /* TCP receive window size */
 #endif
 #endif
 
 #ifdef CONFIG_NET_ETHERNET
   /* Ethernet device identity */
 
-  struct ether_addr d_mac;  /* Device MAC address */
+  struct ether_addr d_mac;      /* Device MAC address */
 #endif
 
   /* Network identity */
 
-  net_ipaddr_t d_ipaddr;    /* Host IP address assigned to the network interface */
-  net_ipaddr_t d_draddr;    /* Default router IP address */
-  net_ipaddr_t d_netmask;   /* Network subnet mask */
+#ifdef CONFIG_NET_IPv4
+  in_addr_t      d_ipaddr;      /* Host IPv4 address assigned to the network interface */
+  in_addr_t      d_draddr;      /* Default router IP address */
+  in_addr_t      d_netmask;     /* Network subnet mask */
+#endif
+
+#ifdef CONFIG_NET_IPv6
+  net_ipv6addr_t d_ipv6addr;    /* Host IPv6 address assigned to the network interface */
+  net_ipv6addr_t d_ipv6draddr;  /* Default router IPv6 address */
+  net_ipv6addr_t d_ipv6netmask; /* Network IPv6 subnet mask */
+#endif
 
   /* The d_buf array is used to hold incoming and outgoing packets. The device
    * driver should place incoming data into this buffer. When sending data,
@@ -138,16 +146,10 @@ struct net_driver_s
 #endif
 
   /* d_appdata points to the location where application data can be read from
-   * or written into a packet.
+   * or written to in the the packet buffer.
    */
 
   uint8_t *d_appdata;
-
-  /* This is a pointer into d_buf where a user application may append
-   * data to be sent.
-   */
-
-  uint8_t *d_snddata;
 
 #ifdef CONFIG_NET_TCPURGDATA
   /* This pointer points to any urgent TCP data that has been received. Only
@@ -177,7 +179,7 @@ struct net_driver_s
   uint16_t d_len;
 
   /* When d_buf contains outgoing xmit data, d_sndlen is non-zero and represents
-   * the amount of application data after d_snddata
+   * the amount of application data after d_appdata
    */
 
   uint16_t d_sndlen;
@@ -225,7 +227,7 @@ typedef int (*devif_poll_callback_t)(FAR struct net_driver_s *dev);
  * These functions are used by a network device driver for interacting
  * with uIP.
  *
- * Process an incoming packet.
+ * Process an incoming IP packet.
  *
  * This function should be called when the device driver has received
  * a packet from the network. The packet from the device driver must
@@ -243,7 +245,7 @@ typedef int (*devif_poll_callback_t)(FAR struct net_driver_s *dev);
  *     dev->d_len = devicedriver_poll();
  *     if (dev->d_len > 0)
  *       {
- *         devif_input(dev);
+ *         ipv4_input(dev);
  *         if (dev->d_len > 0)
  *           {
  *             devicedriver_send();
@@ -262,7 +264,7 @@ typedef int (*devif_poll_callback_t)(FAR struct net_driver_s *dev);
  *         if (BUF->type == HTONS(ETHTYPE_IP))
  *           {
  *             arp_ipin();
- *             devif_input(dev);
+ *             ipv4_input(dev);
  *             if (dev->d_len > 0)
  *               {
  *                 arp_out();
@@ -280,7 +282,13 @@ typedef int (*devif_poll_callback_t)(FAR struct net_driver_s *dev);
  *
  ****************************************************************************/
 
-int devif_input(FAR struct net_driver_s *dev);
+#ifdef CONFIG_NET_IPv4
+int ipv4_input(FAR struct net_driver_s *dev);
+#endif
+
+#ifdef CONFIG_NET_IPv6
+int ipv6_input(FAR struct net_driver_s *dev);
+#endif
 
 /****************************************************************************
  * Polling of connections
@@ -336,7 +344,39 @@ int devif_input(FAR struct net_driver_s *dev);
  ****************************************************************************/
 
 int devif_poll(FAR struct net_driver_s *dev, devif_poll_callback_t callback);
-int devif_timer(FAR struct net_driver_s *dev, devif_poll_callback_t callback, int hsec);
+int devif_timer(FAR struct net_driver_s *dev, devif_poll_callback_t callback,
+                int hsec);
+
+/****************************************************************************
+ * Name: neighbor_out
+ *
+ * Description:
+ *   This function should be called before sending out an IPv6 packet. The
+ *   function checks the destination IPv6 address of the IPv6 packet to see
+ *   what Ethernet MAC address that should be used as a destination MAC
+ *   address on the Ethernet.
+ *
+ *   If the destination IPv6 address is in the local network (determined
+ *   by logical ANDing of netmask and our IPv6 address), the function
+ *   checks the Neighbor Table to see if an entry for the destination IPv6
+ *   address is found.  If so, an Ethernet header is pre-pended at the
+ *   beginning of the packet and the function returns.
+ *
+ *   If no Neighbor Table entry is found for the destination IPv6 address,
+ *   the packet in the d_buf[] is replaced by an ICMPv6 Neighbor Solict
+ *   request packet for the IPv6 address. The IPv6 packet is dropped and 
+ *   it is assumed that the higher level protocols (e.g., TCP) eventually
+ *   will retransmit the dropped packet.
+ *
+ *   Upon return in either the case, a packet to be sent is present in the
+ *   d_buf[] buffer and the d_len field holds the length of the Ethernet
+ *   frame that should be transmitted.
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_IPv6
+void neighbor_out(FAR struct net_driver_s *dev);
+#endif /* CONFIG_NET_IPv6 */
 
 /****************************************************************************
  * Carrier detection
@@ -441,4 +481,47 @@ uint16_t ipv4_chksum(FAR struct net_driver_s *dev);
 #ifdef CONFIG_NET_IPv6
 uint16_t ipv6_chksum(FAR struct net_driver_s *dev);
 #endif
+
+/****************************************************************************
+ * Function: netdev_ipv4_hdrlen
+ *
+ * Description:
+ *    Provide header length for interface based on device
+ *
+ * Input Parameters:
+ *   dev Device structure pointer
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_IPv4
+#if defined(CONFIG_NET_MULTILINK)
+#  define netdev_ipv4_hdrlen(dev) (dev->d_llhdrlen)
+#elif defined(CONFIG_NET_ETHERNET)
+#  define netdev_ipv4_hdrlen(dev) ETH_HDRLEN
+#else /* if defined(CONFIG_NET_SLIP) */
+#  define netdev_ipv4_hdrlen(dev) 0
+#endif
+#endif /* CONFIG_NET_IPv4 */
+
+/****************************************************************************
+ * Function: netdev_ipv6_hdrlen
+ *
+ * Description:
+ *    Provide header lenght for interface based on device
+ *
+ * Input Parameters:
+ *   dev Device structure pointer
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_IPv6
+#if defined(CONFIG_NET_MULTILINK)
+#  define netdev_ipv6_hdrlen(dev) dev->d_llhdrlen
+#elif defined(CONFIG_NET_ETHERNET)
+#  define netdev_ipv6_hdrlen(dev) ETH_HDRLEN
+#else /* if defined(CONFIG_NET_SLIP) */
+#  define netdev_ipv6_hdrlen(dev) 0
+#endif
+#endif /* CONFIG_NET_IPv6 */
+
 #endif /* __INCLUDE_NUTTX_NET_NETDEV_H */

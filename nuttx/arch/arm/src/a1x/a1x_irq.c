@@ -166,7 +166,7 @@ void up_irqinitialize(void)
 
   /* Colorize the interrupt stack for debug purposes */
 
-#if defined(CONFIG_DEBUG_STACK) && CONFIG_ARCH_INTERRUPTSTACK > 3
+#if defined(CONFIG_STACK_COLORATION) && CONFIG_ARCH_INTERRUPTSTACK > 3
   {
     size_t intstack_size = (CONFIG_ARCH_INTERRUPTSTACK & ~3);
     up_stack_color((FAR void *)((uintptr_t)&g_intstackbase - intstack_size),
@@ -415,25 +415,6 @@ void up_enable_irq(int irq)
       a1x_pio_irqenable(irq);
     }
 #endif
-}
-
-/****************************************************************************
- * Name: up_maskack_irq
- *
- * Description:
- *   Mask the IRQ and acknowledge it
- *
- ****************************************************************************/
-
-void up_maskack_irq(int irq)
-{
-  /* Disable the interrupt */
-
-  up_disable_irq(irq);
-
-  /* There is no need to acknowledge the interrupt.  The pending interrupt
-   * was cleared in arm_decodeirq() when the PEND register was read.
-   */
 }
 
 /****************************************************************************

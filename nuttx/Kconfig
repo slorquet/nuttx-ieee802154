@@ -390,10 +390,6 @@ config DEBUG
 		Note that enabling this option by itself does not produce debug output.
 		Debug output must also be selected on a subsystem-by-subsystem basis.
 
-config ARCH_HAVE_STACKCHECK
-	bool
-	default n
-
 config ARCH_HAVE_HEAPCHECK
 	bool
 	default n
@@ -521,13 +517,6 @@ config DEBUG_PAGING
 	depends on PAGING
 	---help---
 		Enable demand paging debug SYSLOG output (disabled by default)
-
-config DEBUG_STACK
-	bool "Stack usage debug hooks"
-	default n
-	depends on ARCH_HAVE_STACKCHECK
-	---help---
-		Enable hooks to check stack usage.  Only supported by a few architectures.
 
 comment "Driver Debug Options"
 
@@ -674,6 +663,21 @@ config DEBUG_WATCHDOG
 		be available for some MCUs.
 
 endif # DEBUG
+
+config ARCH_HAVE_STACKCHECK
+	bool
+	default n
+
+config STACK_COLORATION
+	bool "Stack coloration"
+	default n
+	depends on ARCH_HAVE_STACKCHECK
+	---help---
+		Enable stack coloration to initialize the stack memory to the value
+		of STACK_COLOR and enable the stack checking APIs that can be used
+		to monitor the level of stack usage.
+
+		Only supported by a few architectures.
 
 config DEBUG_SYMBOLS
 	bool "Generate Debug Symbols"

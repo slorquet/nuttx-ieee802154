@@ -42,12 +42,13 @@
 #include <sys/types.h>
 
 #include <stdint.h>
+#include <string.h>
 #include <errno.h>
 #include <assert.h>
 #include <debug.h>
 
 #include <nuttx/kmalloc.h>
-#include <nuttx/timer.h>
+#include <nuttx/timers/timer.h>
 
 #include <arch/board/board.h>
 
@@ -56,7 +57,7 @@
 #if defined(CONFIG_TIMER) && defined(CONFIG_TIVA_TIMER)
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /****************************************************************************
@@ -91,7 +92,7 @@ static void     tiva_timeout(struct tiva_lowerhalf_s *priv, uint32_t timeout);
 
 /* Interrupt handling *******************************************************/
 
-static void     tiva_handler(TIMER_HANDLE handle, void *arg, uint32_t status);
+static void     tiva_timer_handler(TIMER_HANDLE handle, void *arg, uint32_t status);
 
 /* "Lower half" driver methods **********************************************/
 
@@ -218,7 +219,7 @@ static void tiva_timeout(struct tiva_lowerhalf_s *priv, uint32_t timeout)
 }
 
 /****************************************************************************
- * Name: tiva_handler
+ * Name: tiva_timer_handler
  *
  * Description:
  *   32-bit timer interrupt handler
@@ -231,7 +232,7 @@ static void tiva_timeout(struct tiva_lowerhalf_s *priv, uint32_t timeout)
  *
  ****************************************************************************/
 
-static void tiva_handler(TIMER_HANDLE handle, void *arg, uint32_t status)
+static void tiva_timer_handler(TIMER_HANDLE handle, void *arg, uint32_t status)
 {
   struct tiva_lowerhalf_s *priv = (struct tiva_lowerhalf_s *)arg;
 
@@ -511,7 +512,6 @@ static tccb_t tiva_sethandler(struct timer_lowerhalf_s *lower,
 static int tiva_ioctl(struct timer_lowerhalf_s *lower, int cmd,
                     unsigned long arg)
 {
-  struct tiva_lowerhalf_s *priv = (struct tiva_lowerhalf_s *)lower;
   int ret = -ENOTTY;
 
   DEBUGASSERT(priv);
@@ -525,7 +525,7 @@ static int tiva_ioctl(struct timer_lowerhalf_s *lower, int cmd,
  ****************************************************************************/
 
 /****************************************************************************
- * Name: tiva_timer_register
+ * Name: tiva_timer_initialize
  *
  * Description:
  *   Bind the configuration timer to a timer lower half instance and
@@ -541,8 +541,7 @@ static int tiva_ioctl(struct timer_lowerhalf_s *lower, int cmd,
  * Input Parameters:
  *   devpath - The full path to the timer device.  This should be of the
  *     form /dev/timer0
- *   gptm - General purpose timer number
- *   altlck - True: Use alternate clock source.
+ *   config - 32-bit timer configuration values.
  *
  * Returned Values:
  *   Zero (OK) is returned on success; A negated errno value is returned
@@ -550,15 +549,15 @@ static int tiva_ioctl(struct timer_lowerhalf_s *lower, int cmd,
  *
  ****************************************************************************/
 
-int tiva_timer_register(FAR const char *devpath, int gptm, bool altclk)
+int tiva_timer_initialize(FAR const char *devpath,
+                          struct tiva_gptm32config_s *config)
 {
   struct tiva_lowerhalf_s *priv;
-  struct tiva_gptm32config_s *config;
   void *drvr;
   int ret;
 
+  timvdbg("\n");
   DEBUGASSERT(devpath);
-  timvdbg("Entry: devpath=%s\n", devpath);
 
   /* Allocate an instance of the lower half state structure */
 
@@ -572,15 +571,23 @@ int tiva_timer_register(FAR const char *devpath, int gptm, bool altclk)
   /* Initialize the non-zero elements of lower half state structure */
 
   priv->ops                          = &g_timer_ops;
-  priv->clkin                        = altclk ? ALTCLK_FREQUENCY : SYSCLK_FREQUENCY;
+#ifdef CONFIG_ARCH_CHIP_TM4C129
+  priv->clkin                        = config->cmn.alternate ? ALTCLK_FREQUENCY : SYSCLK_FREQUENCY;
+#else
+  if (config->cmn.alternate)
+    {
+      timdbg("ERROR: Alternate clock unsupported on TM4C123 architecture\n");
+      return -ENOMEM;
+    }
+  else
+    {
+      priv->clkin                    = SYSCLK_FREQUENCY;
+    }
+#endif /* CONFIG_ARCH_CHIP_TM4C129 */
 
-  config                             = &priv->config;
-  config->cmn.gptm                   = gptm;
-  config->cmn.mode                   = TIMER32_MODE_PERIODIC;
-  config->cmn.alternate              = altclk;
-  config->config.flags               = TIMER_FLAG_COUNTUP;
-  config->config.handler             = tiva_handler;
+  config->config.handler             = tiva_timer_handler;
   config->config.arg                 = priv;
+  memcpy(&(priv->config), config, sizeof(struct tiva_gptm32config_s));
 
   /* Set the initial timer interval */
 

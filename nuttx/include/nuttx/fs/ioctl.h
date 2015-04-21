@@ -73,7 +73,10 @@
 #define _TCIOCBASE      (0x1400) /* Timer ioctl commands */
 #define _DJOYBASE       (0x1500) /* Discrete joystick ioctl commands */
 #define _AJOYBASE       (0x1600) /* Analog joystick ioctl commands */
-#define _MAC854BASE     (0x1700) /* IEEE 802.15.4 MAC commands */
+#define _PIPEBASE       (0x1700) /* FIFO/pipe ioctl commands */
+#define _RTCBASE        (0x1800) /* RTC ioctl commands */
+#define _BOARDBASE      (0x1900) /* boardctl commands */
+#define _MAC854BASE     (0x1A00) /* IEEE 802.15.4 MAC commands */
 
 /* Macros used to manage ioctl commands */
 
@@ -227,6 +230,10 @@
                                            * OUT: None */
 #define MTDIOC_SETSPEED   _MTDIOC(0x0004) /* IN:  New bus speed in Hz
                                            * OUT: None */
+#define MTDIOC_EXTENDED   _MTDIOC(0x0005) /* IN:  unsigned long
+                                           *      0=Use normal memory region
+                                           *      1=Use alternate/extended memory
+                                           * OUT: None */
 
 /* NuttX ARP driver ioctl definitions (see netinet/arp.h) *******************/
 
@@ -316,6 +323,29 @@
 
 #define _AJOYIOCVALID(c)   (_IOC_TYPE(c)==_AJOYBASE)
 #define _AJOYIOC(nr)       _IOC(_AJOYBASE,nr)
+
+/* FIFOs and pipe driver ioctl definitions **********************************/
+
+#define _PIPEIOCVALID(c)   (_IOC_TYPE(c)==_PIPEBASE)
+#define _PIPEIOC(nr)       _IOC(_PIPEBASE,nr)
+
+#define PIPEIOC_POLICY     _PIPEIOC(0x0001)  /* Set buffer policy
+                                              * IN: unsigned long integer
+                                              *     0=free on last close
+                                              *       (default)
+                                              *     1=fre when empty
+                                              * OUT: None */
+
+/* RTC driver ioctl definitions *********************************************/
+/* (see nuttx/include/rtc.h */
+
+#define _RTCIOCVALID(c)   (_IOC_TYPE(c)==_RTCBASE)
+#define _RTCIOC(nr)       _IOC(_RTCBASE,nr)
+
+/* boardctl() command definitions *******************************************/
+
+#define _BOARDIOCVALID(c) (_IOC_TYPE(c)==_BOARDBASE)
+#define _BOARDIOC(nr)     _IOC(_BOARDBASE,nr)
 
 /* IEEE 802.15.4 MAC driver ioctl definitions *******************************/
 /* (see nuttx/include/nuttx/ieee802154/ieee802154.h */

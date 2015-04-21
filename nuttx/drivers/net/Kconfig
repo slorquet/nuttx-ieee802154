@@ -296,6 +296,9 @@ config ETH0_PHY_KS8721
 config ETH0_PHY_KSZ8051
 	bool "Micrel KSZ8051 PHY"
 
+config ETH0_PHY_KSZ8061
+	bool "Micrel KSZ8061 PHY"
+
 config ETH0_PHY_KSZ8081
 	bool "Micrel KSZ8081 PHY"
 
@@ -307,6 +310,12 @@ config ETH0_PHY_DP83848C
 
 config ETH0_PHY_LAN8720
 	bool "SMSC LAN8720 PHY"
+
+config ETH0_PHY_LAN8740
+	bool "SMSC LAN8740 PHY"
+
+config ETH0_PHY_LAN8740A
+	bool "SMSC LAN8740A PHY"
 
 config ETH0_PHY_DM9161
 	bool "Davicom DM9161 PHY"

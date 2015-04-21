@@ -169,8 +169,20 @@ config ARCH_CHIP_STM32L162ZD
 	select STM32_STM32L15XX
 	select STM32_ENERGYLITE
 	select STM32_HIGHDENSITY
+	select STM32_HAVE_AES
 	---help---
 		STM32L 144-pin EnergyLite, 384KB FLASH, 48KB SRAM, 12KB EEPRROM with
+		8x40 LCD interface
+
+config ARCH_CHIP_STM32L162VE
+	bool "STM32L162VE"
+	select ARCH_CORTEXM3
+	select STM32_STM32L15XX
+	select STM32_ENERGYLITE
+	select STM32_HIGHDENSITY
+	select STM32_HAVE_AES
+	---help---
+		STM32L 100-pin EnergyLite, 512KB FLASH, 80KB SRAM, 16KB EEPRROM with
 		8x40 LCD interface
 
 config ARCH_CHIP_STM32F100C8
@@ -466,6 +478,114 @@ config ARCH_CHIP_STM32F303VC
 	select STM32_STM32F30XX
 	select ARCH_HAVE_FPU
 
+config ARCH_CHIP_STM32F372C8
+	bool "STM32F372C8"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F372R8
+	bool "STM32F372R8"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F372V8
+	bool "STM32F372V8"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F372CB
+	bool "STM32F372CB"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F372RB
+	bool "STM32F372RB"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F372VB
+	bool "STM32F372VB"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F372CC
+	bool "STM32F372CC"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F372RC
+	bool "STM32F372RC"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F372VC
+	bool "STM32F372VC"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F373C8
+	bool "STM32F373C8"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F373R8
+	bool "STM32F373R8"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F373V8
+	bool "STM32F373V8"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F373CB
+	bool "STM32F373CB"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F373RB
+	bool "STM32F373RB"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F373VB
+	bool "STM32F373VB"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F373CC
+	bool "STM32F373CC"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F373RC
+	bool "STM32F373RC"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F373VC
+	bool "STM32F373VC"
+	select ARCH_CORTEXM4
+	select STM32_STM32F37XX
+	select ARCH_HAVE_FPU
+
 config ARCH_CHIP_STM32F401RE
 	bool "STM32F401RE"
 	select ARCH_CORTEXM4
@@ -607,6 +727,7 @@ config STM32_STM32L15XX
 	default n
 	select STM32_HAVE_SPI2
 	select STM32_HAVE_SPI3
+	select STM32_HAVE_RTC_SUBSECONDS if !STM32_LOWDENSITY
 
 config STM32_ENERGYLITE
 	bool
@@ -625,6 +746,7 @@ config STM32_STM32F10XX
 	default n
 	select STM32_HAVE_SPI2 if STM32_HIGHDENSITY || STM32_MEDIUMDENSITY
 	select STM32_HAVE_SPI3 if STM32_HIGHDENSITY || STM32_MEDIUMDENSITY
+	select STM32_HAVE_RTC_COUNTER
 
 config STM32_VALUELINE
 	bool
@@ -784,6 +906,19 @@ config STM32_STM32F30XX
 	select STM32_HAVE_CAN1
 	select STM32_HAVE_SPI2
 
+config STM32_STM32F37XX
+	bool
+	default n
+	select STM32_HAVE_USBDEV
+	select STM32_HAVE_TIM5
+	select STM32_HAVE_TIM6
+	select STM32_HAVE_TIM7
+	select STM32_HAVE_TIM15
+	select STM32_HAVE_TIM16
+	select STM32_HAVE_TIM17
+	select STM32_HAVE_CAN1
+	select STM32_HAVE_USART3
+
 config STM32_STM32F40XX
 	bool
 	default n
@@ -903,6 +1038,7 @@ config STM32_STM32F427
 	select STM32_HAVE_SPI3
 	select STM32_HAVE_SPI4
 	select STM32_HAVE_SPI5
+	select STM32_HAVE_SPI6
 
 # This is really 429/439, but we treat the two the same.
 config STM32_STM32F429
@@ -936,6 +1072,7 @@ config STM32_STM32F429
 	select STM32_HAVE_SPI3
 	select STM32_HAVE_SPI4
 	select STM32_HAVE_SPI5
+	select STM32_HAVE_SPI6
 
 config STM32_DFU
 	bool "DFU bootloader"
@@ -1090,6 +1227,10 @@ config STM32_HAVE_SPI5
 	bool
 	default n
 
+config STM32_HAVE_SPI6
+	bool
+	default n
+
 # These are the peripheral selections proper
 
 config STM32_ADC1
@@ -1126,7 +1267,7 @@ config STM32_BKP
 	depends on STM32_STM32F10XX
 
 config STM32_BKPSRAM
-	bool "BKP RAM"
+	bool "Enable BKP RAM Domain"
 	default n
 	depends on STM32_STM32F207 || STM32_STM32F40XX
 
@@ -1148,6 +1289,13 @@ config STM32_CCMDATARAM
 	bool "CMD/DATA RAM"
 	default n
 	depends on STM32_STM32F40XX
+
+config STM32_AES
+	bool "128-bit AES"
+	default n
+	depends on STM32_HAVE_AES
+	select CRYPTO_AES192_DISABLE if CRYPTO_ALGTEST
+	select CRYPTO_AES256_DISABLE if CRYPTO_ALGTEST
 
 config STM32_CEC
 	bool "CEC"
@@ -1306,14 +1454,14 @@ config STM32_SPI5
 config STM32_SPI6
 	bool "SPI6"
 	default n
-	depends on STM32_STM32F427 || STM32_STM32F429
+	depends on STM32_HAVE_SPI6
 	select SPI
 	select STM32_SPI
 
 config STM32_SYSCFG
 	bool "SYSCFG"
 	default y
-	depends on STM32_STM32L15XX || STM32_STM32F30XX || STM32_STM32F207 || STM32_STM32F40XX
+	depends on STM32_STM32L15XX || STM32_STM32F30XX || STM32_STM32F37XX || STM32_STM32F207 || STM32_STM32F40XX
 
 config STM32_TIM1
 	bool "TIM1"
@@ -1501,6 +1649,13 @@ config STM32_I2C
 
 config STM32_CAN
 	bool
+
+config STM32_NOEXT_VECTORS
+	bool "Disable the ARMv7-M EXT vectors"
+	default n
+	---help---
+		Sometimes you may not need any Vector support beyond SysTick
+		and wish to save memory. This applies only to ARMv7-M architectures.
 
 menu "Alternate Pin Mapping"
 
@@ -3239,6 +3394,41 @@ config SDIO_WIDTH_D1_ONLY
 
 endmenu
 
+if STM32_BKPSRAM
+
+config STM32_BBSRAM
+	bool "BBSRAM File Support"
+	default n
+
+config STM32_BBSRAM_FILES
+	int "Max Files to support in BBSRAM"
+	default 4
+
+config STM32_SAVE_CRASHDUMP
+	bool "Enable Saving Panic to BBSRAM"
+	default n
+
+endif # STM32_BKPSRAM
+
+config STM32_HAVE_RTC_COUNTER
+	bool
+	default n
+
+config STM32_HAVE_RTC_SUBSECONDS
+	bool
+	default n
+
+config RTC_MAGIC_REG
+	int "The BKP register used to store/check the Magic value to determine if RTC is set already"
+	default 0
+	range  0 19
+	depends on RTC && !STM32_HAVE_RTC_COUNTER
+
+config RTC_MAGIC
+	hex "Value used as Magic to determine if RTC is set already"
+	default 0xfacefeee
+	depends on RTC && !STM32_HAVE_RTC_COUNTER
+
 choice
 	prompt "RTC clock source"
 	default RTC_LSECLOCK
@@ -3754,7 +3944,13 @@ config FB_CMAP
 	bool "Enable color map support"
 	default y
 	---help---
-		Enabling color map suport is neccessary for ltdc L8 format.
+		Enabling color map support is neccessary for ltdc L8 format.
+
+config FB_TRANSPARENCY
+	bool "Enable transparency color map support"
+	default y
+	---help---
+		Enabling transparency color map support is neccessary for ltdc L8 format.
 
 endif
 endmenu
@@ -3774,14 +3970,17 @@ config STM32_DMA2D_NLAYERS
 menu "Supported pixel format"
 
 config STM32_DMA2D_L8
+	depends on FB_CMAP
 	bool "8 bpp L8 (8-bit CLUT)"
 	default y
 
 config STM32_DMA2D_AL44
+	depends on FB_CMAP
 	bool "8 bpp AL44 (4-bit alpha + 4-bit CLUT)"
 	default n
 
 config STM32_DMA2D_AL88
+	depends on FB_CMAP
 	bool "16 bpp AL88 (8-bit alpha + 8-bit CLUT)"
 	default n
 

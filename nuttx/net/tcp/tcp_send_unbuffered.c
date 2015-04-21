@@ -48,6 +48,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 #include <debug.h>
 
 #include <arch/irq.h>
@@ -60,18 +61,28 @@
 #include "netdev/netdev.h"
 #include "devif/devif.h"
 #include "arp/arp.h"
+#include "icmpv6/icmpv6.h"
+#include "neighbor/neighbor.h"
 #include "tcp/tcp.h"
 #include "socket/socket.h"
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
+/* If both IPv4 and IPv6 support are both enabled, then we will need to build
+ * in some additional domain selection support.
+ */
+
+#if defined(CONFIG_NET_IPv4) && defined(CONFIG_NET_IPv6)
+#  define NEED_IPDOMAIN_SUPPORT 1
+#endif
 
 #if defined(CONFIG_NET_TCP_SPLIT) && !defined(CONFIG_NET_TCP_SPLIT_SIZE)
 #  define CONFIG_NET_TCP_SPLIT_SIZE 40
 #endif
 
-#define TCPBUF ((struct tcp_iphdr_s *)&dev->d_buf[NET_LL_HDRLEN(dev)])
+#define TCPIPv4BUF ((struct tcp_hdr_s *)&dev->d_buf[NET_LL_HDRLEN(dev) + IPv4_HDRLEN])
+#define TCPIPv6BUF ((struct tcp_hdr_s *)&dev->d_buf[NET_LL_HDRLEN(dev) + IPv6_HDRLEN])
 
 /****************************************************************************
  * Private Types
@@ -123,7 +134,7 @@ struct send_s
 #ifdef CONFIG_NET_SOCKOPTS
 static inline int send_timeout(FAR struct send_s *pstate)
 {
-  FAR struct socket *psock = 0;
+  FAR struct socket *psock;
 
   /* Check for a timeout configured via setsockopts(SO_SNDTIMEO).
    * If none... we well let the send wait forever.
@@ -142,6 +153,115 @@ static inline int send_timeout(FAR struct send_s *pstate)
   return FALSE;
 }
 #endif /* CONFIG_NET_SOCKOPTS */
+
+/****************************************************************************
+ * Function: tcpsend_ipselect
+ *
+ * Description:
+ *   If both IPv4 and IPv6 support are enabled, then we will need to select
+ *   which one to use when generating the outgoing packet.  If only one
+ *   domain is selected, then the setup is already in place and we need do
+ *   nothing.
+ *
+ * Parameters:
+ *   dev    - The structure of the network driver that caused the interrupt
+ *   pstate - sendto state structure
+ *
+ * Returned Value:
+ *   None
+ *
+ * Assumptions:
+ *   Running at the interrupt level
+ *
+ ****************************************************************************/
+
+#ifdef NEED_IPDOMAIN_SUPPORT
+static inline void tcpsend_ipselect(FAR struct net_driver_s *dev,
+                                    FAR struct send_s *pstate)
+{
+  FAR struct socket *psock = pstate->snd_sock;
+  DEBUGASSERT(psock);
+
+  /* Which domain the the socket support */
+
+  if (psock->s_domain == PF_INET)
+    {
+      /* Select the IPv4 domain */
+
+      tcp_ipv4_select(dev);
+    }
+  else /* if (psock->s_domain == PF_INET6) */
+    {
+      /* Select the IPv6 domain */
+
+      DEBUGASSERT(psock->s_domain == PF_INET6);
+      tcp_ipv4_select(dev);
+    }
+}
+#endif
+
+/****************************************************************************
+ * Function: psock_send_addrchck
+ *
+ * Description:
+ *   Check if the destination IP address is in the IPv4 ARP or IPv6 Neighbor
+ *   tables.  If not, then the send won't actually make it out... it will be
+ *   replaced with an ARP request (IPv4) or a Neighbor Solicitation (IPv6).
+ *
+ *   NOTE 1: This could be an expensive check if there are a lot of
+ *   entries in the ARP or Neighbor tables.
+ *
+ *   NOTE 2: If we are actually harvesting IP addresses on incoming IP
+ *   packets, then this check should not be necessary; the MAC mapping
+ *   should already be in the ARP table in many cases (IPv4 only).
+ *
+ *   NOTE 3: If CONFIG_NET_ARP_SEND then we can be assured that the IP
+ *   address mapping is already in the ARP table.
+ *
+ * Parameters:
+ *   conn  - The TCP connection structure
+ *
+ * Returned Value:
+ *   None
+ *
+ * Assumptions:
+ *   Running at the interrupt level
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_ETHERNET
+static inline bool psock_send_addrchck(FAR struct tcp_conn_s *conn)
+{
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+  if (conn->domain == PF_INET)
+#endif
+    {
+#if !defined(CONFIG_NET_ARP_IPIN) && !defined(CONFIG_NET_ARP_SEND)
+      return (arp_find(conn->u.ipv4.raddr) != NULL);
+#else
+      return true;
+#endif
+    }
+#endif /* CONFIG_NET_IPv4 */
+
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+  else
+#endif
+    {
+#if !defined(CONFIG_NET_ICMPv6_NEIGHBOR)
+      return (neighbor_findentry(conn->u.ipv6.raddr) != NULL);
+#else
+      return true;
+#endif
+    }
+#endif /* CONFIG_NET_IPv6 */
+}
+
+#else /* CONFIG_NET_ETHERNET */
+#  psock_send_addrchck(r) (true)
+#endif /* CONFIG_NET_ETHERNET */
 
 /****************************************************************************
  * Function: tcpsend_interrupt
@@ -179,11 +299,35 @@ static uint16_t tcpsend_interrupt(FAR struct net_driver_s *dev,
 
   if ((flags & TCP_ACKDATA) != 0)
     {
+      FAR struct tcp_hdr_s *tcp;
+
       /* Update the timeout */
 
 #ifdef CONFIG_NET_SOCKOPTS
       pstate->snd_time = clock_systimer();
 #endif
+
+      /* Get the offset address of the TCP header */
+
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+      if (conn->domain == PF_INET)
+#endif
+        {
+          DEBUGASSERT(IFF_IS_IPv4(dev->d_flags));
+          tcp = TCPIPv4BUF;
+        }
+#endif /* CONFIG_NET_IPv4 */
+
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+      else
+#endif
+        {
+          DEBUGASSERT(IFF_IS_IPv6(dev->d_flags));
+          tcp = TCPIPv6BUF;
+        }
+#endif /* CONFIG_NET_IPv6 */
 
       /* The current acknowledgement number number is the (relative) offset
        * of the of the next byte needed by the receiver.  The snd_isn is the
@@ -191,7 +335,7 @@ static uint16_t tcpsend_interrupt(FAR struct net_driver_s *dev,
        * is the number of bytes to be acknowledged.
        */
 
-      pstate->snd_acked = tcp_getsequence(TCPBUF->ackno) - pstate->snd_isn;
+      pstate->snd_acked = tcp_getsequence(tcp->ackno) - pstate->snd_isn;
       nllvdbg("ACK: acked=%d sent=%d buflen=%d\n",
               pstate->snd_acked, pstate->snd_sent, pstate->snd_buflen);
 
@@ -373,32 +517,27 @@ static uint16_t tcpsend_interrupt(FAR struct net_driver_s *dev,
           nllvdbg("SEND: sndseq %08x->%08x\n", conn->sndseq, seqno);
           tcp_setsequence(conn->sndseq, seqno);
 
+#ifdef NEED_IPDOMAIN_SUPPORT
+          /* If both IPv4 and IPv6 support are enabled, then we will need to
+           * select which one to use when generating the outgoing packet.
+           * If only one domain is selected, then the setup is already in
+           * place and we need do nothing.
+           */
+
+          tcpsend_ipselect(dev, pstate);
+#endif
           /* Then set-up to send that amount of data. (this won't actually
            * happen until the polling cycle completes).
            */
 
           devif_send(dev, &pstate->snd_buffer[pstate->snd_sent], sndlen);
 
-          /* Check if the destination IP address is in the ARP table.  If not,
-           * then the send won't actually make it out... it will be replaced with
-           * an ARP request.
-           *
-           * NOTE 1: This could be an expensive check if there are a lot of entries
-           * in the ARP table.  Hence, we only check on the first packet -- when
-           * snd_sent is zero.
-           *
-           * NOTE 2: If we are actually harvesting IP addresses on incoming IP
-           * packets, then this check should not be necessary; the MAC mapping
-           * should already be in the ARP table in many cases.
-           *
-           * NOTE 3: If CONFIG_NET_ARP_SEND then we can be assured that the IP
-           * address mapping is already in the ARP table.
+          /* Check if the destination IP address is in the ARP  or Neighbor
+           * table.  If not, then the send won't actually make it out... it
+           * will be replaced with an ARP request or Neighbor Solicitation.
            */
 
-#if defined(CONFIG_NET_ETHERNET) && !defined(CONFIG_NET_ARP_IPIN) && \
-    !defined(CONFIG_NET_ARP_SEND)
-         if (pstate->snd_sent != 0 || arp_find(conn->ripaddr) != NULL)
-#endif
+          if (pstate->snd_sent != 0 || psock_send_addrchck(conn))
             {
               /* Update the amount of data sent (but not necessarily ACKed) */
 
@@ -444,6 +583,61 @@ end_wait:
 
   sem_post(&pstate->snd_sem);
   return flags;
+}
+
+/****************************************************************************
+ * Function: send_txnotify
+ *
+ * Description:
+ *   Notify the appropriate device driver that we are have data ready to
+ *   be send (TCP)
+ *
+ * Parameters:
+ *   psock - Socket state structure
+ *   conn  - The TCP connection structure
+ *
+ * Returned Value:
+ *   None
+ *
+ ****************************************************************************/
+
+static inline void send_txnotify(FAR struct socket *psock,
+                                 FAR struct tcp_conn_s *conn)
+{
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+  /* If both IPv4 and IPv6 support are enabled, then we will need to select
+   * the device driver using the appropriate IP domain.
+   */
+
+  if (psock->s_domain == PF_INET)
+#endif
+    {
+      /* Notify the device driver that send data is available */
+
+#ifdef CONFIG_NETDEV_MULTINIC
+      netdev_ipv4_txnotify(conn->u.ipv4.laddr, conn->u.ipv4.raddr);
+#else
+      netdev_ipv4_txnotify(conn->u.ipv4.raddr);
+#endif
+    }
+#endif /* CONFIG_NET_IPv4 */
+
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+  else /* if (psock->s_domain == PF_INET6) */
+#endif /* CONFIG_NET_IPv4 */
+    {
+      /* Notify the device driver that send data is available */
+
+      DEBUGASSERT(psock->s_domain == PF_INET6);
+#ifdef CONFIG_NETDEV_MULTINIC
+      netdev_ipv6_txnotify(conn->u.ipv6.laddr, conn->u.ipv6.raddr);
+#else
+      netdev_ipv6_txnotify(conn->u.ipv6.raddr);
+#endif
+    }
+#endif /* CONFIG_NET_IPv6 */
 }
 
 /****************************************************************************
@@ -534,18 +728,44 @@ ssize_t psock_tcp_send(FAR struct socket *psock,
       goto errout;
     }
 
-  /* Make sure that the IP address mapping is in the ARP table */
+  /* Make sure that we have the IP address mapping */
 
   conn = (FAR struct tcp_conn_s *)psock->s_conn;
+  DEBUGASSERT(conn);
+
+#if defined(CONFIG_NET_ARP_SEND) || defined(CONFIG_NET_ICMPv6_NEIGHBOR)
 #ifdef CONFIG_NET_ARP_SEND
-  ret = arp_send(conn->ripaddr);
+#ifdef CONFIG_NET_ICMPv6_NEIGHBOR
+  if (psock->s_domain == PF_INET)
+#endif
+    {
+      /* Make sure that the IP address mapping is in the ARP table */
+
+      ret = arp_send(conn->u.ipv4.raddr);
+    }
+#endif /* CONFIG_NET_ARP_SEND */
+
+
+#ifdef CONFIG_NET_ICMPv6_NEIGHBOR
+#ifdef CONFIG_NET_ARP_SEND
+  else
+#endif
+    {
+      /* Make sure that the IP address mapping is in the Neighbor Table */
+
+      ret = icmpv6_neighbor(conn->u.ipv6.raddr);
+    }
+#endif /* CONFIG_NET_ICMPv6_NEIGHBOR */
+
+  /* Did we successfully get the address mapping? */
+
   if (ret < 0)
     {
       ndbg("ERROR: Not reachable\n");
       err = ENETUNREACH;
       goto errout;
     }
-#endif
+#endif /* CONFIG_NET_ARP_SEND || CONFIG_NET_ICMPv6_NEIGHBOR */
 
   /* Set the socket state to sending */
 
@@ -591,16 +811,12 @@ ssize_t psock_tcp_send(FAR struct socket *psock,
 
           state.snd_cb->flags   = (TCP_ACKDATA | TCP_REXMIT | TCP_POLL |
                                    TCP_CLOSE | TCP_ABORT | TCP_TIMEDOUT);
-          state.snd_cb->priv    = (void*)&state;
+          state.snd_cb->priv    = (FAR void *)&state;
           state.snd_cb->event   = tcpsend_interrupt;
 
           /* Notify the device driver of the availability of TX data */
 
-#ifdef CONFIG_NET_MULTILINK
-          netdev_txnotify(conn->lipaddr, conn->ripaddr);
-#else
-          netdev_txnotify(conn->ripaddr);
-#endif
+          send_txnotify(psock, conn);
 
           /* Wait for the send to complete or an error to occur:  NOTES: (1)
            * net_lockedwait will also terminate if a signal is received, (2) interrupts

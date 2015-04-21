@@ -1,7 +1,7 @@
 /****************************************************************************
  * fs/binfs/fs_binfs.c
  *
- *   Copyright (C) 2011-2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2011-2013, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -84,7 +84,8 @@ static int     binfs_rewinddir(FAR struct inode *mountpt,
 
 static int     binfs_bind(FAR struct inode *blkdriver, FAR const void *data,
                           FAR void **handle);
-static int     binfs_unbind(FAR void *handle, FAR struct inode **blkdriver);
+static int     binfs_unbind(FAR void *handle, FAR struct inode **blkdriver,
+                            unsigned int flags);
 static int     binfs_statfs(FAR struct inode *mountpt,
                             FAR struct statfs *buf);
 
@@ -99,7 +100,7 @@ static int     binfs_stat(FAR struct inode *mountpt, FAR const char *relpath,
  * Public Variables
  ****************************************************************************/
 
-/* See fs_mount.c -- this structure is explicitly externed there.
+/* See fs_mount.c -- this structure is explicitly extern'ed there.
  * We use the old-fashioned kind of initializers so that this will compile
  * with any compiler.
  */
@@ -370,7 +371,8 @@ static int binfs_bind(FAR struct inode *blkdriver, const void *data,
  *
  ****************************************************************************/
 
-static int binfs_unbind(void *handle, FAR struct inode **blkdriver)
+static int binfs_unbind(FAR void *handle, FAR struct inode **blkdriver,
+                        unsigned int flags)
 {
   fvdbg("Entry\n");
   return OK;

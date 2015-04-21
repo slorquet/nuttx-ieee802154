@@ -50,7 +50,7 @@
 #include "pic32mx-gpio.h"
 #include "pic32mx-internal.h"
 
-#ifdef CONFIG_GPIO_IRQ
+#ifdef CONFIG_PIC32MX_GPIOIRQ
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -285,4 +285,4 @@ void pic32mx_gpioirqdisable(unsigned int cn)
   putreg32(1 << cn, PIC32MX_IOPORT_CNENCLR);
 }
 
-#endif /* CONFIG_GPIO_IRQ */
+#endif /* CONFIG_PIC32MX_GPIOIRQ */

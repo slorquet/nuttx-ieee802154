@@ -1,7 +1,7 @@
 /****************************************************************************
  * configs/stm32f4discovery/src/stm32_idle.c
  *
- *   Copyright (C) 2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2012, 2015 Gregory Nutt. All rights reserved.
  *   Authors: Gregory Nutt <gnutt@nuttx.org>
  *            Diego Sanchez <dsanchez@nx-engineering.com>
  *
@@ -42,12 +42,13 @@
 #include <arch/board/board.h>
 #include <nuttx/config.h>
 
+#include <debug.h>
+
 #include <nuttx/arch.h>
+#include <nuttx/board.h>
 #include <nuttx/clock.h>
 #include <nuttx/power/pm.h>
 
-#include <debug.h>
-#include <nuttx/rtc.h>
 #include <arch/irq.h>
 
 #include "up_internal.h"

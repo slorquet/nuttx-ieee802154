@@ -1,7 +1,7 @@
 /************************************************************************************
  * configs/stm32f429i-disco/src/stm32_lcd.c
  *
- *   Copyright (C) 2014 Marco Krahl. All rights reserved.
+ *   Copyright (C) 2014-2015 Marco Krahl. All rights reserved.
  *   Author: Marco Krahl <ocram.lhark@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,6 +43,7 @@
 #include <debug.h>
 
 #include <nuttx/arch.h>
+#include <nuttx/board.h>
 #include <nuttx/lcd/ili9341.h>
 #include <nuttx/video/fb.h>
 
@@ -52,10 +53,9 @@
 #include "up_arch.h"
 #include "stm32f429i-disco.h"
 #include "stm32_ltdc.h"
-#include "stm32_dma2d.h"
 
 /************************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ************************************************************************************/
 #ifdef CONFIG_STM32F429I_DISCO_ILI9341_LCDDEVICE
 # define ILI9341_LCD_DEVICE CONFIG_STM32F429I_DISCO_ILI9341_LCDDEVICE
@@ -92,6 +92,7 @@
  * RCM:         2 (DE Mode)
  * ByPass_Mode: 1 (Memory)
  */
+
 #define STM32_ILI9341_IFMODE_PARAM    ((!ILI9341_INTERFACE_CONTROL_EPL) | \
                                       ILI9341_INTERFACE_CONTROL_DPL | \
                                       (!ILI9341_INTERFACE_CONTROL_HSPL) | \
@@ -413,7 +414,7 @@ static int stm32_ili9341_initialize(void)
 
 #ifdef CONFIG_STM32F429I_DISCO_ILI9341_LCDIFACE
 /****************************************************************************
- * Name: up_lcduninitialize
+ * Name: board_lcd_uninitialize
  *
  * Description:
  *   Unitialize the LCD Device.
@@ -424,7 +425,7 @@ static int stm32_ili9341_initialize(void)
  *
  ***************************************************************************/
 
-void up_lcduninitialize(void)
+void board_lcd_uninitialize(void)
 {
   /* Set display off */
 
@@ -435,7 +436,7 @@ void up_lcduninitialize(void)
 
 
 /****************************************************************************
- * Name: up_lcdgetdev
+ * Name: board_lcd_getdev
  *
  * Description:
  *   Return a reference to the LCD object for the specified LCD Device.
@@ -449,7 +450,7 @@ void up_lcduninitialize(void)
  *
  ***************************************************************************/
 
-FAR struct lcd_dev_s *up_lcdgetdev(int lcddev)
+FAR struct lcd_dev_s *board_lcd_getdev(int lcddev)
 {
   if (lcddev == ILI9341_LCD_DEVICE)
     {
@@ -461,7 +462,7 @@ FAR struct lcd_dev_s *up_lcdgetdev(int lcddev)
 
 
 /****************************************************************************
- * Name: up_lcdinitialize
+ * Name: board_lcd_initialize
  *
  * Description:
  *   Initialize the LCD video hardware. The initial state of the LCD is
@@ -476,7 +477,7 @@ FAR struct lcd_dev_s *up_lcdgetdev(int lcddev)
  *
  ****************************************************************************/
 
-int up_lcdinitialize(void)
+int board_lcd_initialize(void)
 {
   /* check if always initialized */
 
@@ -497,18 +498,19 @@ int up_lcdinitialize(void)
            */
 
           g_lcd = ili9341_initialize(dev, ILI9341_LCD_DEVICE);
-
           if (g_lcd)
             {
               return OK;
             }
         }
+
+      return -errno;
     }
 
-  return -errno;
+  return OK;
 }
-
 #endif /* CONFIG_STM32F429I_DISCO_ILI9341_LCDIFACE */
+
 #ifdef CONFIG_STM32_LTDC
 /*******************************************************************************
  * Name: up_fbinitialize
@@ -525,6 +527,7 @@ int up_fbinitialize(void)
 {
 #ifdef CONFIG_STM32F429I_DISCO_ILI9341_FBIFACE
   int ret;
+
   /* Initialize the ili9341 LCD controller */
 
   ret = stm32_ili9341_initialize();
@@ -532,33 +535,14 @@ int up_fbinitialize(void)
   if (ret == OK)
     {
       ret = stm32_ltdcinitialize();
-# ifdef CONFIG_STM32_DMA2D
-      if (ret == OK)
-        {
-          ret = up_dma2dinitialize();
-        }
-# endif
     }
 
   return ret;
-#else
 
+#else
   /* Custom LCD display with RGB interface */
 
-# ifdef CONFIG_STM32_DMA2D
-    int ret;
-
-    ret = stm32_ltdcinitialize();
-
-    if (ret == OK)
-      {
-        ret = up_dma2dinitialize();
-      }
-
-    return ret;
-# else
   return stm32_ltdcinitialize();
-# endif
 #endif
 }
 
@@ -605,10 +589,12 @@ void fb_uninitialize(void)
  *   lid - The specific layer identifier
  *
  ******************************************************************************/
+
 #ifdef CONFIG_STM32_LTDC_INTERFACE
 FAR struct ltdc_layer_s *up_ltdcgetlayer(int lid)
 {
   return stm32_ltdcgetlayer(lid);
 }
 #endif
+
 #endif /* CONFIG_STM32_LTDC */

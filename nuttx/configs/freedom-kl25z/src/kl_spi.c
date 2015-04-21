@@ -52,7 +52,7 @@
 #if defined(CONFIG_KL_SPI0) || defined(CONFIG_KL_SPI1)
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /* Enables debug output from this file (needs CONFIG_DEBUG too) */
@@ -168,7 +168,7 @@ void kl_spi0select(FAR struct spi_dev_s *dev, enum spi_dev_e devid,
            (int)devid, selected ? "assert" : "de-assert");
 
 #ifdef CONFIG_ADXL345_SPI
-  if (devid == SPIDEV_GSENSOR)
+  if (devid == SPIDEV_ACCELEROMETER)
     {
       /* Active low */
 

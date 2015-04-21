@@ -79,6 +79,7 @@
  ****************************************************************************/
 
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <queue.h>
 #include <time.h>
 #include <netinet/in.h>
@@ -101,7 +102,7 @@
 /* Increment RPC statistics */
 
 #ifdef CONFIG_NFS_STATISTICS
-#  define rpc_statistics(n) do { rpcstats.(n)++; } while (0)
+#  define rpc_statistics(n) do { rpcstats.n++; } while (0)
 #else
 #  define rpc_statistics(n)
 #endif

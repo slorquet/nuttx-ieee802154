@@ -600,7 +600,7 @@ void weak_function sam_spiinitialize(void);
 #endif
 
 /************************************************************************************
- * Name: board_sdram_config
+ * Name: sam_sdram_config
  *
  * Description:
  *   Configures DDR2 (MT47H128M16RT 128MB or, optionally,  MT47H64M16HR)
@@ -620,7 +620,7 @@ void weak_function sam_spiinitialize(void);
  *  This logic was taken from Atmel sample code for the SAMA5D3-Xplained.
  *
  *  Input Parameters:
- *     devtype - Either DDRAM_MT47H128M16RT or DDRAM_MT47H64M16HR
+ *     None
  *
  *  Assumptions:
  *    The DDR memory regions is configured as strongly ordered memory.  When we
@@ -632,7 +632,7 @@ void weak_function sam_spiinitialize(void);
 #if defined(CONFIG_SAMA5_DDRCS) && !defined(CONFIG_SAMA5_BOOT_SDRAM)
 void sam_sdram_config(void);
 #else
-#  define board_sdram_config(t)
+#  define sam_sdram_config()
 #endif
 
 /****************************************************************************
@@ -731,32 +731,6 @@ int sam_usbhost_initialize(void);
 
 #ifdef HAVE_NETWORK
 void weak_function sam_netinitialize(void);
-#endif
-
-/************************************************************************************
- * Name: board_led_initialize
- ************************************************************************************/
-
-#ifdef CONFIG_ARCH_LEDS
-void board_led_initialize(void);
-#endif
-
-/************************************************************************************
- * Name: nsh_archinitialize
- *
- * Description:
- *   Perform architecture specific initialization for NSH.
- *
- *   CONFIG_NSH_ARCHINIT=y :
- *     Called from the NSH library
- *
- *   CONFIG_BOARD_INITIALIZE=y, CONFIG_NSH_LIBRARY=y, && CONFIG_NSH_ARCHINIT=n :
- *     Called from board_initialize().
- *
- ************************************************************************************/
-
-#ifdef CONFIG_NSH_LIBRARY
-int nsh_archinitialize(void);
 #endif
 
 /************************************************************************************

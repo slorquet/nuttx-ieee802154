@@ -1,6 +1,5 @@
 /************************************************************************************
  * configs/avr32dev1/src/avr32dev1_internal.h
- * arch/avr/src/board/avr32dev1_internal.n
  *
  *   Copyright (C) 2010 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -46,7 +45,7 @@
 #include "at32uc3_config.h"
 
 /************************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ************************************************************************************/
 
 /* Configuration ********************************************************************/
@@ -111,17 +110,5 @@
  * Public Functions
  ************************************************************************************/
 
-/************************************************************************************
- * Name: board_led_initializeialize
- *
- * Description:
- *   Configure on-board LEDs if LED support has been selected.
- ************************************************************************************/
-
-#ifdef CONFIG_ARCH_LEDS
-extern void board_led_initializeialize(void);
-#endif
-
 #endif /* __ASSEMBLY__ */
 #endif /* _CONFIGS_AVR32DEV1_SRC_AVR32DEV1_INTERNAL_H */
-

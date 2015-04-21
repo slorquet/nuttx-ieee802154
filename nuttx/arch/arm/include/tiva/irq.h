@@ -41,7 +41,6 @@
  ************************************************************************************/
 
 #include <nuttx/config.h>
-#include <nuttx/irq.h>
 #include <arch/tiva/chip.h>
 
 /************************************************************************************
@@ -457,50 +456,8 @@
  * Public Data
  ************************************************************************************/
 
-#ifndef __ASSEMBLY__
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
 /************************************************************************************
  * Public Functions
  ************************************************************************************/
-
-/****************************************************************************
- * Name: gpio_irqattach
- *
- * Description:
- *   Attach the interrupt handler 'isr' to the GPIO IRQ 'irq'
- *
- ****************************************************************************/
-
-int gpio_irqattach(int irq, xcpt_t isr);
-#define gpio_irqdetach(isr) gpio_irqattach(isr, NULL)
-
-/****************************************************************************
- * Name: gpio_irqenable
- *
- * Description:
- *   Enable the GPIO IRQ specified by 'irq'
- *
- ****************************************************************************/
-
-void gpio_irqenable(int irq);
-
-/****************************************************************************
- * Name: gpio_irqdisable
- *
- * Description:
- *   Disable the GPIO IRQ specified by 'irq'
- *
- ****************************************************************************/
-
-void gpio_irqdisable(int irq);
-
-#ifdef __cplusplus
-}
-#endif
-#endif
 
 #endif /* __ARCH_ARM_INCLUDE_TIVA_IRQ_H */

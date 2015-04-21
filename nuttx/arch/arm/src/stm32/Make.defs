@@ -1,7 +1,7 @@
 ############################################################################
 # arch/arm/src/stm32/Make.defs
 #
-#   Copyright (C) 2009, 2011-2014 Gregory Nutt. All rights reserved.
+#   Copyright (C) 2009, 2011-2015 Gregory Nutt. All rights reserved.
 #   Author: Gregory Nutt <gnutt@nuttx.org>
 #
 # Redistribution and use in source and binary forms, with or without
@@ -59,7 +59,11 @@ CMN_CSRCS += up_stackcheck.c
 endif
 
 ifeq ($(CONFIG_ARMV7M_CMNVECTOR),y)
+ifeq ($(CONFIG_ARMV7M_LAZYFPU),y)
+CMN_ASRCS += up_lazyexception.S
+else
 CMN_ASRCS += up_exception.S
+endif
 CMN_CSRCS += up_vectors.c
 endif
 
@@ -79,7 +83,7 @@ CMN_UASRCS += up_signal_handler.S
 endif
 endif
 
-ifeq ($(CONFIG_DEBUG_STACK),y)
+ifeq ($(CONFIG_STACK_COLORATION),y)
 CMN_CSRCS += up_checkstack.c
 endif
 
@@ -181,6 +185,9 @@ CHIP_CSRCS += stm32_rtc.c
 ifeq ($(CONFIG_RTC_ALARM),y)
 CHIP_CSRCS += stm32_exti_alarm.c
 endif
+ifeq ($(CONFIG_RTC_DRIVER),y)
+CHIP_CSRCS += stm32_rtc_lowerhalf.c
+endif
 endif
 
 ifeq ($(CONFIG_ADC),y)
@@ -225,4 +232,12 @@ endif
 
 ifeq ($(CONFIG_DEBUG),y)
 CHIP_CSRCS += stm32_dumpgpio.c
+endif
+
+ifeq ($(CONFIG_STM32_AES),y)
+CHIP_CSRCS += stm32_aes.c
+endif
+
+ifeq ($(CONFIG_STM32_BBSRAM),y)
+CHIP_CSRCS += stm32_bbsram.c
 endif

@@ -98,7 +98,14 @@
 /* TCP header sizes */
 
 #define TCP_HDRLEN        20                         /* Size of TCP header */
-#define IPTCP_HDRLEN      (TCP_HDRLEN + IPv4_HDRLEN) /* Size of IPv4 + TCP header */
+
+#ifdef CONFIG_NET_IPv4
+#  define IPv4TCP_HDRLEN (TCP_HDRLEN + IPv4_HDRLEN) /* Size of IPv4 + TCP header */
+#endif
+
+#ifdef CONFIG_NET_IPv6
+#  define IPv6TCP_HDRLEN (TCP_HDRLEN + IPv6_HDRLEN) /* Size of IPv4 + TCP header */
+#endif
 
 /* Initial minimum MSS according to RFC 879
  *
@@ -112,51 +119,31 @@
  * This is a long established rule.
  */
 
-#define TCP_INITIAL_MSS(d)  (TCP_MSS(d) > 576 ? 576 : TCP_MSS(d))
+#define TCP_INITIAL_MSS(d,h)       (TCP_MSS(d,h) > 576 ? 576 : TCP_MSS(d,h))
 
-#define MIN_TCP_INITIAL_MSS (MIN_TCP_MSS > 576 ? 576 : MIN_TCP_MSS)
-#define MAX_TCP_INITIAL_MSS (MAX_TCP_MSS > 576 ? 576 : MAX_TCP_MSS)
+#define MIN_TCP_INITIAL_MSS(h)     (__MIN_TCP_MSS(h) > 576 ? 576 : __MIN_TCP_MSS(h))
+#define MAX_TCP_INITIAL_MSS(h)     (__MAX_TCP_MSS(h) > 576 ? 576 : __MAX_TCP_MSS(h))
+
+#ifdef CONFIG_NET_IPv4
+#  define TCP_IPv4_INITIAL_MSS(d)  TCP_INITIAL_MSS(d,IPv4_HDRLEN)
+#  define MIN_IPv4_TCP_INITIAL_MSS MIN_TCP_INITIAL_MSS(IPv4_HDRLEN)
+#  define MAX_IPv4_TCP_INITIAL_MSS MAX_TCP_INITIAL_MSS(IPv4_HDRLEN)
+#endif
+
+#ifdef CONFIG_NET_IPv6
+#  define TCP_IPv6_INITIAL_MSS(d)  TCP_INITIAL_MSS(d,IPv6_HDRLEN)
+#  define MIN_IPv6_TCP_INITIAL_MSS MIN_TCP_INITIAL_MSS(IPv6_HDRLEN)
+#  define MAX_IPv6_TCP_INITIAL_MSS MAX_TCP_INITIAL_MSS(IPv6_HDRLEN)
+#endif
 
 /****************************************************************************
  * Public Type Definitions
  ****************************************************************************/
 
-/* The TCP and IP headers */
+/* TCP header */
 
-struct tcp_iphdr_s
+struct tcp_hdr_s
 {
-#ifdef CONFIG_NET_IPv6
-
-  /* IPv6 Ip header */
-
-  uint8_t  vtc;             /* Bits 0-3: version, bits 4-7: traffic class (MS) */
-  uint8_t  tcf;             /* Bits 0-3: traffic class (LS), 4-bits: flow label (MS) */
-  uint16_t flow;            /* 16-bit flow label (LS) */
-  uint8_t  len[2];          /* 16-bit Payload length */
-  uint8_t  proto;           /*  8-bit Next header (same as IPv4 protocol field) */
-  uint8_t  ttl;             /*  8-bit Hop limit (like IPv4 TTL field) */
-  net_ip6addr_t srcipaddr;  /* 128-bit Source address */
-  net_ip6addr_t destipaddr; /* 128-bit Destination address */
-
-#else /* CONFIG_NET_IPv6 */
-
-  /* IPv4 IP header */
-
-  uint8_t  vhl;             /*  8-bit Version (4) and header length (5 or 6) */
-  uint8_t  tos;             /*  8-bit Type of service (e.g., 6=TCP) */
-  uint8_t  len[2];          /* 16-bit Total length */
-  uint8_t  ipid[2];         /* 16-bit Identification */
-  uint8_t  ipoffset[2];     /* 16-bit IP flags + fragment offset */
-  uint8_t  ttl;             /*  8-bit Time to Live */
-  uint8_t  proto;           /*  8-bit Protocol */
-  uint16_t ipchksum;        /* 16-bit Header checksum */
-  uint16_t srcipaddr[2];    /* 32-bit Source IP address */
-  uint16_t destipaddr[2];   /* 32-bit Destination IP address */
-
-#endif /* CONFIG_NET_IPv6 */
-
-  /* TCP header */
-
   uint16_t srcport;
   uint16_t destport;
   uint8_t  seqno[4];

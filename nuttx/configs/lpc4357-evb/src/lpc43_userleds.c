@@ -54,7 +54,7 @@
 #ifndef CONFIG_ARCH_LEDS
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 /* LED definitions **********************************************************/
 /* The LPC4357-EVB has one user-controllable LED labelled D6 controlled by
@@ -131,14 +131,14 @@ void lpc43_ledinit(void)
 {
   /* Configure LED pin as a GPIO outputs */
 
-  led_dumppins("board_led_initialize() Entry)");
+  led_dumppins("lpc43_ledinit() Entry)");
 
   /* Configure LED pin as a GPIO, then configure GPIO as an outputs */
 
   lpc43_pin_config(PINCONFIG_LED);
   lpc43_gpio_config(GPIO_LED);
 
-  led_dumppins("board_led_initialize() Exit");
+  led_dumppins("lpc43_ledinit() Exit");
 }
 
 /****************************************************************************

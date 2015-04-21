@@ -99,10 +99,36 @@
 void tcp_appsend(FAR struct net_driver_s *dev, FAR struct tcp_conn_s *conn,
                  uint16_t result)
 {
+  uint8_t hdrlen;
+
   /* Handle the result based on the application response */
 
   nllvdbg("result: %04x d_sndlen: %d conn->unacked: %d\n",
           result, dev->d_sndlen, conn->unacked);
+
+  /* Get the IP header length associated with the IP domain configured for
+   * this TCP connection.
+   */
+
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+  if (conn->domain == PF_INET)
+#endif
+    {
+      DEBUGASSERT(IFF_IS_IPv4(dev->d_flags));
+      hdrlen = IPv4TCP_HDRLEN;
+    }
+#endif /* CONFIG_NET_IPv4 */
+
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+  else
+#endif
+    {
+      DEBUGASSERT(IFF_IS_IPv6(dev->d_flags));
+      hdrlen = IPv6TCP_HDRLEN;
+    }
+#endif /* CONFIG_NET_IPv6 */
 
   /* Check for connection aborted */
 
@@ -112,7 +138,7 @@ void tcp_appsend(FAR struct net_driver_s *dev, FAR struct tcp_conn_s *conn,
       conn->tcpstateflags = TCP_CLOSED;
       nllvdbg("TCP state: TCP_CLOSED\n");
 
-      tcp_send(dev, conn, TCP_RST | TCP_ACK, IPTCP_HDRLEN);
+      tcp_send(dev, conn, TCP_RST | TCP_ACK, hdrlen);
     }
 
   /* Check for connection closed */
@@ -125,7 +151,7 @@ void tcp_appsend(FAR struct net_driver_s *dev, FAR struct tcp_conn_s *conn,
       nllvdbg("TCP state: TCP_FIN_WAIT_1\n");
 
       dev->d_sndlen  = 0;
-      tcp_send(dev, conn, TCP_FIN | TCP_ACK, IPTCP_HDRLEN);
+      tcp_send(dev, conn, TCP_FIN | TCP_ACK, hdrlen);
     }
 
   /* None of the above */
@@ -185,12 +211,36 @@ void tcp_appsend(FAR struct net_driver_s *dev, FAR struct tcp_conn_s *conn,
 void tcp_rexmit(FAR struct net_driver_s *dev, FAR struct tcp_conn_s *conn,
                 uint16_t result)
 {
+  uint8_t hdrlen;
+
   nllvdbg("result: %04x d_sndlen: %d conn->unacked: %d\n",
           result, dev->d_sndlen, conn->unacked);
 
-  dev->d_appdata = dev->d_snddata;
+  /* Get the IP header length associated with the IP domain configured for
+   * this TCP connection.
+   */
 
-  /* If the application has data to be sent, or if the incoming packet had
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+  if (conn->domain == PF_INET)
+#endif
+    {
+      DEBUGASSERT(IFF_IS_IPv4(dev->d_flags));
+      hdrlen = IPv4TCP_HDRLEN;
+    }
+#endif /* CONFIG_NET_IPv4 */
+
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+  else
+#endif
+    {
+      DEBUGASSERT(IFF_IS_IPv6(dev->d_flags));
+      hdrlen = IPv6TCP_HDRLEN;
+    }
+#endif /* CONFIG_NET_IPv6 */
+
+ /* If the application has data to be sent, or if the incoming packet had
    * new data in it, we must send out a packet.
    */
 
@@ -204,14 +254,14 @@ void tcp_rexmit(FAR struct net_driver_s *dev, FAR struct tcp_conn_s *conn,
        * the IP and TCP headers.
        */
 
-      tcp_send(dev, conn, TCP_ACK | TCP_PSH, dev->d_sndlen + IPTCP_HDRLEN);
+      tcp_send(dev, conn, TCP_ACK | TCP_PSH, dev->d_sndlen + hdrlen);
     }
 
   /* If there is no data to send, just send out a pure ACK if one is requested`. */
 
   else if ((result & TCP_SNDACK) != 0)
     {
-      tcp_send(dev, conn, TCP_ACK, IPTCP_HDRLEN);
+      tcp_send(dev, conn, TCP_ACK, hdrlen);
     }
 
   /* There is nothing to do -- drop the packet */

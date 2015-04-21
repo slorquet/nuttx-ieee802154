@@ -1,7 +1,7 @@
 /****************************************************************************
  * arch/arm/src/sam34/sam_irq.c
  *
- *   Copyright (C) 2009, 2011, 2013-2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2009, 2011, 2013-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -56,7 +56,7 @@
 #endif
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /* Get a 32-bit version of the default priority */
@@ -79,7 +79,6 @@
  ****************************************************************************/
 
 volatile uint32_t *current_regs;
-
 extern uint32_t _vectors[];
 
 /****************************************************************************
@@ -105,23 +104,45 @@ static void sam_dumpnvic(const char *msg, int irq)
 
   flags = irqsave();
   lldbg("NVIC (%s, irq=%d):\n", msg, irq);
-  lldbg("  INTCTRL:    %08x VECTAB: %08x\n",
+  lldbg("  INTCTRL:    %08x VECTAB:  %08x\n",
         getreg32(NVIC_INTCTRL), getreg32(NVIC_VECTAB));
 #if 0
   lldbg("  SYSH ENABLE MEMFAULT: %08x BUSFAULT: %08x USGFAULT: %08x SYSTICK: %08x\n",
         getreg32(NVIC_SYSHCON_MEMFAULTENA), getreg32(NVIC_SYSHCON_BUSFAULTENA),
         getreg32(NVIC_SYSHCON_USGFAULTENA), getreg32(NVIC_SYSTICK_CTRL_ENABLE));
 #endif
-  lldbg("  IRQ ENABLE: %08x\n", getreg32(NVIC_IRQ0_31_ENABLE));
+  lldbg("  IRQ ENABLE: %08x %08x %08x\n",
+        getreg32(NVIC_IRQ0_31_ENABLE), getreg32(NVIC_IRQ32_63_ENABLE),
+        getreg32(NVIC_IRQ64_95_ENABLE));
   lldbg("  SYSH_PRIO:  %08x %08x %08x\n",
         getreg32(NVIC_SYSH4_7_PRIORITY), getreg32(NVIC_SYSH8_11_PRIORITY),
         getreg32(NVIC_SYSH12_15_PRIORITY));
   lldbg("  IRQ PRIO:   %08x %08x %08x %08x\n",
         getreg32(NVIC_IRQ0_3_PRIORITY), getreg32(NVIC_IRQ4_7_PRIORITY),
         getreg32(NVIC_IRQ8_11_PRIORITY), getreg32(NVIC_IRQ12_15_PRIORITY));
+#if SAM_IRQ_NEXTINT > 15
   lldbg("              %08x %08x %08x %08x\n",
         getreg32(NVIC_IRQ16_19_PRIORITY), getreg32(NVIC_IRQ20_23_PRIORITY),
         getreg32(NVIC_IRQ24_27_PRIORITY), getreg32(NVIC_IRQ28_31_PRIORITY));
+#endif
+#if SAM_IRQ_NEXTINT > 31
+  lldbg("              %08x %08x %08x %08x\n",
+        getreg32(NVIC_IRQ32_35_PRIORITY), getreg32(NVIC_IRQ36_39_PRIORITY),
+        getreg32(NVIC_IRQ40_43_PRIORITY), getreg32(NVIC_IRQ44_47_PRIORITY));
+#endif
+#if SAM_IRQ_NEXTINT > 47
+  lldbg("              %08x %08x %08x %08x\n",
+        getreg32(NVIC_IRQ48_51_PRIORITY), getreg32(NVIC_IRQ52_55_PRIORITY),
+        getreg32(NVIC_IRQ56_59_PRIORITY), getreg32(NVIC_IRQ60_63_PRIORITY));
+#endif
+#if SAM_IRQ_NEXTINT > 63
+  lldbg("              %08x %08x %08x %08x\n",
+        getreg32(NVIC_IRQ64_67_PRIORITY), getreg32(NVIC_IRQ68_71_PRIORITY),
+        getreg32(NVIC_IRQ72_75_PRIORITY), getreg32(NVIC_IRQ76_79_PRIORITY));
+#endif
+#if SAM_IRQ_NEXTINT > 79
+#  warning Missing logic
+#endif
   irqrestore(flags);
 }
 #else
@@ -133,7 +154,7 @@ static void sam_dumpnvic(const char *msg, int irq)
  *       sam_pendsv, sam_reserved
  *
  * Description:
- *   Handlers for various execptions.  None are handled and all are fatal
+ *   Handlers for various exceptions.  None are handled and all are fatal
  *   error conditions.  The only advantage these provided over the default
  *   unexpected interrupt handler is that they provide a diagnostic output.
  *
@@ -151,7 +172,7 @@ static int sam_nmi(int irq, FAR void *context)
 static int sam_busfault(int irq, FAR void *context)
 {
   (void)irqsave();
-  dbg("PANIC!!! Bus fault recived\n");
+  dbg("PANIC!!! Bus fault received: %08x\n", getreg32(NVIC_CFAULTS));
   PANIC();
   return 0;
 }
@@ -159,7 +180,7 @@ static int sam_busfault(int irq, FAR void *context)
 static int sam_usagefault(int irq, FAR void *context)
 {
   (void)irqsave();
-  dbg("PANIC!!! Usage fault received\n");
+  dbg("PANIC!!! Usage fault received: %08x\n", getreg32(NVIC_CFAULTS));
   PANIC();
   return 0;
 }
@@ -268,6 +289,8 @@ static int sam_irqinfo(int irq, uintptr_t *regaddr, uint32_t *bit,
            *bit     = 1 << (extint - 64);
         }
       else
+#else
+#  warning Missing logic
 #endif
         {
           return ERROR; /* Invalid interrupt */
@@ -344,6 +367,16 @@ void up_irqinitialize(void)
     {
       putreg32(0, regaddr);
     }
+
+  /* Colorize the interrupt stack for debug purposes */
+
+#if defined(CONFIG_STACK_COLORATION) && CONFIG_ARCH_INTERRUPTSTACK > 3
+  {
+    size_t intstack_size = (CONFIG_ARCH_INTERRUPTSTACK & ~3);
+    up_stack_color((FAR void *)((uintptr_t)&g_intstackbase - intstack_size),
+                   intstack_size);
+  }
+#endif
 
   /* Set up the vector table address.
    *
@@ -488,7 +521,10 @@ void up_disable_irq(int irq)
       sam_gpioirqdisable(irq);
     }
 #endif
+
+#if 0 /* Might be useful in early bring-up */
   sam_dumpnvic("disable", irq);
+#endif
 }
 
 /****************************************************************************
@@ -532,7 +568,10 @@ void up_enable_irq(int irq)
       sam_gpioirqenable(irq);
     }
 #endif
+
+#if 0 /* Might be useful in early bring-up */
   sam_dumpnvic("enable", irq);
+#endif
 }
 
 /****************************************************************************

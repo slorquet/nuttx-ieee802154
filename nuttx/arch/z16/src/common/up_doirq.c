@@ -1,7 +1,7 @@
 /****************************************************************************
  * common/up_doirq.c
  *
- *   Copyright (C) 2008-2009, 2011 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2008-2009, 2011, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,13 +43,14 @@
 
 #include <nuttx/irq.h>
 #include <nuttx/arch.h>
+#include <nuttx/board.h>
 #include <arch/board/board.h>
 
 #include "chip/chip.h"
 #include "up_internal.h"
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /****************************************************************************
@@ -106,9 +107,9 @@ FAR chipreg_t *up_doirq(int irq, FAR chipreg_t *regs)
       savestate    = (FAR chipreg_t *)current_regs;
       current_regs = regs;
 
-      /* Mask and acknowledge the interrupt */
+      /* Acknowledge the interrupt */
 
-      up_maskack_irq(irq);
+      up_ack_irq(irq);
 
       /* Deliver the IRQ */
 
@@ -121,12 +122,6 @@ FAR chipreg_t *up_doirq(int irq, FAR chipreg_t *regs)
 
       ret          = current_regs;
       current_regs = savestate;
-
-      /* Unmask the last interrupt (global interrupts are still
-       * disabled.
-       */
-
-      up_enable_irq(irq);
     }
 
   board_led_off(LED_INIRQ);

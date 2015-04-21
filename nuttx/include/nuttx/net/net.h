@@ -73,7 +73,8 @@ enum net_lltype_e
 {
   NET_LL_ETHERNET = 0, /* Ethernet */
   NET_LL_SLIP,         /* Serial Line Internet Protocol (SLIP) */
-  NET_LL_PPP           /* Point-to-Point Protocol (PPP) */
+  NET_LL_PPP,          /* Point-to-Point Protocol (PPP) */
+  NET_LL_TUN,          /* TUN Virtual Network Device */
 };
 
 /* This defines a bitmap big enough for one bit for each socket option */
@@ -96,7 +97,8 @@ struct devif_callback_s;     /* Forward reference */
 
 struct socket
 {
-  int           s_crefs;     /* Reference count on the socket */
+  int16_t       s_crefs;     /* Reference count on the socket */
+  uint8_t       s_domain;    /* IP domain: PF_INET, PF_INET6, or PF_PACKET */
   uint8_t       s_type;      /* Protocol type: Only SOCK_STREAM or SOCK_DGRAM */
   uint8_t       s_flags;     /* See _SF_* definitions */
 
@@ -170,6 +172,50 @@ extern "C"
  ****************************************************************************/
 
 /****************************************************************************
+ * Name: net_setup
+ *
+ * Description:
+ *   This is called from the OS initialization logic at power-up reset in
+ *   order to configure networking data structures.  This is called prior
+ *   to platform-specific driver initialization so that the networking
+ *   subsystem is prepared to deal with network driver initialization
+ *   actions.
+ *
+ *   Actions performed in this initialization phase assume that base OS
+ *   facilities such as semaphores are available but this logic cannot
+ *   depend upon OS resources such as interrupts or timers which are not
+ *   yet available.
+ *
+ * Input Parameters:
+ *   None
+ *
+ * Returned Value:
+ *   None
+ *
+ ****************************************************************************/
+
+void net_setup(void);
+
+/****************************************************************************
+ * Name: net_initialize
+ *
+ * Description:
+ *   This function is called from the OS initialization logic at power-up
+ *   reset AFTER initialization of hardware facilities such as timers and
+ *   interrupts.   This logic completes the initialization started by
+ *   net_setup().
+ *
+ * Input Parameters:
+ *   None
+ *
+ * Returned Value:
+ *   None
+ *
+ ****************************************************************************/
+
+void net_initialize(void);
+
+/****************************************************************************
  * Critical section management.  The NuttX configuration setting
  * CONFIG_NET_NOINT indicates that uIP not called from the interrupt level.
  * If CONFIG_NET_NOINTS is defined, then these will map to semaphore
@@ -221,10 +267,43 @@ void net_unlock(net_lock_t flags);
 #endif
 
 /****************************************************************************
+ * Function: net_timedwait
+ *
+ * Description:
+ *   Atomically wait for sem (or a timeout( while temporarily releasing
+ *   the lock on the network.
+ *
+ * Input Parameters:
+ *   sem     - A reference to the semaphore to be taken.
+ *   abstime - The absolute time to wait until a timeout is declared.
+ *
+ * Returned value:
+ *   The returned value is the same as sem_timedwait():  Zero (OK) is
+ *   returned on success; -1 (ERROR) is returned on a failure with the
+ *   errno value set appropriately.
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_NOINTS
+struct timespec;
+int net_timedwait(sem_t *sem, FAR const struct timespec *abstime);
+#else
+#  define net_timedwait(s,t) sem_timedwait(s,t)
+#endif
+
+/****************************************************************************
  * Function: net_lockedwait
  *
  * Description:
- *   Atomically wait for sem while temporarily releasing g_netlock.
+ *   Atomically wait for sem while temporarily releasing lock on the network.
+ *
+ * Input Parameters:
+ *   sem - A reference to the semaphore to be taken.
+ *
+ * Returned value:
+ *   The returned value is the same as sem_wait():  Zero (OK) is returned
+ *   on success; -1 (ERROR) is returned on a failure with the errno value
+ *   set appropriately.
  *
  ****************************************************************************/
 
@@ -259,23 +338,6 @@ void net_setipid(uint16_t id);
  ****************************************************************************/
 
 int net_checksd(int fd, int oflags);
-
-/****************************************************************************
- * Name: net_initialize
- *
- * Description:
- *   This is called from the OS initialization logic at power-up reset in
- *   order to configure the networking subsystem.
- *
- * Input Parameters:
- *   None
- *
- * Returned Value:
- *   None
- *
- ****************************************************************************/
-
-void net_initialize(void);
 
 /****************************************************************************
  * Name:

@@ -1,7 +1,7 @@
 /****************************************************************************
  * net/arp/arp.h
  *
- *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2014-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -247,11 +247,11 @@ void arp_format(FAR struct net_driver_s *dev, in_addr_t ipaddr);
  * Function: arp_send
  *
  * Description:
- *   The arp_send() call may be to send an ARP request to resolve an IP
- *   address.  This function first checks if the IP address is already in
- *   ARP table.  If so, then it returns success immediately.
+ *   The arp_send() call may be to send an ARP request to resolve an IPv4
+ *   address.  This function first checks if the IPv4 address is already in
+ *   the ARP table.  If so, then it returns success immediately.
  *
- *   If the requested IP address in not in the ARP table, then this function
+ *   If the requested IPv4 address in not in the ARP table, then this function
  *   will send an ARP request, delay, then check if the IP address is now in
  *   the ARP table.  It will repeat this sequence until either (1) the IP
  *   address mapping is now in the ARP table, or (2) a configurable number
@@ -345,8 +345,8 @@ int arp_wait_cancel(FAR struct arp_notify_s *notify);
  *   timeout occurs.
  *
  * Assumptions:
- *   This function is called from ARP send and executes in the normal
- *   tasking environment.
+ *   This function is called from ARP send and mut execute with the network
+ *   un-locked.
  *
  ****************************************************************************/
 
@@ -366,7 +366,7 @@ int arp_wait(FAR struct arp_notify_s *notify, FAR struct timespec *timeout);
  *
  * Assumptions:
  *   This function is called from the MAC device driver indirectly through
- *   arp_arpin() and may be execute from the interrupt level.
+ *   arp_arpin() and will execute with the network locked.
  *
  ****************************************************************************/
 

@@ -89,8 +89,11 @@
  *
  * wint_t
  *   An integral type capable of storing any valid value of wchar_t, or WEOF.
- *
- * wctype_t
+ */
+
+typedef int wint_t;
+
+/* wctype_t
  *   A scalar type of a data object that can hold values which represent
  *   locale-specific character classification.
  *
@@ -100,8 +103,33 @@
  *   multibyte) characters and wide-characters. If a codeset is being used
  *   such that an mbstate_t needs to preserve more than 2 levels of reserved
  *   state, the results are unspecified.
+ */
+
+#if 0 /* Not used */
+/* Commented out because this is dangerous.  This defines a type that would
+ * be internal to some wchar implementation.  NuttX does not implement the
+ * wchar functions.  Having this definition is a time bomb:  If this header
+ * file is inadvertently included in code that interacts with an external
+ * library and if the definition of mbstate_t does not EXACTLY match the
+ * usage in that external library, then a potentially fatal error could
+ * occur.
  *
- * FILE
+ * It is better to let the build error out due to the lack of the mbstate_t
+ * definition.  At least that way, the problem can be avoided and the user
+ * can come up with some alternative way of dealing with the interfacing
+ * issue that does not require NuttX to be in lock-step with some external
+ * implementation.
+ */
+
+struct mbstate_s
+{
+  int __fill[6];
+};
+
+typedef struct mbstate_s mbstate_t;
+#endif
+
+/* FILE
  *   As described in <stdio.h>.
  *
  * size_t
@@ -109,8 +137,6 @@
  *
  * Reference: Opengroup.org
  */
-
-typedef int wint_t;
 
 /* "The tag tm is declared as naming an incomplete structure type, the
  *  contents of which are described in the header <time.h>."

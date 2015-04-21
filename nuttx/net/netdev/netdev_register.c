@@ -1,7 +1,7 @@
 /****************************************************************************
  * net/netdev/netdev_register.c
  *
- *   Copyright (C) 2007-2012, 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2007-2012, 2014-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -62,10 +62,11 @@
 
 #define NETDEV_SLIP_FORMAT      "sl%d"
 #define NETDEV_ETH_FORMAT       "eth%d"
+#define NETDEV_TUN_FORMAT       "tun%d"
 
 #if defined(CONFIG_NET_SLIP)
 #  define NETDEV_DEFAULT_FORMAT NETDEV_SLIP_FORMAT
-#elif defined(CONFIG_NET_ETHERNET)
+#else /* if defined(CONFIG_NET_ETHERNET) */
 #  define NETDEV_DEFAULT_FORMAT NETDEV_ETH_FORMAT
 #endif
 
@@ -77,7 +78,11 @@
  * Private Data
  ****************************************************************************/
 
+/* Then next available device number */
+
+#ifndef CONFIG_NET_MULTILINK
 static int g_next_devnum = 0;
+#endif
 
 /****************************************************************************
  * Public Data
@@ -92,7 +97,56 @@ struct net_driver_s *g_netdevices = NULL;
  ****************************************************************************/
 
 /****************************************************************************
- * Global Functions
+ * Function: find_devnum
+ *
+ * Description:
+ *   Given a device name format string, find the next device number for the
+ *   class of device represented by that format string.
+ *
+ * Parameters:
+ *   devfmt - The device format string
+ *
+ * Returned Value:
+ *   The next device number for that device class
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_MULTILINK
+static int find_devnum(FAR const char *devfmt)
+{
+  FAR struct net_driver_s *curr;
+  size_t fmt_size;
+  int result = 0;
+
+  fmt_size = strlen(devfmt);
+
+  /* Assumed that devfmt is xxx%d */
+
+  DEBUGASSERT(fmt_size > 2);
+  fmt_size -= 2;
+
+  /* Search the list of currently registered network devices */
+
+  for (curr = g_netdevices; curr; curr = curr->flink )
+    {
+      /* Does this device name match the format we were given? */
+
+      if (strncmp(curr->d_ifname, devfmt, fmt_size) == 0)
+        {
+          /* Yes.. increment the candidate device number */
+
+          result++;
+        }
+    }
+
+  /* Return this next device number for this format */
+
+  return result;
+}
+#endif
+
+/****************************************************************************
+ * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
@@ -118,6 +172,9 @@ struct net_driver_s *g_netdevices = NULL;
 int netdev_register(FAR struct net_driver_s *dev, enum net_lltype_e lltype)
 {
   FAR const char *devfmt;
+#ifdef CONFIG_NET_USER_DEVFMT
+  FAR const char devfmt_str[IFNAMSIZ];
+#endif
   int devnum;
 
   if (dev)
@@ -153,6 +210,17 @@ int netdev_register(FAR struct net_driver_s *dev, enum net_lltype_e lltype)
             break;
 #endif
 
+#ifdef CONFIG_NET_TUN
+          case NET_LL_TUN:       /* Virtual Network Device (TUN) */
+            dev->d_llhdrlen = 0;
+            dev->d_mtu      = CONFIG_NET_TUN_MTU;
+#ifdef CONFIG_NET_TCP
+            dev->d_recvwndo = CONFIG_NET_TUN_TCP_RECVWNDO;
+#endif
+            devfmt          = NETDEV_TUN_FORMAT;
+            break;
+#endif
+
 #if 0                            /* REVISIT: Not yet supported */
           case NET_LL_PPP:       /* Point-to-Point Protocol (PPP) */
             dev->d_llhdrlen = 0;
@@ -179,10 +247,24 @@ int netdev_register(FAR struct net_driver_s *dev, enum net_lltype_e lltype)
      devfmt = NETDEV_DEFAULT_FORMAT;
 #endif
 
-      /* Assign a device name to the interface */
+      /* Get the next available device number and sssign a device name to
+       * the interface
+       */
 
       netdev_semtake();
+#ifdef CONFIG_NET_MULTILINK
+      devnum = find_devnum(devfmt);
+#else
       devnum = g_next_devnum++;
+#endif
+#ifdef CONFIG_NET_USER_DEVFMT
+      if (*dev->d_ifname)
+        {
+          strncpy(devfmt_str, dev->d_ifname, IFNAMSIZ);
+          devfmt = devfmt_str;
+        }
+#endif
+
       snprintf(dev->d_ifname, IFNAMSIZ, devfmt, devnum );
 
       /* Add the device to the list of known network devices */

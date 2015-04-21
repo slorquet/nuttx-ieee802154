@@ -44,7 +44,7 @@
 #include <errno.h>
 #include <debug.h>
 
-#include <nuttx/watchdog.h>
+#include <nuttx/timers/watchdog.h>
 #include <arch/board/board.h>
 
 #include "up_arch.h"
@@ -53,7 +53,7 @@
 #if defined(CONFIG_WATCHDOG) && defined(CONFIG_SAMA5_WDT)
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 /* Configuration ************************************************************/
 /* The Watchdog Timer uses the Slow Clock divided by 128 to establish the

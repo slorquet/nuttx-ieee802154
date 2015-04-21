@@ -1251,6 +1251,82 @@ Where <subdir> is one of the following:
        on your system and that you have the full path to the installed genromfs
        executable in PATH variable (see apps/examples/README.txt)
 
+  ipv6:
+  ----
+    This is another version of the NuttShell configuration for the
+    STM32F4-Discovery with the STM32F4DIS-BB base board.  It is very similar
+    to the netnsh configuration except that it has IPv6 enabled and IPv4
+    disabled.  Several network utilities that are not yet available under
+    IPv6 are disabled.
+
+    NOTES:
+
+    1. As of 2015-02-05, this configuration was identical to the netnsh
+       configuration other than using IPv6.  So all of the notes above
+       regarding the netnsh configuration apply.
+
+       Telnet does not work with IPv6.
+
+    2. This configuration can be modified to that both IPv4 and IPv6
+       are support.  Here is a summary of the additional configuration
+       settings requird to support both IPv4 and IPv6:
+
+         CONFIG_NET_IPv4=y
+         CONFIG_NET_ARP=y
+         CONFIG_NET_ARP_SEND=y (optional)
+         CONFIG_NET_ICMP=y
+         CONFIG_NET_ICMP_PING=y
+
+         CONFIG_NETUTILS_DNSCLIENT=y
+         CONFIG_NETUTILS_DNSCLIENT_IPv4=y
+         CONFIG_NETUTILS_TELNETD=y
+
+         CONFIG_NSH_IPADDR=0x0a000002
+         CONFIG_NSH_DRIPADDR=0x0a000001
+         CONFIG_NSH_NETMASK=0xffffff00
+         CONFIG_NSH_TELNET=y
+
+       Then from NSH, you have both ping and ping6 commands:
+
+         nsh> ping 10.0.0.1
+         nsh> ping6 fc00::1
+
+       And from the host you can do similar:
+
+         ping 10.0.0.2
+         ping6 fc00::2   (Linux)
+         ping -6 fc00::2 (Windows cmd)
+
+       and Telnet again works from the host:
+
+         telent 10.0.0.2
+
+    3. I have used this configuration to serve up IP address prefixes
+       in a local network with these modifications to the configuration:
+
+       +CONFIG_NET_ICMPv6_ROUTER=y
+       +CONFIG_NET_ICMPv6_PREFLEN=64
+       +CONFIG_NET_ICMPv6_PREFIX_1=0xfc00
+       +CONFIG_NET_ICMPv6_PREFIX_2=0x0000
+       +CONFIG_NET_ICMPv6_PREFIX_3=0x0000
+       +CONFIG_NET_ICMPv6_PREFIX_4=0x0000
+       +CONFIG_NET_ICMPv6_PREFIX_5=0x0000
+       +CONFIG_NET_ICMPv6_PREFIX_6=0x0000
+       +CONFIG_NET_ICMPv6_PREFIX_7=0x0000
+       +CONFIG_NET_ICMPv6_PREFIX_8=0x0000
+
+       +CONFIG_NSH_IPv6NETMASK_5=0x0000
+       -CONFIG_NSH_IPv6NETMASK_5=0xffff
+
+       +CONFIG_NSH_IPv6NETMASK_6=0x0000
+       -CONFIG_NSH_IPv6NETMASK_6=0xffff
+
+       +CONFIG_NSH_IPv6NETMASK_7=0x0000
+       -CONFIG_NSH_IPv6NETMASK_7=0xffff
+
+       +CONFIG_NSH_IPv6NETMASK_8=0x0000
+       -CONFIG_NSH_IPv6NETMASK_8=0xff80
+
   kostest:
   -------
     This is identical to the ostest configuration below except that NuttX

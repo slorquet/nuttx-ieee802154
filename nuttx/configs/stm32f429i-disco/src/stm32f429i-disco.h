@@ -50,7 +50,7 @@
 #endif
 
 /****************************************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************************************/
 /* Configuration ************************************************************************************/
 /* How many SPI modules does this chip support? */
@@ -218,25 +218,6 @@ void stm32_ledpminitialize(void);
 
 #if defined(CONFIG_PM) && defined(CONFIG_ARCH_IDLE_CUSTOM) && defined(CONFIG_PM_BUTTONS)
 void stm32_pmbuttons(void);
-#endif
-
-/****************************************************************************
- * Name: nsh_archinitialize
- *
- * Description:
- *   Perform architecture specific initialization for NSH.
- *
- *   CONFIG_NSH_ARCHINIT=y :
- *     Called from the NSH library
- *
- *   CONFIG_BOARD_INITIALIZE=y, CONFIG_NSH_LIBRARY=y, &&
- *   CONFIG_NSH_ARCHINIT=n :
- *     Called from board_initialize().
- *
- ****************************************************************************/
-
-#ifdef CONFIG_NSH_LIBRARY
-int nsh_archinitialize(void);
 #endif
 
 #ifdef CONFIG_STM32F429I_DISCO_ILI9341

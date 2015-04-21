@@ -1,7 +1,7 @@
 /****************************************************************************
  * net/arp/arp_send.c
  *
- *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2014-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -134,7 +134,7 @@ static uint16_t arp_send_interrupt(FAR struct net_driver_s *dev,
        * flag will be cleared in arp_out().
        */
 
-      dev->d_flags |= IFF_NOARP;
+      IFF_SET_NOARP(dev->d_flags);
 
       /* Don't allow any further call backs. */
 
@@ -202,7 +202,7 @@ int arp_send(in_addr_t ipaddr)
       return OK;
     }
 
-#if defined(CONFIG_NET_IGMP) && !defined(CONFIG_NET_IPv6)
+#ifdef CONFIG_NET_IGMP
   /* Check if the destination address is a multicast address
    *
    * - IPv4: multicast addresses lie in the class D group -- The address range
@@ -222,10 +222,10 @@ int arp_send(in_addr_t ipaddr)
 
   /* Get the device that can route this request */
 
-#ifdef CONFIG_NET_MULTILINK
-  dev = netdev_findbyaddr(g_allzeroaddr, ipaddr);
+#ifdef CONFIG_NETDEV_MULTINIC
+  dev = netdev_findby_ipv4addr(g_ipv4_allzeroaddr, ipaddr);
 #else
-  dev = netdev_findbyaddr(ipaddr);
+  dev = netdev_findby_ipv4addr(ipaddr);
 #endif
   if (!dev)
     {
@@ -238,7 +238,7 @@ int arp_send(in_addr_t ipaddr)
   /* ARP support is only built if the Ethernet data link is supported.
    * However, if we are supporting multiple network devices and using
    * different link level protocols then we can get here for other
-   * link protocals as well.  Continue and send the ARP request only
+   * link protocols as well.  Continue and send the ARP request only
    * if this device uses the Ethernet data link protocol.
    */
 
@@ -250,9 +250,9 @@ int arp_send(in_addr_t ipaddr)
 
   /* Check if the destination address is on the local network. */
 
-  if (!net_ipaddr_maskcmp(ipaddr, dev->d_ipaddr, dev->d_netmask))
+  if (!net_ipv4addr_maskcmp(ipaddr, dev->d_ipaddr, dev->d_netmask))
     {
-      net_ipaddr_t dripaddr;
+      in_addr_t dripaddr;
 
       /* Destination address is not on the local network */
 
@@ -264,13 +264,13 @@ int arp_send(in_addr_t ipaddr)
        * destination address when determining the MAC address.
        */
 
-      netdev_router(dev, ipaddr, &dripaddr);
+      netdev_ipv4_router(dev, ipaddr, &dripaddr);
 #else
       /* Use the device's default router IP address instead of the
        * destination address when determining the MAC address.
        */
 
-      net_ipaddr_copy(dripaddr, dev->d_draddr);
+      net_ipv4addr_copy(dripaddr, dev->d_draddr);
 #endif
       ipaddr = dripaddr;
     }
@@ -332,13 +332,13 @@ int arp_send(in_addr_t ipaddr)
       /* Arm/re-arm the callback */
 
       state.snd_sent      = false;
-      state.snd_cb->flags = PKT_POLL;
+      state.snd_cb->flags = ARP_POLL;
       state.snd_cb->priv  = (FAR void *)&state;
       state.snd_cb->event = arp_send_interrupt;
 
       /* Notify the device driver that new TX data is available.
-       * NOTES: This is in essence what netdev_txnotify() does, which
-       * is not possible to call since it expects a net_ipaddr_t as
+       * NOTES: This is in essence what netdev_ipv4_txnotify() does, which
+       * is not possible to call since it expects a in_addr_t as
        * its single argument to lookup the network interface.
        */
 
@@ -358,6 +358,7 @@ int arp_send(in_addr_t ipaddr)
 
       /* Now wait for response to the ARP response to be received.  The
        * optimal delay would be the work case round trip time.
+       * NOTE: The network is locked.
        */
 
       delay.tv_sec  = CONFIG_ARP_SEND_DELAYSEC;

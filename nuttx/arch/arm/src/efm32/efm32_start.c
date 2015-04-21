@@ -1,7 +1,7 @@
 /****************************************************************************
  * arch/arm/src/efm32/efm32_start.c
  *
- *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2014-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -68,7 +68,7 @@
 #ifdef CONFIG_ARCH_FPU
 static inline void efm32_fpuconfig(void);
 #endif
-#ifdef CONFIG_DEBUG_STACK
+#ifdef CONFIG_STACK_COLORATION
 static void go_os_start(void *pv, unsigned int nbytes)
   __attribute__ ((naked,no_instrument_function,noreturn));
 #endif
@@ -121,7 +121,7 @@ static void go_os_start(void *pv, unsigned int nbytes)
  ****************************************************************************/
 
 #ifdef CONFIG_ARCH_FPU
-#ifdef CONFIG_ARMV7M_CMNVECTOR
+#if defined(CONFIG_ARMV7M_CMNVECTOR) && !defined(CONFIG_ARMV7M_LAZYFPU)
 
 static inline void efm32_fpuconfig(void)
 {
@@ -195,7 +195,7 @@ static inline void efm32_fpuconfig(void)
  *
  ****************************************************************************/
 
-#ifdef CONFIG_DEBUG_STACK
+#ifdef CONFIG_STACK_COLORATION
 static void go_os_start(void *pv, unsigned int nbytes)
 {
   /* Set the IDLE stack to the stack coloration value then jump to
@@ -301,7 +301,7 @@ void __start(void)
   showprogress('\r');
   showprogress('\n');
 
-#ifdef CONFIG_DEBUG_STACK
+#ifdef CONFIG_STACK_COLORATION
   /* Set the IDLE stack to the coloration value and jump into os_start() */
 
   go_os_start((FAR void *)&_ebss, CONFIG_IDLETHREAD_STACKSIZE);

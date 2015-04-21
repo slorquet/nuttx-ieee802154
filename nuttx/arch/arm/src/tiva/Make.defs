@@ -55,7 +55,7 @@ ifeq ($(CONFIG_ARCH_MEMCPY),y)
 CMN_ASRCS += up_memcpy.S
 endif
 
-ifeq ($(CONFIG_DEBUG_STACK),y)
+ifeq ($(CONFIG_STACK_COLORATION),y)
 CMN_CSRCS += up_checkstack.c
 endif
 
@@ -101,6 +101,11 @@ CHIP_CSRCS += tiva_timerlib.c
 ifeq ($(CONFIG_TIVA_TIMER32_PERIODIC),y)
 CHIP_CSRCS += tiva_timerlow32.c
 endif
+endif
+
+ifeq ($(CONFIG_TIVA_ADC),y)
+CHIP_CSRCS += tiva_adclow.c
+CHIP_CSRCS += tiva_adclib.c
 endif
 
 ifeq ($(CONFIG_NET),y)

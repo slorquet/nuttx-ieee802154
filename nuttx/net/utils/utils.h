@@ -41,6 +41,7 @@
  ****************************************************************************/
 
 #include <nuttx/config.h>
+#include <nuttx/net/ip.h>
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -139,7 +140,27 @@ unsigned int net_dsec2tick(int dsec);
 unsigned int net_timeval2dsec(FAR struct timeval *tv);
 
 /****************************************************************************
- * Name: tcp_chksum
+ * Function: net_ipv6_pref2mask
+ *
+ * Description:
+ *   Convert a IPv6 prefix length to a network mask.  The prefix length
+ *   specifies the number of MS bits under mask (0-128)
+ *
+ * Parameters:
+ *   preflen  - Determines the width of the netmask (in bits).  Range 0-128
+ *   mask  - The location to return the netmask.
+ *
+ * Returned Value:
+ *   None
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_IPv6
+void net_ipv6_pref2mask(uint8_t preflen, net_ipv6addr_t mask);
+#endif
+
+/****************************************************************************
+ * Name: tcp_chksum, tcp_ipv4_chksum, and tcp_ipv6_chksum
  *
  * Description:
  *   Calculate the TCP checksum of the packet in d_buf and d_appdata.
@@ -157,18 +178,45 @@ unsigned int net_timeval2dsec(FAR struct timeval *tv);
  *
  ****************************************************************************/
 
+#ifdef CONFIG_NET_IPv4
+uint16_t tcp_ipv4_chksum(FAR struct net_driver_s *dev);
+#endif
+
+#ifdef CONFIG_NET_IPv6
+/* REVIST: Is this used? */
+uint16_t tcp_ipv6_chksum(FAR struct net_driver_s *dev);
+#endif
+
+#if defined(CONFIG_NET_IPv4) && defined(CONFIG_NET_IPv6)
 uint16_t tcp_chksum(FAR struct net_driver_s *dev);
+#elif defined(CONFIG_NET_IPv4)
+#  define tcp_chksum(d) tcp_ipv4_chksum(d)
+#else /* if defined(CONFIG_NET_IPv6) */
+#  define tcp_chksum(d) tcp_ipv6_chksum(d)
+#endif
 
 /****************************************************************************
- * Name: udp_chksum
+ * Name: udp_ipv4_chksum
  *
  * Description:
- *   Calculate the UDP checksum of the packet in d_buf and d_appdata.
+ *   Calculate the UDP/IPv4 checksum of the packet in d_buf and d_appdata.
  *
  ****************************************************************************/
 
-#ifdef CONFIG_NET_UDP_CHECKSUMS
-uint16_t udp_chksum(FAR struct net_driver_s *dev);
+#if defined(CONFIG_NET_UDP_CHECKSUMS) && defined(CONFIG_NET_IPv4)
+uint16_t udp_ipv4_chksum(FAR struct net_driver_s *dev);
+#endif
+
+/****************************************************************************
+ * Name: udp_ipv6_chksum
+ *
+ * Description:
+ *   Calculate the UDP/IPv6 checksum of the packet in d_buf and d_appdata.
+ *
+ ****************************************************************************/
+
+#if defined(CONFIG_NET_UDP_CHECKSUMS) && defined(CONFIG_NET_IPv6)
+uint16_t udp_ipv6_chksum(FAR struct net_driver_s *dev);
 #endif
 
 /****************************************************************************

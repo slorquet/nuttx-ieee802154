@@ -49,7 +49,7 @@
 #include <arch/stm32/chip.h>
 
 /************************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ************************************************************************************/
 
 /* IRQ numbers.  The IRQ number corresponds vector number and hence map directly to
@@ -85,6 +85,8 @@
 #  include <arch/stm32/stm32f20xxx_irq.h>
 #elif defined(CONFIG_STM32_STM32F30XX)
 #  include <arch/stm32/stm32f30xxx_irq.h>
+#elif defined(CONFIG_STM32_STM32F37XX)
+#  include <arch/stm32/stm32f37xxx_irq.h>
 #elif defined(CONFIG_STM32_STM32F40XX)
 #  include <arch/stm32/stm32f40xxx_irq.h>
 #else

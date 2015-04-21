@@ -57,6 +57,7 @@
 #include <sys/prctl.h>
 #include <sys/socket.h>
 #include <sys/mount.h>
+#include <sys/boardctl.h>
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -69,7 +69,7 @@ ifeq ($(CONFIG_DEV_CONSOLE),y)
 endif
 
 ifeq ($(CONFIG_NX_LCDDRIVER),y)
-  CSRCS += up_lcd.c
+  CSRCS += board_lcd.c
 else
   CSRCS += up_framebuffer.c
 ifeq ($(CONFIG_SIM_X11FB),y)
@@ -98,7 +98,7 @@ ifeq ($(CONFIG_ARCH_ROMGETC),y)
 CSRCS += up_romgetc.c
 endif
 
-ifeq ($(CONFIG_NET),y)
+ifeq ($(CONFIG_NET_ETHERNET),y)
 CSRCS += up_netdriver.c
 HOSTCFLAGS += -DNETDEV_BUFSIZE=$(CONFIG_NET_ETH_MTU)
 ifneq ($(HOSTOS),Cygwin)

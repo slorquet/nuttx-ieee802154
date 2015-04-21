@@ -56,7 +56,7 @@
 #include "stm32_waste.h"
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /* Allow up to 100 milliseconds for the high speed clock to become ready.
@@ -84,6 +84,8 @@
 #  include "stm32f20xxx_rcc.c"
 #elif defined(CONFIG_STM32_STM32F30XX)
 #  include "stm32f30xxx_rcc.c"
+#elif defined(CONFIG_STM32_STM32F37XX)
+#  include "stm32f37xxx_rcc.c"
 #elif defined(CONFIG_STM32_STM32F40XX)
 #  include "stm32f40xxx_rcc.c"
 #else
@@ -183,3 +185,4 @@ void stm32_clockenable(void)
 #endif
 }
 #endif
+

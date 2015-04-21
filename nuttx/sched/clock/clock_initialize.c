@@ -49,14 +49,14 @@
 #  include <arch/irq.h>
 #endif
 
+#include <nuttx/arch.h>
 #include <nuttx/clock.h>
 #include <nuttx/time.h>
-#include <nuttx/rtc.h>
 
 #include "clock/clock.h"
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 /* Standard time definitions (in units of seconds) */
 

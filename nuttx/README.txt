@@ -1154,11 +1154,11 @@ nuttx
  |   |   |- ostest/README.txt
  |   |   |- poll/README.txt
  |   |   `- README.txt
- |   |-  fire-stm32v2/
+ |   |- fire-stm32v2/
  |   |   `- README.txt
- |   |-  freedom-kl25z/
+ |   |- freedom-kl25z/
  |   |   `- README.txt
- |   |- galileo/
+ |   |- freedom-kl26z/
  |   |   `- README.txt
  |   |- hymini-stm32v/
  |   |   `- README.txt
@@ -1191,6 +1191,8 @@ nuttx
  |   |- mirtoo/
  |   |   `- README.txt
  |   |- mt-db-x3/
+ |   |   `- README.txt
+ |   |- moteino-mega/
  |   |   `- README.txt
  |   |- mx1ads/
  |   |   `- README.txt
@@ -1229,9 +1231,11 @@ nuttx
  |   |   `- README.txt
  |   |- pcduino-a10/
  |   |   `- README.txt
- |   |- pic32-starterkit/
+ |   |- pic32mx-starterkit/
  |   |   `- README.txt
  |   |- pic32mx7mmb/
+ |   |   `- README.txt
+ |   |- pic32mz-starterkit/
  |   |   `- README.txt
  |   |- pirelli_dpl10/
  |   |   `- README.txt
@@ -1256,6 +1260,8 @@ nuttx
  |   |- sam4s-xplained/
  |   |   `- README.txt
  |   |- sam4s-xplained-pro/
+ |   |   `- README.txt
+ |   |- samv7i-xult/
  |   |   `- README.txt
  |   |- sim/
  |   |   `- README.txt
@@ -1290,6 +1296,8 @@ nuttx
  |   |- teensy/
  |   |   `- README.txt
  |   |- tm4c123g-launchpad/
+ |   |   `- README.txt
+ |   |- tm4c1294-launchpad/
  |   |   `- README.txt
  |   |- twr-k60n512/
  |   |   `- README.txt
@@ -1410,7 +1418,9 @@ apps
  |   |  `- README.txt
  |   |- usbmsc
  |   |  `- README.txt
- |   `- zmodem
+ |   |- zmodem
+ |   |  `- README.txt
+ |   `- zoneinfo
  |      `- README.txt
  `- README.txt
 

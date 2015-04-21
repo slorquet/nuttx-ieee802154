@@ -53,8 +53,12 @@
 #include <nuttx/arch.h>
 #include <nuttx/irq.h>
 #include <nuttx/wdog.h>
-#include <nuttx/net/mii.h>
 
+#ifdef CONFIG_NET_NOINTS
+#  include <nuttx/wqueue.h>
+#endif
+
+#include <nuttx/net/mii.h>
 #include <nuttx/net/arp.h>
 #include <nuttx/net/netdev.h>
 #if defined(CONFIG_NET_PKT)
@@ -78,7 +82,7 @@
 #if STM32_NETHERNET > 0
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 /* Configuration ************************************************************/
 /* See configs/stm3240g-eval/README.txt for an explanation of the configuration
@@ -87,6 +91,14 @@
 
 #if STM32_NETHERNET > 1
 #  error "Logic to support multiple Ethernet interfaces is incomplete"
+#endif
+
+/* If processing is not done at the interrupt level, then high priority
+ * work queue support is required.
+ */
+
+#if defined(CONFIG_NET_NOINTS) && !defined(CONFIG_SCHED_HPWORK)
+#  error High priority work queue support is required
 #endif
 
 #if !defined(CONFIG_STM32_SYSCFG) && !defined(CONFIG_STM32_CONNECTIVITYLINE)
@@ -570,6 +582,9 @@ struct stm32_ethmac_s
   uint8_t              fduplex : 1; /* Full (vs. half) duplex */
   WDOG_ID              txpoll;      /* TX poll timer */
   WDOG_ID              txtimeout;   /* TX timeout timer */
+#ifdef CONFIG_NET_NOINTS
+  struct work_s        work;        /* For deferring work to the work queue */
+#endif
 
   /* This holds the information visible to uIP/NuttX */
 
@@ -642,20 +657,39 @@ static int  stm32_recvframe(FAR struct stm32_ethmac_s *priv);
 static void stm32_receive(FAR struct stm32_ethmac_s *priv);
 static void stm32_freeframe(FAR struct stm32_ethmac_s *priv);
 static void stm32_txdone(FAR struct stm32_ethmac_s *priv);
+#ifdef CONFIG_NET_NOINTS
+static void stm32_interrupt_work(FAR void *arg);
+#endif
 static int  stm32_interrupt(int irq, FAR void *context);
 
 /* Watchdog timer expirations */
 
-static void stm32_polltimer(int argc, uint32_t arg, ...);
-static void stm32_txtimeout(int argc, uint32_t arg, ...);
+static inline void stm32_txtimeout_process(FAR struct stm32_ethmac_s *priv);
+#ifdef CONFIG_NET_NOINTS
+static void stm32_txtimeout_work(FAR void *arg);
+#endif
+static void stm32_txtimeout_expiry(int argc, uint32_t arg, ...);
+
+static inline void stm32_poll_process(FAR struct stm32_ethmac_s *priv);
+#ifdef CONFIG_NET_NOINTS
+static void stm32_poll_work(FAR void *arg);
+#endif
+static void stm32_poll_expiry(int argc, uint32_t arg, ...);
 
 /* NuttX callback functions */
 
 static int  stm32_ifup(struct net_driver_s *dev);
 static int  stm32_ifdown(struct net_driver_s *dev);
+static int  stm32_ifdown(struct net_driver_s *dev);
+static inline void stm32_txavail_process(FAR struct stm32_ethmac_s *priv);
+#ifdef CONFIG_NET_NOINTS
+static void stm32_txavail_work(FAR void *arg);
+#endif
 static int  stm32_txavail(struct net_driver_s *dev);
-#ifdef CONFIG_NET_IGMP
+#if defined(CONFIG_NET_IGMP) || defined(CONFIG_NET_ICMPv6)
 static int  stm32_addmac(struct net_driver_s *dev, FAR const uint8_t *mac);
+#endif
+#ifdef CONFIG_NET_IGMP
 static int  stm32_rmmac(struct net_driver_s *dev, FAR const uint8_t *mac);
 #endif
 #ifdef CONFIG_NETDEV_PHY_IOCTL
@@ -691,6 +725,9 @@ static inline void stm32_ethgpioconfig(FAR struct stm32_ethmac_s *priv);
 static void stm32_ethreset(FAR struct stm32_ethmac_s *priv);
 static int  stm32_macconfig(FAR struct stm32_ethmac_s *priv);
 static void stm32_macaddress(FAR struct stm32_ethmac_s *priv);
+#ifdef CONFIG_NET_ICMPv6
+static void stm32_ipv6multicast(FAR struct stm32_ethmac_s *priv);
+#endif
 static int  stm32_macenable(FAR struct stm32_ethmac_s *priv);
 static int  stm32_ethconfig(FAR struct stm32_ethmac_s *priv);
 
@@ -1135,7 +1172,7 @@ static int stm32_transmit(FAR struct stm32_ethmac_s *priv)
 
   /* Setup the TX timeout watchdog (perhaps restarting the timer) */
 
-  (void)wd_start(priv->txtimeout, STM32_TXTIMEOUT, stm32_txtimeout, 1, (uint32_t)priv);
+  (void)wd_start(priv->txtimeout, STM32_TXTIMEOUT, stm32_txtimeout_expiry, 1, (uint32_t)priv);
   return OK;
 }
 
@@ -1175,9 +1212,30 @@ static int stm32_txpoll(struct net_driver_s *dev)
 
   if (priv->dev.d_len > 0)
     {
+      /* Look up the destination MAC address and add it to the Ethernet
+       * header.
+       */
+
+#ifdef CONFIG_NET_IPv4
+#ifdef CONFIG_NET_IPv6
+      if (IFF_IS_IPv4(priv->dev.d_flags))
+#endif
+        {
+          arp_out(&priv->dev);
+        }
+#endif /* CONFIG_NET_IPv4 */
+
+#ifdef CONFIG_NET_IPv6
+#ifdef CONFIG_NET_IPv4
+      else
+#endif
+        {
+          neighbor_out(&priv->dev);
+        }
+#endif /* CONFIG_NET_IPv6 */
+
       /* Send the packet */
 
-      arp_out(&priv->dev);
       stm32_transmit(priv);
       DEBUGASSERT(dev->d_len == 0 && dev->d_buf == NULL);
 
@@ -1612,22 +1670,65 @@ static void stm32_receive(FAR struct stm32_ethmac_s *priv)
       if (dev->d_len > CONFIG_NET_ETH_MTU)
         {
           nlldbg("DROPPED: Too big: %d\n", dev->d_len);
+          continue;
         }
+
+#ifdef CONFIG_NET_PKT
+  /* When packet sockets are enabled, feed the frame into the packet tap */
+
+   pkt_input(&priv->dev);
+#endif
 
       /* We only accept IP packets of the configured type and ARP packets */
 
-#ifdef CONFIG_NET_IPv6
-      else if (BUF->type == HTONS(ETHTYPE_IP6))
-#else
-      else if (BUF->type == HTONS(ETHTYPE_IP))
-#endif
+#ifdef CONFIG_NET_IPv4
+      if (BUF->type == HTONS(ETHTYPE_IP))
         {
-          nllvdbg("IP frame\n");
+          nllvdbg("IPv4 frame\n");
 
-          /* Handle ARP on input then give the IP packet to uIP */
+          /* Handle ARP on input then give the IPv4 packet to the network
+           * layer
+           */
 
           arp_ipin(&priv->dev);
-          devif_input(&priv->dev);
+          ipv4_input(&priv->dev);
+
+          /* If the above function invocation resulted in data that should be
+           * sent out on the network, the field  d_len will set to a value > 0.
+           */
+
+          if (priv->dev.d_len > 0)
+            {
+              /* Update the Ethernet header with the correct MAC address */
+
+#ifdef CONFIG_NET_IPv6
+              if (IFF_IS_IPv4(priv->dev.d_flags))
+#endif
+                {
+                  arp_out(&priv->dev);
+                }
+#ifdef CONFIG_NET_IPv6
+              else
+                {
+                  neighbor_out(&priv->dev);
+                }
+#endif
+
+              /* And send the packet */
+
+              stm32_transmit(priv);
+            }
+        }
+      else
+#endif
+#ifdef CONFIG_NET_IPv6
+      if (BUF->type == HTONS(ETHTYPE_IP6))
+        {
+          nllvdbg("Iv6 frame\n");
+
+          /* Give the IPv6 packet to the network layer */
+
+          ipv6_input(&priv->dev);
 
           /* If the above function invocation resulted in data that should be
            * sent out on the network, the field  d_len will set to a value > 0.
@@ -1635,11 +1736,30 @@ static void stm32_receive(FAR struct stm32_ethmac_s *priv)
 
           if (priv->dev.d_len > 0)
            {
-             arp_out(&priv->dev);
-             stm32_transmit(priv);
-           }
+              /* Update the Ethernet header with the correct MAC address */
+
+#ifdef CONFIG_NET_IPv4
+              if (IFF_IS_IPv4(priv->dev.d_flags))
+                {
+                  arp_out(&priv->dev);
+                }
+              else
+#endif
+#ifdef CONFIG_NET_IPv6
+                {
+                  neighbor_out(&priv->dev);
+                }
+#endif
+
+              /* And send the packet */
+
+              stm32_transmit(priv);
+            }
         }
-      else if (BUF->type == htons(ETHTYPE_ARP))
+      else
+#endif
+#ifdef CONFIG_NET_ARP
+      if (BUF->type == htons(ETHTYPE_ARP))
         {
           nllvdbg("ARP frame\n");
 
@@ -1657,6 +1777,7 @@ static void stm32_receive(FAR struct stm32_ethmac_s *priv)
             }
         }
       else
+#endif
         {
           nlldbg("DROPPED: Unknown type: %04x\n", BUF->type);
         }
@@ -1815,25 +1936,25 @@ static void stm32_txdone(FAR struct stm32_ethmac_s *priv)
 }
 
 /****************************************************************************
- * Function: stm32_interrupt
+ * Function: stm32_interrupt_process
  *
  * Description:
- *   Hardware interrupt handler
+ *   Interrupt processing.  This may be performed either within the interrupt
+ *   handler or on the worker thread, depending upon the configuration
  *
  * Parameters:
- *   irq     - Number of the IRQ that generated the interrupt
- *   context - Interrupt register state save info (architecture-specific)
+ *   priv  - Reference to the driver state structure
  *
  * Returned Value:
- *   OK on success
+ *   None
  *
  * Assumptions:
+ *   Ethernet interrupts are disabled
  *
  ****************************************************************************/
 
-static int stm32_interrupt(int irq, FAR void *context)
+static inline void stm32_interrupt_process(FAR struct stm32_ethmac_s *priv)
 {
-  register FAR struct stm32_ethmac_s *priv = &g_stm32ethmac[0];
   uint32_t dmasr;
 
   /* Get the DMA interrupt status bits (no MAC interrupts are expected) */
@@ -1867,7 +1988,7 @@ static int stm32_interrupt(int irq, FAR void *context)
 
       /* Check if a packet transmission just completed.  If so, call
        * stm32_txdone(). This may disable further TX interrupts if there
-       * are no pending tansmissions.
+       * are no pending transmissions.
        */
 
       if ((dmasr & ETH_DMAINT_TI) != 0)
@@ -1907,11 +2028,178 @@ static int stm32_interrupt(int irq, FAR void *context)
       stm32_putreg(ETH_DMAINT_AIS, STM32_ETH_DMASR);
     }
 #endif
+}
+
+/****************************************************************************
+ * Function: stm32_interrupt_work
+ *
+ * Description:
+ *   Perform interrupt related work from the worker thread
+ *
+ * Parameters:
+ *   arg - The argument passed when work_queue() was called.
+ *
+ * Returned Value:
+ *   OK on success
+ *
+ * Assumptions:
+ *   Ethernet interrupts are disabled
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_NOINTS
+static void stm32_interrupt_work(FAR void *arg)
+{
+  FAR struct stm32_ethmac_s *priv = (FAR struct stm32_ethmac_s *)arg;
+  net_lock_t state;
+
+  DEBUGASSERT(priv);
+
+  /* Process pending Ethernet interrupts */
+
+  state = net_lock();
+  stm32_interrupt_process(priv);
+  net_unlock(state);
+
+  /* Re-enable Ethernet interrupts at the NVIC */
+
+  up_enable_irq(STM32_IRQ_ETH);
+}
+#endif
+
+/****************************************************************************
+ * Function: stm32_interrupt
+ *
+ * Description:
+ *   Hardware interrupt handler
+ *
+ * Parameters:
+ *   irq     - Number of the IRQ that generated the interrupt
+ *   context - Interrupt register state save info (architecture-specific)
+ *
+ * Returned Value:
+ *   OK on success
+ *
+ * Assumptions:
+ *
+ ****************************************************************************/
+
+static int stm32_interrupt(int irq, FAR void *context)
+{
+  FAR struct stm32_ethmac_s *priv = &g_stm32ethmac[0];
+
+#ifdef CONFIG_NET_NOINTS
+  uint32_t dmasr;
+
+  /* Get the DMA interrupt status bits (no MAC interrupts are expected) */
+
+  dmasr = stm32_getreg(STM32_ETH_DMASR);
+  if (dmasr != 0)
+    {
+      /* Disable further Ethernet interrupts.  Because Ethernet interrupts
+       * are also disabled if the TX timeout event occurs, there can be no
+       * race condition here.
+       */
+
+      up_disable_irq(STM32_IRQ_ETH);
+
+      /* Check if a packet transmission just completed. */
+
+      if ((dmasr & ETH_DMAINT_TI) != 0)
+        {
+          /* If a TX transfer just completed, then cancel the TX timeout so
+           * there will be no race condition between any subsequent timeout
+           * expiration and the deferred interrupt processing.
+           */
+
+           wd_cancel(priv->txtimeout);
+        }
+
+      /* Cancel any pending poll work */
+
+      work_cancel(HPWORK, &priv->work);
+
+      /* Schedule to perform the interrupt processing on the worker thread. */
+
+      work_queue(HPWORK, &priv->work, stm32_interrupt_work, priv, 0);
+    }
+
+#else
+  /* Process the interrupt now */
+
+  stm32_interrupt_process(priv);
+#endif
+
   return OK;
 }
 
 /****************************************************************************
- * Function: stm32_txtimeout
+ * Function: stm32_txtimeout_process
+ *
+ * Description:
+ *   Process a TX timeout.  Called from the either the watchdog timer
+ *   expiration logic or from the worker thread, depending upon the
+ *   configuration.  The timeout means that the last TX never completed.
+ *   Reset the hardware and start again.
+ *
+ * Parameters:
+ *   priv  - Reference to the driver state structure
+ *
+ * Returned Value:
+ *   None
+ *
+ * Assumptions:
+ *   Global interrupts are disabled by the watchdog logic.
+ *
+ ****************************************************************************/
+
+static inline void stm32_txtimeout_process(FAR struct stm32_ethmac_s *priv)
+{
+  /* Then reset the hardware.  Just take the interface down, then back
+   * up again.
+   */
+
+  stm32_ifdown(&priv->dev);
+  stm32_ifup(&priv->dev);
+
+  /* Then poll for new XMIT data */
+
+  stm32_dopoll(priv);
+}
+
+/****************************************************************************
+ * Function: stm32_txtimeout_work
+ *
+ * Description:
+ *   Perform TX timeout related work from the worker thread
+ *
+ * Parameters:
+ *   arg - The argument passed when work_queue() as called.
+ *
+ * Returned Value:
+ *   OK on success
+ *
+ * Assumptions:
+ *   Ethernet interrupts are disabled
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_NOINTS
+static void stm32_txtimeout_work(FAR void *arg)
+{
+  FAR struct stm32_ethmac_s *priv = (FAR struct stm32_ethmac_s *)arg;
+  net_lock_t state;
+
+  /* Process pending Ethernet interrupts */
+
+  state = net_lock();
+  stm32_txtimeout_process(priv);
+  net_unlock(state);
+}
+#endif
+
+/****************************************************************************
+ * Function: stm32_txtimeout_expiry
  *
  * Description:
  *   Our TX watchdog timed out.  Called from the timer interrupt handler.
@@ -1929,46 +2217,59 @@ static int stm32_interrupt(int irq, FAR void *context)
  *
  ****************************************************************************/
 
-static void stm32_txtimeout(int argc, uint32_t arg, ...)
+static void stm32_txtimeout_expiry(int argc, uint32_t arg, ...)
 {
   FAR struct stm32_ethmac_s *priv = (FAR struct stm32_ethmac_s *)arg;
 
   nlldbg("Timeout!\n");
 
-  /* Then reset the hardware.  Just take the interface down, then back
-   * up again.
+#ifdef CONFIG_NET_NOINTS
+  /* Disable further Ethernet interrupts.  This will prevent some race
+   * conditions with interrupt work.  There is still a potential race
+   * condition with interrupt work that is already queued and in progress.
+   *
+   * Interrupts will be re-enabled when stm32_ifup() is called.
    */
 
-  stm32_ifdown(&priv->dev);
-  stm32_ifup(&priv->dev);
+  up_disable_irq(STM32_IRQ_ETH);
 
-  /* Then poll uIP for new XMIT data */
+  /* Cancel any pending poll or interrupt work.  This will have no effect
+   * on work that has already been started.
+   */
 
-  stm32_dopoll(priv);
+  work_cancel(HPWORK, &priv->work);
+
+  /* Schedule to perform the TX timeout processing on the worker thread. */
+
+  work_queue(HPWORK, &priv->work, stm32_txtimeout_work, priv, 0);
+
+#else
+  /* Process the timeout now */
+
+  stm32_txtimeout_process(priv);
+#endif
 }
 
 /****************************************************************************
- * Function: stm32_polltimer
+ * Function: stm32_poll_process
  *
  * Description:
- *   Periodic timer handler.  Called from the timer interrupt handler.
+ *   Perform the periodic poll.  This may be called either from watchdog
+ *   timer logic or from the worker thread, depending upon the configuration.
  *
  * Parameters:
- *   argc - The number of available arguments
- *   arg  - The first argument
+ *   priv  - Reference to the driver state structure
  *
  * Returned Value:
  *   None
  *
  * Assumptions:
- *   Global interrupts are disabled by the watchdog logic.
  *
  ****************************************************************************/
 
-static void stm32_polltimer(int argc, uint32_t arg, ...)
+static inline void stm32_poll_process(FAR struct stm32_ethmac_s *priv)
 {
-  FAR struct stm32_ethmac_s *priv = (FAR struct stm32_ethmac_s *)arg;
-  FAR struct net_driver_s   *dev  = &priv->dev;
+  FAR struct net_driver_s *dev  = &priv->dev;
 
   /* Check if the next TX descriptor is owned by the Ethernet DMA or CPU.  We
    * cannot perform the timer poll if we are unable to accept another packet
@@ -2015,7 +2316,87 @@ static void stm32_polltimer(int argc, uint32_t arg, ...)
 
   /* Setup the watchdog poll timer again */
 
-  (void)wd_start(priv->txpoll, STM32_WDDELAY, stm32_polltimer, 1, arg);
+  (void)wd_start(priv->txpoll, STM32_WDDELAY, stm32_poll_expiry, 1, priv);
+}
+
+/****************************************************************************
+ * Function: stm32_poll_work
+ *
+ * Description:
+ *   Perform periodic polling from the worker thread
+ *
+ * Parameters:
+ *   arg - The argument passed when work_queue() as called.
+ *
+ * Returned Value:
+ *   OK on success
+ *
+ * Assumptions:
+ *   Ethernet interrupts are disabled
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_NOINTS
+static void stm32_poll_work(FAR void *arg)
+{
+  FAR struct stm32_ethmac_s *priv = (FAR struct stm32_ethmac_s *)arg;
+  net_lock_t state;
+
+  /* Perform the poll */
+
+  state = net_lock();
+  stm32_poll_process(priv);
+  net_unlock(state);
+}
+#endif
+
+/****************************************************************************
+ * Function: stm32_poll_expiry
+ *
+ * Description:
+ *   Periodic timer handler.  Called from the timer interrupt handler.
+ *
+ * Parameters:
+ *   argc - The number of available arguments
+ *   arg  - The first argument
+ *
+ * Returned Value:
+ *   None
+ *
+ * Assumptions:
+ *   Global interrupts are disabled by the watchdog logic.
+ *
+ ****************************************************************************/
+
+static void stm32_poll_expiry(int argc, uint32_t arg, ...)
+{
+  FAR struct stm32_ethmac_s *priv = (FAR struct stm32_ethmac_s *)arg;
+
+#ifdef CONFIG_NET_NOINTS
+  /* Is our single work structure available?  It may not be if there are
+   * pending interrupt actions.
+   */
+
+  if (work_available(&priv->work))
+    {
+      /* Schedule to perform the interrupt processing on the worker thread. */
+
+      work_queue(HPWORK, &priv->work, stm32_poll_work, priv, 0);
+    }
+  else
+    {
+      /* No.. Just re-start the watchdog poll timer, missing one polling
+       * cycle.
+       */
+
+      (void)wd_start(priv->txpoll, STM32_WDDELAY, stm32_poll_expiry, 1, (uint32_t)priv);
+    }
+
+#else
+  /* Process the interrupt now */
+
+  stm32_poll_process(priv);
+#endif
 }
 
 /****************************************************************************
@@ -2040,9 +2421,17 @@ static int stm32_ifup(struct net_driver_s *dev)
   FAR struct stm32_ethmac_s *priv = (FAR struct stm32_ethmac_s *)dev->d_private;
   int ret;
 
+#ifdef CONFIG_NET_IPv4
   ndbg("Bringing up: %d.%d.%d.%d\n",
        dev->d_ipaddr & 0xff, (dev->d_ipaddr >> 8) & 0xff,
        (dev->d_ipaddr >> 16) & 0xff, dev->d_ipaddr >> 24);
+#endif
+#ifdef CONFIG_NET_IPv6
+  ndbg("Bringing up: %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x\n",
+       dev->d_ipv6addr[0], dev->d_ipv6addr[1], dev->d_ipv6addr[2],
+       dev->d_ipv6addr[3], dev->d_ipv6addr[4], dev->d_ipv6addr[5],
+       dev->d_ipv6addr[6], dev->d_ipv6addr[7]);
+#endif
 
   /* Configure the Ethernet interface for DMA operation. */
 
@@ -2054,7 +2443,7 @@ static int stm32_ifup(struct net_driver_s *dev)
 
   /* Set and activate a timer process */
 
-  (void)wd_start(priv->txpoll, STM32_WDDELAY, stm32_polltimer, 1, (uint32_t)priv);
+  (void)wd_start(priv->txpoll, STM32_WDDELAY, stm32_poll_expiry, 1, (uint32_t)priv);
 
   /* Enable the Ethernet interrupt */
 
@@ -2113,6 +2502,69 @@ static int stm32_ifdown(struct net_driver_s *dev)
 }
 
 /****************************************************************************
+ * Function: stm32_txavail_process
+ *
+ * Description:
+ *   Perform an out-of-cycle poll.
+ *
+ * Parameters:
+ *   priv - Reference to the NuttX driver state structure
+ *
+ * Returned Value:
+ *   None
+ *
+ * Assumptions:
+ *   Called in normal user mode
+ *
+ ****************************************************************************/
+
+static inline void stm32_txavail_process(FAR struct stm32_ethmac_s *priv)
+{
+  nvdbg("ifup: %d\n", priv->ifup);
+
+  /* Ignore the notification if the interface is not yet up */
+
+  if (priv->ifup)
+    {
+      /* Poll uIP for new XMIT data */
+
+      stm32_dopoll(priv);
+    }
+
+}
+
+/****************************************************************************
+ * Function: stm32_txavail_work
+ *
+ * Description:
+ *   Perform an out-of-cycle poll on the worker thread.
+ *
+ * Parameters:
+ *   arg  - Reference to the NuttX driver state structure (cast to void*)
+ *
+ * Returned Value:
+ *   None
+ *
+ * Assumptions:
+ *   Called on the higher priority worker thread.
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_NOINTS
+static void stm32_txavail_work(FAR void *arg)
+{
+  FAR struct stm32_ethmac_s *priv = (FAR struct stm32_ethmac_s *)arg;
+  net_lock_t state;
+
+  /* Perform the poll */
+
+  state = net_lock();
+  stm32_txavail_process(priv);
+  net_unlock(state);
+}
+#endif
+
+/****************************************************************************
  * Function: stm32_txavail
  *
  * Description:
@@ -2134,9 +2586,22 @@ static int stm32_ifdown(struct net_driver_s *dev)
 static int stm32_txavail(struct net_driver_s *dev)
 {
   FAR struct stm32_ethmac_s *priv = (FAR struct stm32_ethmac_s *)dev->d_private;
-  irqstate_t flags;
 
-  nllvdbg("ifup: %d\n", priv->ifup);
+#ifdef CONFIG_NET_NOINTS
+  /* Is our single work structure available?  It may not be if there are
+   * pending interrupt actions and we will have to ignore the Tx
+   * availability action.
+   */
+
+  if (work_available(&priv->work))
+    {
+      /* Schedule to serialize the poll on the worker thread. */
+
+      work_queue(HPWORK, &priv->work, stm32_txavail_work, priv, 0);
+    }
+
+#else
+  irqstate_t flags;
 
   /* Disable interrupts because this function may be called from interrupt
    * level processing.
@@ -2144,16 +2609,12 @@ static int stm32_txavail(struct net_driver_s *dev)
 
   flags = irqsave();
 
-  /* Ignore the notification if the interface is not yet up */
+  /* Perform the out-of-cycle poll now */
 
-  if (priv->ifup)
-    {
-      /* Poll uIP for new XMIT data */
-
-      stm32_dopoll(priv);
-    }
-
+  stm32_txavail_process(priv);
   irqrestore(flags);
+#endif
+
   return OK;
 }
 
@@ -2174,7 +2635,7 @@ static int stm32_txavail(struct net_driver_s *dev)
  *
  ****************************************************************************/
 
-#ifdef CONFIG_NET_IGMP
+#if defined(CONFIG_NET_IGMP) || defined(CONFIG_NET_ICMPv6)
 static uint32_t stm32_calcethcrc(const uint8_t *data, size_t length)
 {
   uint32_t crc = 0xffffffff;
@@ -2219,7 +2680,7 @@ static uint32_t stm32_calcethcrc(const uint8_t *data, size_t length)
  *
  ****************************************************************************/
 
-#ifdef CONFIG_NET_IGMP
+#if defined(CONFIG_NET_IGMP) || defined(CONFIG_NET_ICMPv6)
 static int stm32_addmac(struct net_driver_s *dev, FAR const uint8_t *mac)
 {
   uint32_t crc;
@@ -2256,7 +2717,7 @@ static int stm32_addmac(struct net_driver_s *dev, FAR const uint8_t *mac)
 
   return OK;
 }
-#endif
+#endif /* CONFIG_NET_IGMP || CONFIG_NET_ICMPv6 */
 
 /****************************************************************************
  * Function: stm32_rmmac
@@ -3388,6 +3849,79 @@ static void stm32_macaddress(FAR struct stm32_ethmac_s *priv)
 }
 
 /****************************************************************************
+ * Function: stm32_ipv6multicast
+ *
+ * Description:
+ *   Configure the IPv6 multicast MAC address.
+ *
+ * Parameters:
+ *   priv - A reference to the private driver state structure
+ *
+ * Returned Value:
+ *   OK on success; Negated errno on failure.
+ *
+ * Assumptions:
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_NET_ICMPv6
+static void stm32_ipv6multicast(FAR struct stm32_ethmac_s *priv)
+{
+  struct net_driver_s *dev;
+  uint16_t tmp16;
+  uint8_t mac[6];
+
+  /* For ICMPv6, we need to add the IPv6 multicast address
+   *
+   * For IPv6 multicast addresses, the Ethernet MAC is derived by
+   * the four low-order octets OR'ed with the MAC 33:33:00:00:00:00,
+   * so for example the IPv6 address FF02:DEAD:BEEF::1:3 would map
+   * to the Ethernet MAC address 33:33:00:01:00:03.
+   *
+   * NOTES:  This appears correct for the ICMPv6 Router Solicitation
+   * Message, but the ICMPv6 Neighbor Solicitation message seems to
+   * use 33:33:ff:01:00:03.
+   */
+
+  mac[0] = 0x33;
+  mac[1] = 0x33;
+
+  dev    = &priv->dev;
+  tmp16  = dev->d_ipv6addr[6];
+  mac[2] = 0xff;
+  mac[3] = tmp16 >> 8;
+
+  tmp16  = dev->d_ipv6addr[7];
+  mac[4] = tmp16 & 0xff;
+  mac[5] = tmp16 >> 8;
+
+  nvdbg("IPv6 Multicast: %02x:%02x:%02x:%02x:%02x:%02x\n",
+        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+  (void)stm32_addmac(dev, mac);
+
+#ifdef CONFIG_NET_ICMPv6_AUTOCONF
+  /* Add the IPv6 all link-local nodes Ethernet address.  This is the
+   * address that we expect to receive ICMPv6 Router Advertisement
+   * packets.
+   */
+
+  (void)stm32_addmac(dev, g_ipv6_ethallnodes.ether_addr_octet);
+
+#endif /* CONFIG_NET_ICMPv6_AUTOCONF */
+#ifdef CONFIG_NET_ICMPv6_ROUTER
+  /* Add the IPv6 all link-local routers Ethernet address.  This is the
+   * address that we expect to receive ICMPv6 Router Solicitation
+   * packets.
+   */
+
+  (void)stm32_addmac(dev, g_ipv6_ethallrouters.ether_addr_octet);
+
+#endif /* CONFIG_NET_ICMPv6_ROUTER */
+}
+#endif /* CONFIG_NET_ICMPv6 */
+
+/****************************************************************************
  * Function: stm32_macenable
  *
  * Description:
@@ -3410,6 +3944,12 @@ static int stm32_macenable(FAR struct stm32_ethmac_s *priv)
   /* Set the MAC address */
 
   stm32_macaddress(priv);
+
+#ifdef CONFIG_NET_ICMPv6
+  /* Set up the IPv6 multicast address */
+
+  stm32_ipv6multicast(priv);
+#endif
 
   /* Enable transmit state machine of the MAC for transmission on the MII */
 

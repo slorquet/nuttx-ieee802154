@@ -42,10 +42,12 @@
 #include <sys/types.h>
 #include <syslog.h>
 
+#include <nuttx/board.h>
+
 #include "viewtool_stm32f107.h"
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 /* Configuration ************************************************************/
 
@@ -62,22 +64,25 @@
 #    define CONFIG_NSH_MMCSDSLOTNO VIEWTOOL_MMCSD_SLOTNO
 #  endif
 #endif
-#endif
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: nsh_archinitialize
+ * Name: board_app_initialize
  *
  * Description:
  *   Perform architecture specific initialization
  *
  ****************************************************************************/
 
-int nsh_archinitialize(void)
+int board_app_initialize(void)
 {
+#ifdef CONFIG_MPL115A
+  stm32_mpl115ainitialize("/dev/press");
+#endif
+
 #ifdef HAVE_MMCSD
   return stm32_sdinitialize(CONFIG_NSH_MMCSDSLOTNO);
 #else

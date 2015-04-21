@@ -46,6 +46,7 @@
 
 #include <netinet/in.h>
 
+#include <nuttx/net/net.h>
 #include <arch/irq.h>
 
 #include "arp/arp.h"
@@ -112,7 +113,7 @@ void arp_wait_setup(in_addr_t ipaddr, FAR struct arp_notify_s *notify)
  * Function: arp_wait_cancel
  *
  * Description:
- *   Cancel any wait set after arp_wait_setup is called but before arm_wait()
+ *   Cancel any wait set after arp_wait_setup is called but before arp_wait()
  *   is called (arp_wait() will automatically cancel the wait).
  *
  * Assumptions:
@@ -166,8 +167,8 @@ int arp_wait_cancel(FAR struct arp_notify_s *notify)
  *   timeout occurs.
  *
  * Assumptions:
- *   This function is called from ARP send and executes in the normal
- *   tasking environment.
+ *   This function is called from ARP send must execute with the network
+ *   locked.
  *
  ****************************************************************************/
 
@@ -186,17 +187,17 @@ int arp_wait(FAR struct arp_notify_s *notify, FAR struct timespec *timeout)
 
   abstime.tv_sec  += timeout->tv_sec;
   abstime.tv_nsec += timeout->tv_nsec;
-  if (abstime.tv_nsec > 1000000000)
+  if (abstime.tv_nsec >= 1000000000)
     {
       abstime.tv_sec++;
       abstime.tv_nsec -= 1000000000;
     }
 
-   /* REVISIT:  If sem_timedwait() is awakened with  signal, we will return
+   /* REVISIT:  If net_timedwait() is awakened with  signal, we will return
     * the wrong error code.
     */
 
-  (void)sem_timedwait(&notify->nt_sem, &abstime);
+  (void)net_timedwait(&notify->nt_sem, &abstime);
   ret = notify->nt_result;
 
   /* Remove our wait structure from the list (we may no longer be at the
@@ -220,7 +221,7 @@ int arp_wait(FAR struct arp_notify_s *notify, FAR struct timespec *timeout)
  *
  * Assumptions:
  *   This function is called from the MAC device driver indirectly through
- *   arp_arpin() and may be execute from the interrupt level.
+ *   arp_arpin() will execute with the network locked.
  *
  ****************************************************************************/
 
