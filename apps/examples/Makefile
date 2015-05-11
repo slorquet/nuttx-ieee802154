@@ -1,7 +1,7 @@
 ############################################################################
 # apps/examples/Makefile
 #
-#   Copyright (C) 2011-2014 Gregory Nutt. All rights reserved.
+#   Copyright (C) 2011-2015 Gregory Nutt. All rights reserved.
 #   Author: Gregory Nutt <gnutt@nuttx.org>
 #
 # Redistribution and use in source and binary forms, with or without
@@ -37,30 +37,7 @@
 
 # Sub-directories
 
-SUBDIRS  = adc ajoystick bastest bridge buttons can cc3000 cpuhog cxxtest
-SUBDIRS += dhcpd discover djoystick elf flash_test ftpc ftpd hello helloxx
-SUBDIRS += hidkbd igmp i2schar json keypadtest lcdrw ltdc mm modbus mount
-SUBDIRS += mtdpart mtdrwb netpkt nettest nrf24l01_term nsh null nx nxterm
-SUBDIRS += nxffs nxflat nxhello nximage nxlines nxtext ostest pashello pipe
-SUBDIRS += poll posix_spawn pwm qencoder random relays rgmp romfs sendmail
-SUBDIRS += serialblaster serloop serialrx slcd smart smart_test tcpecho
-SUBDIRS += telnetd thttpd tiff timer touchscreen udp usbserial usbterm
-SUBDIRS += ustream udgram watchdog webserver wget wgetjson xmlrpc pppd
-
-# Sub-directories that might need context setup.  Directories may need
-# context setup for a variety of reasons, but the most common is because
-# the example may be built as an NSH built-in function.
-
-CNTXTDIRS = pwm
-
-CNTXTDIRS += adc ajoystick bridge can cc3000 cpuhog cxxtest dhcpd discover
-CNTXTDIRS += djoystick flash_test ftpd hello helloxx i2schar json keypadtest
-CNTXTDIRS += ltdc modbus lcdrw mtdpart mtdrwb netpkt nettest nx nxhello
-CNTXTDIRS += nximage nxlines nxtext nrf24l01_term ostest random relays
-CNTXTDIRS += qencoder serialblasters lcd serialrx smart_test tcpecho telnetd
-CNTXTDIRS += tiff timer touchscreen usbterm udgram ustream watchdog wgetjson
-CNTXTDIRS += pppd
-endif
+SUBDIRS = $(dir $(wildcard */Makefile))
 
 all: nothing
 
@@ -71,7 +48,7 @@ $(1)_$(2):
 	$(Q) $(MAKE) -C $(1) $(2) TOPDIR="$(TOPDIR)" APPDIR="$(APPDIR)"
 endef
 
-$(foreach SDIR, $(CNTXTDIRS), $(eval $(call SDIR_template,$(SDIR),context)))
+$(foreach SDIR, $(SUBDIRS), $(eval $(call SDIR_template,$(SDIR),context)))
 $(foreach SDIR, $(SUBDIRS), $(eval $(call SDIR_template,$(SDIR),depend)))
 $(foreach SDIR, $(SUBDIRS), $(eval $(call SDIR_template,$(SDIR),clean)))
 $(foreach SDIR, $(SUBDIRS), $(eval $(call SDIR_template,$(SDIR),distclean)))
@@ -80,7 +57,7 @@ nothing:
 
 install:
 
-context: $(foreach SDIR, $(CNTXTDIRS), $(SDIR)_context)
+context: $(foreach SDIR, $(SUBDIRS), $(SDIR)_context)
 
 depend: $(foreach SDIR, $(SUBDIRS), $(SDIR)_depend)
 

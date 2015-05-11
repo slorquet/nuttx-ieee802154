@@ -1,7 +1,7 @@
 /************************************************************************************
  * configs/stm3220g-eval/src/stm32_usb.c
  *
- *   Copyright (C) 2012-2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2012-2013, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,6 +44,7 @@
 #include <stdbool.h>
 #include <sched.h>
 #include <errno.h>
+#include <assert.h>
 #include <debug.h>
 
 #include <nuttx/usb/usbdev.h>
@@ -73,7 +74,11 @@
 #endif
 
 #ifndef CONFIG_USBHOST_STACKSIZE
-#  define CONFIG_USBHOST_STACKSIZE 1024
+#  ifdef CONFIG_USBHOST_HUB
+#    define CONFIG_USBHOST_STACKSIZE 1536
+#  else
+#    define CONFIG_USBHOST_STACKSIZE 1024
+#  endif
 #endif
 
 /************************************************************************************
@@ -99,27 +104,23 @@ static struct usbhost_connection_s *g_usbconn;
 #ifdef CONFIG_USBHOST
 static int usbhost_waiter(int argc, char *argv[])
 {
-  bool connected = false;
-  int ret;
+  struct usbhost_hubport_s *hport;
 
   uvdbg("Running\n");
   for (;;)
     {
       /* Wait for the device to change state */
 
-      ret = CONN_WAIT(g_usbconn, &connected);
-      DEBUGASSERT(ret == OK);
-
-      connected = !connected;
-      uvdbg("%s\n", connected ? "connected" : "disconnected");
+      DEBUGVERIFY(CONN_WAIT(g_usbconn, &hport));
+      uvdbg("%s\n", hport->connected ? "connected" : "disconnected");
 
       /* Did we just become connected? */
 
-      if (connected)
+      if (hport->connected)
         {
           /* Yes.. enumerate the newly connected device */
 
-          (void)CONN_ENUMERATE(g_usbconn, 0);
+          (void)CONN_ENUMERATE(g_usbconn, hport);
         }
     }
 
@@ -176,11 +177,26 @@ int stm32_usbhost_initialize(void)
    */
 
   uvdbg("Register class drivers\n");
-  ret = usbhost_storageinit();
+
+#ifdef CONFIG_USBHOST_MSC
+  /* Register the USB mass storage class class */
+
+  ret = usbhost_msc_initialize();
   if (ret != OK)
     {
-      udbg("Failed to register the mass storage class\n");
+      udbg("ERROR: Failed to register the mass storage class: %d\n", ret);
     }
+#endif
+
+#ifdef CONFIG_USBHOST_CDCACM
+  /* Register the CDC/ACM serial class */
+
+  ret = usbhost_cdcacm_initialize();
+  if (ret != OK)
+    {
+      udbg("ERROR: Failed to register the CDC/ACM serial class: %d\n", ret);
+    }
+#endif
 
   /* Then get an instance of the USB host interface */
 

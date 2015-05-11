@@ -1,7 +1,7 @@
 /****************************************************************************
  * config/olimex-lpc1766stk/src/lpc17_nsh.c
  *
- *   Copyright (C) 2010, 2013-2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2010, 2013-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -110,11 +110,11 @@
 #endif
 
 #ifdef NSH_HAVEUSBHOST
-#  ifndef CONFIG_USBHOST_DEFPRIO
-#    define CONFIG_USBHOST_DEFPRIO 50
+#  ifndef CONFIG_LPC1766STK_USBHOST_PRIO
+#    define CONFIG_LPC1766STK_USBHOST_PRIO 50
 #  endif
-#  ifndef CONFIG_USBHOST_STACKSIZE
-#    define CONFIG_USBHOST_STACKSIZE 1024
+#  ifndef CONFIG_LPC1766STK_USBHOST_STACKSIZE
+#    define CONFIG_LPC1766STK_USBHOST_STACKSIZE 1024
 #  endif
 #endif
 
@@ -141,25 +141,23 @@ static struct usbhost_connection_s *g_usbconn;
 #ifdef NSH_HAVEUSBHOST
 static int nsh_waiter(int argc, char *argv[])
 {
-  bool connected = false;
+  struct usbhost_hubport_s *hport;
 
   syslog(LOG_INFO, "nsh_waiter: Running\n");
   for (;;)
     {
       /* Wait for the device to change state */
 
-      DEBUGVERIFY(CONN_WAIT(g_usbconn, &connected));
-
-      connected = !connected;
-      syslog(LOG_INFO, "%s\n", connected ? "connected" : "disconnected");
+      DEBUGVERIFY(CONN_WAIT(g_usbconn, &hport));
+      syslog(LOG_INFO, "nsh_waiter: %s\n", hport->connected ? "connected" : "disconnected");
 
       /* Did we just become connected? */
 
-      if (connected)
+      if (hport->connected)
         {
           /* Yes.. enumerate the newly connected device */
 
-          (void)CONN_ENUMERATE(g_usbconn, 0);
+          (void)CONN_ENUMERATE(g_usbconn, hport);
         }
     }
 
@@ -248,11 +246,36 @@ static int nsh_usbhostinitialize(void)
    */
 
   syslog(LOG_INFO, "Register class drivers\n");
-  ret = usbhost_storageinit();
+
+#ifdef CONFIG_USBHOST_HUB
+  /* Initialize USB hub support */
+
+  ret = usbhost_hub_initialize();
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "ERROR: usbhost_hub_initialize failed: %d\n", ret);
+    }
+#endif
+
+#ifdef CONFIG_USBHOST_MSC
+  /* Initialize mass storage support */
+
+  ret = usbhost_msc_initialize();
   if (ret != OK)
     {
-      syslog(LOG_ERR, "ERROR: Failed to register the mass storage class\n");
+      syslog(LOG_ERR, "ERROR: Failed to register the mass storage class: %d\n", ret);
     }
+#endif
+
+#ifdef CONFIG_USBHOST_CDCACM
+  /* Register the CDC/ACM serial class */
+
+  ret = usbhost_cdcacm_initialize();
+  if (ret != OK)
+    {
+      syslog(LOG_ERR, "ERROR: Failed to register the CDC/ACM serial class: %d\n", ret);
+    }
+#endif
 
   /* Then get an instance of the USB host interface */
 
@@ -264,8 +287,8 @@ static int nsh_usbhostinitialize(void)
 
       syslog(LOG_ERR, "ERROR: Start nsh_waiter\n");
 
-      pid = task_create("usbhost", CONFIG_USBHOST_DEFPRIO,
-                        CONFIG_USBHOST_STACKSIZE,
+      pid = task_create("usbhost", CONFIG_LPC1766STK_USBHOST_PRIO,
+                        CONFIG_LPC1766STK_USBHOST_STACKSIZE,
                         (main_t)nsh_waiter, (FAR char * const *)NULL);
       return pid < 0 ? -ENOEXEC : OK;
     }

@@ -4526,7 +4526,7 @@
 	* arch/arm/src/Makefile:  The variable NUTTX already includes
 	  the extension $(EXEEXT).  So remove the second extension
 	  $(NUTTX)$(EXEEXT) in two places (2013-4-7).
-	* arch/arm/src/lpc17xx/lpc17_gpioint.c:  Disable interrrupts in
+	* arch/arm/src/lpc17xx/lpc17_gpioint.c:  Disable interrupts in
 	  lpc17_setintedge().  This logic must be atomic because it can be
 	  re-entered before it completes enabled interrupts, sometimes
 	  leaving the interrupts in a strange state (2013-4-7).
@@ -10248,5 +10248,95 @@
 	  return (2015-04-19).
 	* include/nuttx/usb/hub.h: Add USB hub header file from Kaushal Parikh
 	  (2015-04-18).
+	* drivers/usbhost/usbhost_hub.c: Bring in USB hub-related files from
+	  https://github.com/kaushalparikh/nuttx.  This is the work of Kaushal
+	  Parikh.  This initial commit is incomplete.  This is quite a bit more
+	  hub logic that needs to come in before the port is complete
+	  (2015-04-18).
 	* arch/arm/src/stm32/stm32_rtcounter.c: Now need to enable backup
 	  domain write access when setting the time.  From Darcy Gong (2015-04-19).
+	* include/nuttx/usb/usbhost.h:  Bring in more logic from
+	  https://github.com/kaushalparikh/nuttx (2015-04-19).
+	* drivers/usbhost/usbhost_enumerate.c: Last of USB hub logic from
+	  https://github.com/kaushalparikh/nuttx (2015-04-19).
+	* include/time.h:  Add prototypes for localtime() and localtimer_r()
+	  (2015-04-21).
+	* include/assert.h: Wrap definitions of assertion macros in do while.
+	  Suggested by orbitalfox (2015-04-22).
+	* sched/semaphore/sem_wait.c:  Missing comma on debug statement caused
+	  compile error with DEBUG on.  Why hasn't that been noted before?
+	  (2015-04-23).
+	* drivers/lcd and include/nuttx/drivers: RA8875 LCD driver contributed
+	  by Marten Svanfeldt (2015-04-24).
+	* arch/arm/src/stm32/chip/stm32_pwr.c and .h: Adds support for STM32's
+	  Programmable Voltage Detector (PVD) feature. Register access is behind
+	  CONFIG_STM32_ENERGYLITE as the feature has not been verified for
+	  F1/F2/F4 etc. manuals. Tested on STM32L1. PVD interrupt looks generic,
+	  at least #defines it needs are in headers for every chip variant.  By
+	  Dmitry Nikolaev, submitted by Juha Niskanen (2015-04-28).
+	* arch/arm/src/stm32/chip/stm32_exti.h, stm32f30xxx_memorymap.h, and
+	  stm32f37xxx_memorymap.h:  Added missing EXTI definitions for the STM32
+	  F3; Correct an error the port D base address in the STM32 F30x and F37x
+	  memory maps.  From Greg Meiste (2015-05-01).
+	* arch/arm/src/lpc17xx/lpc176x_gpio.c:  Reorder steps when an output
+	  GPIO is configured in order to avoid transient bad values from being
+	  output.  From Hal Glenn (2015-05-02).
+	* arch/arm/src/stm32/stm32_otgfsdev.c and stm32_otghsdev.c: Add
+	  protection in the event that out-of-bound enpoint numbers are
+	  received.  From David Sidrane (2015-05-02).
+	* USB host:  Merged in the USB hub support that has been happening on
+	  a separate branch up until this point.  The interfaces are complete
+	  and most platforms have been verified (still a little to be done
+	  however). (2015-05-02)
+	* arch/arm/src/lpc31xx/lpc31_ehci.c, chip.h, sama5/sam_ehci.c, and
+	  chip.h:  Fix cache related problem in LPC31 and SAMA5Dx EHCI drivers.
+	  All buffers are now aligned with the cache line size in both starting
+	  address and in length.  This cause major problems in unlucky builds
+	  where the USB host buffers where unaligned and abbutting other data.
+	  The cache flush and invalidate operations could be subverted by
+	  accesses to adjacent data or could have unexpected side effects.  This
+	  bug has been in the ECHI drivers forever, but was only revealed due to
+	  unlucky memory allocations during the integration of the hub feature
+	  (2015-05-03).
+	* arch/arm/src/lpc17xx/lpc17_usbhost.c:  Correct some initialization of
+	  data structures.  When hub support is enabled, it would overwrite the
+	  end of an array and clobber some OS data structures (2015-05-03).
+	* configs/olimex-lpc1766stk:  Make stacks usage configurable for USB
+	  host waiter. It needs to be a lot deeper when hub support is enabled
+	  (2015-05-03).
+	* fs/vfs/fs_poll.c: Fix resource leak and memory corruption on poll
+	  failure.  From Jussi Kivilinna (2015-05-04).
+	* All USB host drivers in arch/ and all USB class drivers in drivers/usbhost:
+	  Modify the transfer() and asynch() methods so that the actual size of
+	  the transfer is returned.  Unverified on initial commit (2015-05-05).
+	* drivers/usbhost/usbhost_cdcacm.c: Add initial implementation of a host-
+	  side CDC/ACM driver.  Completely untested on initial commit (2015-05-06).
+	* configs/, drivers/usbhost/usbhost_storage.c, and included/nuttx/usb/usbhost.h:
+	  Rename usbhost_storageinit() to usbhost_msc_initialize().  Add calls
+	  to usbhost_cdcacm_initialize() if CONFIG_USBHOST_CDCACM is selected
+	 (2015-05-06).
+	* arch/arm/include/kl and src/kl: Add support for the KL25Z64.  The
+	  KL25Z64 is a lower memory variant of the KL25Z128 and is used on the
+	  Teensy LC.  From Michael as SourceForge patch 50 (2015-05-07)
+	* configs/teensy-lc and related board support files: Add board support
+	  for the Teensy LC board.  Support is based off the Freedom KL25Z board.
+	  LED, PWM, and UART0 have been tested. The SPI pins are mapped
+	  correctly but have not yet been tested.  From Michael Hope as
+	  SourceForge patch 51 (2015-05-07).
+	* arch/arm/src/kl/kl_pwm.c: fix PWM debugging. TPM1 and TPM2 have two
+	  channels instead of six and will hard fault if you try to read the
+	  missing channels.  From Michael Hope (2015-05-07).
+	* arch/arm/src/kl/kl_lowputc.c: enable the clocks to UART1 and UART2.
+	  The previous version would cause a hard fault on startup due to the
+	  modules not being clocked.  Also drop the GPIO configuration as it's
+	  done during kl_start().  From Michael Hope (2015-05-07).
+	* teensy-lc: remap UART0 to the standard pins. From Michael Hope
+	  (2015-05-07).
+	* arch/arm/src/stm32 and include/stm32: Added support for STM32F302K8
+	  and STM32F302K6.  From Ben Dyer via PX4/David Sidrane (2015-05-08).
+	* configs/compal_e86: Calypso Compal-E86: Updates for execution out of
+	  FLASH on the C139 phone.  From Craig Comstock (2015-05-08).
+	* STM32 F3:  Add DBGMCU register definitions for the F3 family.  From
+	  Greg Meiste (2015-05-09).
+	* arch/arm/src/stm32/chip/stm32_exti.h: Add EXTI line definitions for
+	  the STM32L family (2015-05-09).

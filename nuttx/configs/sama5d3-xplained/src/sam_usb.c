@@ -1,7 +1,7 @@
 /************************************************************************************
  * configs/sama5d3-xplained/src/sam_usb.c
  *
- *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2014-2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -63,12 +63,12 @@
  * Pre-processor Definitions
  ************************************************************************************/
 
-#ifndef CONFIG_USBHOST_DEFPRIO
-#  define CONFIG_USBHOST_DEFPRIO 50
+#ifndef CONFIG_SAMA5D3XPLAINED_USBHOST_PRIO
+#  define CONFIG_SAMA5D3XPLAINED_USBHOST_PRIO 50
 #endif
 
-#ifndef CONFIG_USBHOST_STACKSIZE
-#  define CONFIG_USBHOST_STACKSIZE 1024
+#ifndef CONFIG_SAMA5D3XPLAINED_USBHOST_STACKSIZE
+#  define CONFIG_SAMA5D3XPLAINED_USBHOST_STACKSIZE 1024
 #endif
 
 #ifdef HAVE_USBDEV
@@ -112,35 +112,23 @@ static int usbhost_waiter(struct usbhost_connection_s *dev, const char *hcistr)
 static int usbhost_waiter(struct usbhost_connection_s *dev)
 #endif
 {
-  bool connected[SAM_OHCI_NRHPORT] = {false, false, false};
-  int rhpndx;
-  int ret;
+  struct usbhost_hubport_s *hport;
 
-  uvdbg("%s Waiter Running\n", hcistr);
+  uvdbg("Running\n");
   for (;;)
     {
       /* Wait for the device to change state */
 
-      rhpndx = CONN_WAIT(dev, connected);
-      DEBUGASSERT(rhpndx >= 0 && rhpndx < SAM_OHCI_NRHPORT);
-
-      connected[rhpndx] = !connected[rhpndx];
-
-      uvdbg("%s RHport%d %s\n",
-            hcistr, rhpndx + 1, connected[rhpndx] ? "connected" : "disconnected");
+      DEBUGVERIFY(CONN_WAIT(dev, &hport));
+      uvdbg("%s\n", hport->connected ? "connected" : "disconnected");
 
       /* Did we just become connected? */
 
-      if (connected[rhpndx])
+      if (hport->connected)
         {
           /* Yes.. enumerate the newly connected device */
 
-          ret = CONN_ENUMERATE(dev, rhpndx);
-          if (ret < 0)
-            {
-              uvdbg("%s RHport%d CONN_ENUMERATE failed: %d\n", hcistr, rhpndx+1, ret);
-              connected[rhpndx] = false;
-            }
+          (void)CONN_ENUMERATE(dev, hport);
         }
     }
 
@@ -269,7 +257,9 @@ void weak_function sam_usbinitialize(void)
 #ifdef CONFIG_SAMA5_UHPHS_RHPORT1
   /* Configure Port A to support the USB OHCI/EHCI function */
 
+#ifdef PIO_USBA_VBUS_ENABLE /* SAMA5D3-Xplained has no port A VBUS enable */
   sam_configpio(PIO_USBA_VBUS_ENABLE); /* VBUS enable, initially OFF */
+#endif
 #endif
 
 #ifdef CONFIG_SAMA5_UHPHS_RHPORT2
@@ -310,16 +300,39 @@ int sam_usbhost_initialize(void)
 
   /* First, register all of the class drivers needed to support the drivers
    * that we care about
-   *
-   * Register theUSB host Mass Storage Class:
    */
 
-  ret = usbhost_storageinit();
+#ifdef CONFIG_USBHOST_HUB
+  /* Initialize USB hub class support */
+
+  ret = usbhost_hub_initialize();
+  if (ret < 0)
+    {
+      udbg("ERROR: usbhost_hub_initialize failed: %d\n", ret);
+    }
+#endif
+
+#ifdef CONFIG_USBHOST_MSC
+  /* Register theUSB host Mass Storage Class */
+
+  ret = usbhost_msc_initialize();
   if (ret != OK)
     {
       udbg("ERROR: Failed to register the mass storage class: %d\n", ret);
     }
+#endif
 
+#ifdef CONFIG_USBHOST_CDCACM
+  /* Register the CDC/ACM serial class */
+
+  ret = usbhost_cdcacm_initialize();
+  if (ret != OK)
+    {
+      udbg("ERROR: Failed to register the CDC/ACM serial class: %d\n", ret);
+    }
+#endif
+
+#ifdef CONFIG_USBHOST_HIDKBD
   /* Register the USB host HID keyboard class driver */
 
   ret = usbhost_kbdinit();
@@ -327,6 +340,7 @@ int sam_usbhost_initialize(void)
     {
       udbg("ERROR: Failed to register the KBD class\n");
     }
+#endif
 
   /* Then get an instance of the USB host interface. */
 
@@ -342,7 +356,8 @@ int sam_usbhost_initialize(void)
 
   /* Start a thread to handle device connection. */
 
-  pid = task_create("OHCI Monitor", CONFIG_USBHOST_DEFPRIO,  CONFIG_USBHOST_STACKSIZE,
+  pid = task_create("OHCI Monitor", CONFIG_SAMA5D3XPLAINED_USBHOST_PRIO,
+                    CONFIG_SAMA5D3XPLAINED_USBHOST_STACKSIZE,
                     (main_t)ohci_waiter, (FAR char * const *)NULL);
   if (pid < 0)
     {
@@ -363,7 +378,8 @@ int sam_usbhost_initialize(void)
 
   /* Start a thread to handle device connection. */
 
-  pid = task_create("EHCI Monitor", CONFIG_USBHOST_DEFPRIO,  CONFIG_USBHOST_STACKSIZE,
+  pid = task_create("EHCI Monitor", CONFIG_SAMA5D3XPLAINED_USBHOST_PRIO,
+                    CONFIG_SAMA5D3XPLAINED_USBHOST_STACKSIZE,
                     (main_t)ehci_waiter, (FAR char * const *)NULL);
   if (pid < 0)
     {
@@ -405,8 +421,14 @@ void sam_usbhost_vbusdrive(int rhport, bool enable)
   switch (rhport)
     {
     case SAM_RHPORT1:
-#ifndef CONFIG_SAMA5_UHPHS_RHPORT1
+#if !defined(CONFIG_SAMA5_UHPHS_RHPORT1)
       udbg("ERROR: RHPort1 is not available in this configuration\n");
+      return;
+
+#elif !defined(PIO_USBA_VBUS_ENABLE)
+      /* SAMA5D3-Xplained has no port A VBUS enable */
+
+      udbg("ERROR: RHPort1 has no VBUS enable\n");
       return;
 #else
       pinset = PIO_USBA_VBUS_ENABLE;
@@ -436,7 +458,7 @@ void sam_usbhost_vbusdrive(int rhport, bool enable)
       return;
     }
 
-  /* Then enable or disable VBUS power */
+  /* Then enable or disable VBUS power (active low for SP2526A-2) */
 
   if (enable)
     {

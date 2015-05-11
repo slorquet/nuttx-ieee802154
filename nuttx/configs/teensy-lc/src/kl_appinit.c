@@ -1,7 +1,7 @@
 /****************************************************************************
- * configs/olimex-lpc1766stk/src/lpc17_hidkbd.c
+ * config/teensy-lc/src/kl_appinit.c
  *
- *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,12 +39,13 @@
 
 #include <nuttx/config.h>
 
-#include <nuttx/usb/usbhost.h>
+#include <sys/types.h>
+#include <stdio.h>
+#include <syslog.h>
 
-#include "lpc17_usbhost.h"
+#include <nuttx/board.h>
 
-#if defined(CONFIG_LPC17_USBHOST) && defined(CONFIG_USBHOST) && \
-    defined(CONFIG_EXAMPLES_HIDKBD)
+#ifdef CONFIG_LIB_BOARDCTL
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -55,17 +56,18 @@
  ****************************************************************************/
 
 /****************************************************************************
- * Name: arch_usbhost_initialize
+ * Name: board_app_initialize
  *
  * Description:
- *   The apps/example/hidkbd test requires that platform-specific code
- *   provide a wrapper called arch_usbhost_initialize() that will perform
- *   the actual USB host initialization.
+ *   Perform application specific initialization.  This function is never
+ *   called directly from application code, but only indirectly via the
+ *   (non-standard) boardctl() interface using the command BOARDIOC_INIT.
  *
- ****************************************************************************/
+ *****************************************************************************/
 
-struct usbhost_connection_s *arch_usbhost_initialize(void)
+int board_app_initialize(void)
 {
-  return lpc17_usbhost_initialize(0);
+  return OK;
 }
-#endif /* CONFIG_LPC17_USBHOST && CONFIG_USBHOST && CONFIG_EXAMPLES_HIDKBD */
+
+#endif /* CONFIG_LIB_BOARDCTL */

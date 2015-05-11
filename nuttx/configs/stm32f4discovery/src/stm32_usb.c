@@ -1,7 +1,7 @@
 /************************************************************************************
  * configs/stm32f4discovery/src/stm32_usb.c
  *
- *   Copyright (C) 2012-2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2012-2013, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,6 +44,7 @@
 #include <stdbool.h>
 #include <sched.h>
 #include <errno.h>
+#include <assert.h>
 #include <debug.h>
 
 #include <nuttx/usb/usbdev.h>
@@ -68,12 +69,12 @@
 #  undef HAVE_USB
 #endif
 
-#ifndef CONFIG_USBHOST_DEFPRIO
-#  define CONFIG_USBHOST_DEFPRIO 50
+#ifndef CONFIG_STM32F4DISCO_USBHOST_PRIO
+#  define CONFIG_STM32F4DISCO_USBHOST_PRIO 100
 #endif
 
-#ifndef CONFIG_USBHOST_STACKSIZE
-#  define CONFIG_USBHOST_STACKSIZE 1024
+#ifndef CONFIG_STM32F4DISCO_USBHOST_STACKSIZE
+#  define CONFIG_STM32F4DISCO_USBHOST_STACKSIZE 1024
 #endif
 
 /************************************************************************************
@@ -99,28 +100,23 @@ static struct usbhost_connection_s *g_usbconn;
 #ifdef CONFIG_USBHOST
 static int usbhost_waiter(int argc, char *argv[])
 {
-  bool connected = false;
-  int ret;
+  struct usbhost_hubport_s *hport;
 
   uvdbg("Running\n");
   for (;;)
     {
       /* Wait for the device to change state */
 
-      ret = CONN_WAIT(g_usbconn, &connected);
-      DEBUGASSERT(ret == OK);
-      UNUSED(ret);
-
-      connected = !connected;
-      uvdbg("%s\n", connected ? "connected" : "disconnected");
+      DEBUGVERIFY(CONN_WAIT(g_usbconn, &hport));
+      uvdbg("%s\n", hport->connected ? "connected" : "disconnected");
 
       /* Did we just become connected? */
 
-      if (connected)
+      if (hport->connected)
         {
           /* Yes.. enumerate the newly connected device */
 
-          (void)CONN_ENUMERATE(g_usbconn, 0);
+          (void)CONN_ENUMERATE(g_usbconn, hport);
         }
     }
 
@@ -170,8 +166,8 @@ void stm32_usbinitialize(void)
 int stm32_usbhost_initialize(void)
 {
   int pid;
-#if defined(CONFIG_USBHOST_MSC) || defined(CONFIG_USBHOST_HIDKBD) || \
-    defined(CONFIG_USBHOST_HIDMOUSE)
+#if defined(CONFIG_USBHOST_HUB)    || defined(CONFIG_USBHOST_MSC) || \
+    defined(CONFIG_USBHOST_HIDKBD) || defined(CONFIG_USBHOST_HIDMOUSE)
   int ret;
 #endif
 
@@ -181,15 +177,39 @@ int stm32_usbhost_initialize(void)
 
   uvdbg("Register class drivers\n");
 
+#ifdef CONFIG_USBHOST_HUB
+  /* Initialize USB hub class support */
+
+  ret = usbhost_hub_initialize();
+  if (ret < 0)
+    {
+      udbg("ERROR: usbhost_hub_initialize failed: %d\n", ret);
+    }
+#endif
+
 #ifdef CONFIG_USBHOST_MSC
-  ret = usbhost_storageinit();
+  /* Register the USB mass storage class class */
+
+  ret = usbhost_msc_initialize();
   if (ret != OK)
     {
-      udbg("Failed to register the mass storage class\n");
+      udbg("ERROR: Failed to register the mass storage class: %d\n", ret);
+    }
+#endif
+
+#ifdef CONFIG_USBHOST_CDCACM
+  /* Register the CDC/ACM serial class */
+
+  ret = usbhost_cdcacm_initialize();
+  if (ret != OK)
+    {
+      udbg("ERROR: Failed to register the CDC/ACM serial class: %d\n", ret);
     }
 #endif
 
 #ifdef CONFIG_USBHOST_HIDKBD
+  /* Initialize the HID keyboard class */
+
   ret = usbhost_kbdinit();
   if (ret != OK)
     {
@@ -198,6 +218,8 @@ int stm32_usbhost_initialize(void)
 #endif
 
 #ifdef CONFIG_USBHOST_HIDMOUSE
+  /* Initialize the HID mouse class */
+
   ret = usbhost_mouse_init();
   if (ret != OK)
     {
@@ -215,8 +237,8 @@ int stm32_usbhost_initialize(void)
 
       uvdbg("Start usbhost_waiter\n");
 
-      pid = task_create("usbhost", CONFIG_USBHOST_DEFPRIO,
-                        CONFIG_USBHOST_STACKSIZE,
+      pid = task_create("usbhost", CONFIG_STM32F4DISCO_USBHOST_PRIO,
+                        CONFIG_STM32F4DISCO_USBHOST_STACKSIZE,
                         (main_t)usbhost_waiter, (FAR char * const *)NULL);
       return pid < 0 ? -ENOEXEC : OK;
     }

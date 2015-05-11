@@ -1,7 +1,7 @@
 /************************************************************************************
  * configs/olimex-lpc-h3131/src/lpc31_usbhost.c
  *
- *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2013, 2015 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -67,7 +67,11 @@
 #endif
 
 #ifndef CONFIG_USBHOST_STACKSIZE
-#  define CONFIG_USBHOST_STACKSIZE 1024
+#  ifdef CONFIG_USBHOST_HUB
+#    define CONFIG_USBHOST_STACKSIZE 1536
+#  else
+#    define CONFIG_USBHOST_STACKSIZE 1024
+#  endif
 #endif
 
 /************************************************************************************
@@ -97,35 +101,24 @@ static xcpt_t g_ochandler;
 
 static int ehci_waiter(int argc, char *argv[])
 {
-  bool connected = false;
-  int rhpndx;
-  int ret;
+  FAR struct usbhost_hubport_s *hport;
 
-  uvdbg("Waiter Running\n");
+  uvdbg("ehci_waiter:  Running\n");
   for (;;)
     {
       /* Wait for the device to change state */
 
-      rhpndx = CONN_WAIT(g_ehciconn, &connected);
-      DEBUGASSERT(rhpndx >= 0 && rhpndx < 1);
-
-      connected = !connected;
-
-      uvdbg("RHport1 %s\n",
-            connected ? "connected" : "disconnected");
+      DEBUGVERIFY(CONN_WAIT(g_ehciconn, &hport));
+      syslog(LOG_INFO, "ehci_waiter: %s\n",
+             hport->connected ? "connected" : "disconnected");
 
       /* Did we just become connected? */
 
-      if (connected)
+      if (hport->connected)
         {
           /* Yes.. enumerate the newly connected device */
 
-          ret = CONN_ENUMERATE(g_ehciconn, rhpndx);
-          if (ret < 0)
-            {
-              uvdbg("RHport1 CONN_ENUMERATE failed: %d\n", ret);
-              connected = false;
-            }
+          (void)CONN_ENUMERATE(g_ehciconn, hport);
         }
     }
 
@@ -183,21 +176,41 @@ int lpc31_usbhost_initialize(void)
 
   /* First, register all of the class drivers needed to support the drivers
    * that we care about
-   *
-   * Register theUSB host Mass Storage Class:
    */
 
+#ifdef CONFIG_USBHOST_HUB
+  /* Initialize USB hub support */
+
+  ret = usbhost_hub_initialize();
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "ERROR: usbhost_hub_initialize failed: %d\n", ret);
+    }
+#endif
+
 #ifdef CONFIG_USBHOST_MSC
-  ret = usbhost_storageinit();
+  /* Register theUSB host Mass Storage Class */
+
+  ret = usbhost_msc_initialize();
   if (ret != OK)
     {
       udbg("ERROR: Failed to register the mass storage class: %d\n", ret);
     }
 #endif
 
-  /* Register the USB host HID keyboard class driver */
+#ifdef CONFIG_USBHOST_CDCACM
+  /* Register the CDC/ACM serial class */
+
+  ret = usbhost_cdcacm_initialize();
+  if (ret != OK)
+    {
+      udbg("ERROR: Failed to register the CDC/ACM serial class\n");
+    }
+#endif
 
 #ifdef CONFIG_USBHOST_HIDKBD
+  /* Register the USB host HID keyboard class driver */
+
   ret = usbhost_kbdinit();
   if (ret != OK)
     {

@@ -63,12 +63,12 @@
  * Pre-processor Definitions
  ************************************************************************************/
 
-#ifndef CONFIG_USBHOST_DEFPRIO
-#  define CONFIG_USBHOST_DEFPRIO 50
+#ifndef CONFIG_SAMA5D4EK_USBHOST_PRIO
+#  define CONFIG_SAMA5D4EK_USBHOST_PRIO 50
 #endif
 
-#ifndef CONFIG_USBHOST_STACKSIZE
-#  define CONFIG_USBHOST_STACKSIZE 1024
+#ifndef CONFIG_SAMA5D4EK_USBHOST_STACKSIZE
+#  define CONFIG_SAMA5D4EK_USBHOST_STACKSIZE 1024
 #endif
 
 #ifdef HAVE_USBDEV
@@ -112,35 +112,23 @@ static int usbhost_waiter(struct usbhost_connection_s *dev, const char *hcistr)
 static int usbhost_waiter(struct usbhost_connection_s *dev)
 #endif
 {
-  bool connected[SAM_OHCI_NRHPORT] = {false, false, false};
-  int rhpndx;
-  int ret;
+  struct usbhost_hubport_s *hport;
 
-  uvdbg("%s Waiter Running\n", hcistr);
+  uvdbg("Running\n");
   for (;;)
     {
       /* Wait for the device to change state */
 
-      rhpndx = CONN_WAIT(dev, connected);
-      DEBUGASSERT(rhpndx >= 0 && rhpndx < SAM_OHCI_NRHPORT);
-
-      connected[rhpndx] = !connected[rhpndx];
-
-      uvdbg("%s RHport%d %s\n",
-            hcistr, rhpndx + 1, connected[rhpndx] ? "connected" : "disconnected");
+      DEBUGVERIFY(CONN_WAIT(dev, &hport));
+      uvdbg("%s\n", hport->connected ? "connected" : "disconnected");
 
       /* Did we just become connected? */
 
-      if (connected[rhpndx])
+      if (hport->connected)
         {
           /* Yes.. enumerate the newly connected device */
 
-          ret = CONN_ENUMERATE(dev, rhpndx);
-          if (ret < 0)
-            {
-              uvdbg("%s RHport%d CONN_ENUMERATE failed: %d\n", hcistr, rhpndx+1, ret);
-              connected[rhpndx] = false;
-            }
+          (void)CONN_ENUMERATE(dev, hport);
         }
     }
 
@@ -196,7 +184,7 @@ static int ehci_waiter(int argc, char *argv[])
  * Name: sam_usbinitialize
  *
  * Description:
- *   Called from sam_usbinitialize very early in inialization to setup USB-related
+ *   Called from sam_usbinitialize very early in initialization to setup USB-related
  *   GPIO pins for the SAMA5D4-EK board.
  *
  * USB Ports
@@ -311,16 +299,39 @@ int sam_usbhost_initialize(void)
 
   /* First, register all of the class drivers needed to support the drivers
    * that we care about
-   *
-   * Register theUSB host Mass Storage Class:
    */
 
-  ret = usbhost_storageinit();
+#ifdef CONFIG_USBHOST_HUB
+  /* Initialize USB hub support */
+
+  ret = usbhost_hub_initialize();
+  if (ret < 0)
+    {
+      udbg("ERROR: usbhost_hub_initialize failed: %d\n", ret);
+    }
+#endif
+
+#ifdef CONFIG_USBHOST_MSC
+  /* Register the USB host Mass Storage Class */
+
+  ret = usbhost_msc_initialize();
   if (ret != OK)
     {
       udbg("ERROR: Failed to register the mass storage class: %d\n", ret);
     }
+#endif
 
+#ifdef CONFIG_USBHOST_CDCACM
+  /* Register the CDC/ACM serial class */
+
+  ret = usbhost_cdcacm_initialize();
+  if (ret != OK)
+    {
+      udbg("ERROR: Failed to register the CDC/ACM serial class: %d\n", ret);
+    }
+#endif
+
+#ifdef CONFIG_USBHOST_HIDKBD
   /* Register the USB host HID keyboard class driver */
 
   ret = usbhost_kbdinit();
@@ -328,6 +339,7 @@ int sam_usbhost_initialize(void)
     {
       udbg("ERROR: Failed to register the KBD class\n");
     }
+#endif
 
   /* Then get an instance of the USB host interface. */
 
@@ -343,7 +355,8 @@ int sam_usbhost_initialize(void)
 
   /* Start a thread to handle device connection. */
 
-  pid = task_create("OHCI Monitor", CONFIG_USBHOST_DEFPRIO,  CONFIG_USBHOST_STACKSIZE,
+  pid = task_create("OHCI Monitor", CONFIG_SAMA5D4EK_USBHOST_PRIO,
+                    CONFIG_SAMA5D4EK_USBHOST_STACKSIZE,
                     (main_t)ohci_waiter, (FAR char * const *)NULL);
   if (pid < 0)
     {
@@ -364,7 +377,8 @@ int sam_usbhost_initialize(void)
 
   /* Start a thread to handle device connection. */
 
-  pid = task_create("EHCI Monitor", CONFIG_USBHOST_DEFPRIO,  CONFIG_USBHOST_STACKSIZE,
+  pid = task_create("EHCI Monitor", CONFIG_SAMA5D4EK_USBHOST_PRIO,
+                    CONFIG_SAMA5D4EK_USBHOST_STACKSIZE,
                     (main_t)ehci_waiter, (FAR char * const *)NULL);
   if (pid < 0)
     {

@@ -458,6 +458,9 @@ Creating and Using NORBOOT
 Running NuttX from SDRAM
 ========================
 
+  Executing from SDRAM
+  --------------------
+
   NuttX may be executed from SDRAM.  But this case means that the NuttX
   binary must reside on some other media (typically NAND FLASH, Serial
   FLASH, or, perhaps even a TFTP server).  In these cases, an intermediate
@@ -476,6 +479,26 @@ Running NuttX from SDRAM
   but are instead function calls:  The MCK clock frequency is not known in
   advance but instead has to be calculated from the bootloader PLL configuration.
   See the TODO list at the end of this file for further information.
+
+  Using JTAG
+  ----------
+
+  This description assumes that you have a JTAG debugger such as Segger
+  J-Link connected to the SAMA5D3-Xplained.
+
+  1. Start the GDB server
+  2. Start GDB
+  3. Use the 'target remote localhost:xxxx' command to attach to the GDG
+     server
+  4. Do 'mon reset' then 'mon go' to start the internal boot loader (maybe
+     U-Boot).
+  5. Let the boot loader run until it completes SDRAM initialization, then
+     do 'mon halt'.
+  6. Now you have SDRAM initialized and you use 'load nuttx' to load the
+     ELF file into SDRAM.
+  7. Use 'file nuttx' to load symbols
+  8. Set the PC to the NuttX entry point 'mon pc 0x20008040' and start
+     nuttx using 'mon go'.
 
 NuttX Configuration
 -------------------
@@ -1572,8 +1595,9 @@ USB High-Speed Host
       CONFIG_USBHOST_MSC=y                 : Enable the mass storage class driver
       CONFIG_USBHOST_HIDKBD=y              : Enable the HID keyboard class driver
 
-    Library Routines
-      CONFIG_SCHED_WORKQUEUE=y             : Worker thread support is required
+    RTOS Features -> Work Queue Support
+      CONFIG_SCHED_WORKQUEUE=y             : High priority worker thread support is required
+      CONFIG_SCHED_HPWORK=y                :
 
     Application Configuration -> NSH Library
       CONFIG_NSH_ARCHINIT=y                 : NSH board-initialization
@@ -1603,11 +1627,48 @@ USB High-Speed Host
       CONFIG_USBHOST_MSC=y                 : Enable the mass storage class driver
       CONFIG_USBHOST_HIDKBD=y              : Enable the HID keyboard class driver
 
-    Library Routines
-      CONFIG_SCHED_WORKQUEUE=y             : Worker thread support is required
+    RTOS Features -> Work Queue Support
+      CONFIG_SCHED_WORKQUEUE=y             : High priority worker thread support is required
+      CONFIG_SCHED_HPWORK=y                :
 
     Application Configuration -> NSH Library
       CONFIG_NSH_ARCHINIT=y                 : NSH board-initialization
+
+  USB Hub Support
+  ----------------
+
+  USB hub support can be included by adding the following changes to the configuration (in addition to those listed above):
+
+    Drivers -> USB Host Driver Support
+      CONFIG_USBHOST_HUB=y                 : Enable the hub class
+      CONFIG_USBHOST_ASYNCH=y              : Asynchonous I/O supported needed for hubs
+
+    System Type -> USB High Speed Host driver options
+      CONFIG_SAMA5_OHCI_NEDS=12            : You will probably want more pipes
+      CONFIG_SAMA5_OHCI_NTDS=18
+      CONFIG_SAMA5_OHCI_TDBUFFERS=12
+      CONFIG_SAMA5_OHCI_TDBUFSIZE=128
+
+    Board Selection ->
+      CONFIG_SAMA5D3XEK_USBHOST_STACKSIZE=2048 (bigger than it needs to be)
+
+    RTOS Features -> Work Queue Support
+      CONFIG_SCHED_LPWORK=y                 : Low priority queue support is needed
+      CONFIG_SCHED_LPNTHREADS=1
+      CONFIG_SCHED_LPWORKSTACKSIZE=1024
+
+    NOTES:
+
+    1. It is necessary to perform work on the low-priority work queue
+       (vs. the high priority work queue) because deferred hub-related
+       work requires some delays and waiting that is not appropriate on
+       the high priority work queue.
+
+    2. Stack usage make increase when USB hub support is enabled because
+       the nesting depth of certain USB host class logic can increase.
+
+    STATUS:
+      Hub support has not been verified on this board yet.
 
   Mass Storage Device Usage
   -------------------------
